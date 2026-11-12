@@ -1,0 +1,7 @@
+Suite run record, W10-5 form, for a full suite run of this suite on this machine.
+Command: python3 -m unittest discover -s tests -v
+Interpreter: 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]
+Pinned statement: Python 3.12, standing beside the full version string above.
+Platform: Linux-7.0.0-44-generic-x86_64-with-glibc2.39
+Locale: LC_CTYPE=C.UTF-8 with the remaining locale categories at C
+Filesystem encoding: utf-8

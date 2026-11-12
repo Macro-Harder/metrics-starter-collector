@@ -1,0 +1,23 @@
+# Golden expected file, limited comparison, test_golden_comparison_limited
+# Subject: fold-in trace checker design tree, read in place, never copied.
+# Identity: 309 files, 6747042 bytes, measured 2026-11-12.
+# Form: one line per metric. Fields: code | verdict | reason code | pointer file | figures | denominator and coverage
+# Present rows E-1, E-2 and Q-4 carry verdict, figure and denominator in tracer form.
+# The other 14 rows carry verdict, reason code and pointer only, in refusal form.
+T-1 | missing | date-only-form | PATH-LEDGER.md | refusal-form | refusal-form
+T-2 | missing | date-only-form | PATH-LEDGER.md | refusal-form | refusal-form
+T-4 | present but not derivable | missing-field | PATH-LEDGER.md | refusal-form | refusal-form
+T-7 | present but not derivable | record-disagrees | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
+E-1 | present | none | steps/step-03-roster-artifact.md | Step 1 staffed 2 of base 1; Step 7 staffed 12 of base 12 | denominator step universe 23 steps; covered Steps 1 to 18; remainder Steps 19 to 23 named, no base stated
+E-2 | present | none | steps/step-03-record.md | total spins Step 3: 12; Step 5: 15; Step 6: 6; additions over base stated for Steps 3 and 5 | denominator step universe 23 steps; Steps 19 to 23 named against additions over base only, total spins still reported
+E-3 | missing | no-feeder-record | registers/INSTALL-REGISTER.md | refusal-form | refusal-form
+E-4 | present but not derivable | missing-field | steps/step-20-record.md | refusal-form | refusal-form
+F-2 | present but not derivable | missing-field | steps/step-02-snapshot.md | refusal-form | refusal-form
+Q-1 | present but not derivable | no-post-triage-breakdown | audit/step12-fix-register.md | refusal-form | refusal-form
+Q-3 | present but not derivable | no-measurement-basis | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
+Q-4 | present | none | steps/step-13-trace.md | Step 6 first trace 69 of 70 LANDED; Step 8 first trace 41 of 44 LANDED; Step 19 first trace 4 of 7 LANDED; Step 20 first trace 5 of 5 LANDED | denominator steps with a first trace; remainder Step 13 named with both totals 105 against 106, LANDED 52 in both forms, no record disagrees qualifier on that ground
+D-1 | present but not derivable | missing-field | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
+B-1 | missing | no-feeder-record | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
+B-2 | present but not derivable | no code fits | steps/step-03-record.md | refusal-form | refusal-form
+B-3 | missing | no-feeder-record | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
+B-4 | missing | no-feeder-record | wiki/wiki/synthesis/build-metrics-record.md | refusal-form | refusal-form
