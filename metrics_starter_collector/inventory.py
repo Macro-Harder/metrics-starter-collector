@@ -58,6 +58,9 @@ def classify(rel_path):
     """Return (record_class, step) for a recognised path, else None."""
     parts = rel_path.split("/")
     base = parts[-1]
+    if re.match(r"^step-\d+-records\.md$", base) or \
+            re.match(r"^step-\d+-gate-records\.md$", base):
+        return None
     if base in _EXACT:
         return _EXACT[base], None
     if "cost-ledger" in base or "cost_ledger" in base:
@@ -84,6 +87,9 @@ _NEAR_RES = [
     (re.compile(r"step-\d+-trace"), "steps/step-NN-trace.md"),
     (re.compile(r"step-\d+-roster"), "steps/step-NN-roster-artifact.md"),
     (re.compile(r"decision[-_ ]?queue", re.I), "DECISION-QUEUE.md"),
+    (re.compile(r"decision[-_ ]?queu", re.I), "DECISION-QUEUE.md"),
+    (re.compile(r"queue[-_ ]?decision", re.I), "DECISION-QUEUE.md"),
+    (re.compile(r"decisions?[-_ ]?queue", re.I), "DECISION-QUEUE.md"),
 ]
 
 
@@ -92,6 +98,11 @@ def near_match_note(rel_path):
     base = rel_path.split("/")[-1]
     for pattern, note in _NEAR_RES:
         if pattern.search(base):
+            if "NN" in note:
+                m = re.search(r"step-(\d+)", base)
+                if m:
+                    note = note.replace(
+                        "NN", m.group(1).zfill(2))
             return note
     return None
 

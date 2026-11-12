@@ -60,7 +60,8 @@ def _read_piece_file(path):
     try:
         data = path.read_bytes()
     except OSError as exc:
-        return 0, None, "unreadable", "unreadable: %s" % exc
+        return 0, None, "unreadable", \
+            "unreadable-piece: unreadable: %s" % exc
     size = len(data)
     if size > FILE_LIMIT:
         return size, None, "over limit", \
@@ -132,7 +133,6 @@ def capture_read(root):
             % (root,))
     root_resolved = root_path.resolve()
     entries = []
-    visited_targets = set()
     walk_note = None
     count = 0
     for dirpath, dirnames, filenames in os.walk(str(root_path)):
@@ -154,46 +154,125 @@ def capture_read(root):
                 if target != root_resolved and \
                         root_resolved not in target.parents:
                     continue
-                if str(target) in visited_targets:
-                    continue
-                visited_targets.add(str(target))
             if full.is_file():
+                entries.append(rel)
+            elif full.is_dir() and \
+                    inventory.classify(rel) is not None:
                 entries.append(rel)
         if walk_note:
             break
     entries.sort()
-    raw = {}
-    near = []
+    alias_map = {}
+    by_target = {}
+    for rel in entries:
+        try:
+            key = str((root_path / rel).resolve())
+        except OSError:
+            key = rel
+        by_target.setdefault(key, []).append(rel)
+    canonical_entries = []
+    for key in by_target:
+        rels_sorted = sorted(by_target[key])
+        canonical = rels_sorted[0]
+        for candidate in rels_sorted:
+            if not (root_path / candidate).is_symlink():
+                canonical = candidate
+                break
+        alias_map[canonical] = tuple(rels_sorted)
+        canonical_entries.append(canonical)
+    entries = sorted(canonical_entries)
+    classified = []
     for rel in entries:
         found = inventory.classify(rel)
+        note = None
         if found is None:
             note = inventory.near_match_note(rel)
+        classified.append((rel, found, note))
+
+    def stat_size(rel):
+        full = root_path / rel
+        try:
+            if full.is_dir() and not full.is_symlink():
+                return 0
+            return full.stat().st_size
+        except OSError:
+            return 0
+
+    tree_bytes = 0
+    tree_files = 0
+    cut_rels = []
+    cut_kind = None
+    last_visited = None
+    cutting = False
+    for rel, found, note in classified:
+        if found is None and note is None:
+            continue
+        size = stat_size(rel)
+        tree_files += 1
+        tree_bytes += size
+        if not cutting and (tree_bytes > TREE_BYTE_LIMIT or
+                            tree_files > TREE_FILE_LIMIT):
+            cutting = True
+            crossed = []
+            if tree_bytes > TREE_BYTE_LIMIT:
+                crossed.append("tree byte limit %d bytes"
+                               % TREE_BYTE_LIMIT)
+            if tree_files > TREE_FILE_LIMIT:
+                crossed.append("tree file limit %d files"
+                               % TREE_FILE_LIMIT)
+            cut_kind = " and ".join(crossed)
+        if cutting:
+            cut_rels.append(rel)
+        else:
+            last_visited = rel
+    cut_set = set(cut_rels)
+    raw = {}
+    near = []
+    for rel, found, note in classified:
+        if found is None:
             if note is not None:
                 near.append((rel, note))
             continue
         cls, step = found
-        size, text, quality, reason = _read_piece_file(root_path / rel)
+        if rel in cut_set:
+            size = stat_size(rel)
+            text = None
+            quality = "over limit"
+            reason = ("not read: the %s was crossed, with a record "
+                      "part total of %d bytes in %d files, and this "
+                      "piece stands past the limit in walk order"
+                      % (cut_kind, tree_bytes, tree_files))
+        else:
+            size, text, quality, reason = _read_piece_file(
+                root_path / rel)
         ident = inventory.identity_for(cls, step, rel)
         raw.setdefault(ident, []).append(
-            (rel, cls, step, size, text, quality, reason))
+            (rel, cls, step, size, text, quality, reason,
+             alias_map.get(rel, (rel,))))
     pieces = []
     for ident in sorted(raw, key=lambda i: min(x[0] for x in raw[i])):
         group = sorted(raw[ident], key=lambda x: x[0])
-        rel0, cls, step, size0, text0, quality0, reason0 = group[0]
-        paths = tuple(x[0] for x in group)
+        rel0, cls, step, size0, text0, quality0, reason0 = group[0][:7]
+        paths = tuple(sorted({p for x in group for p in x[7]}))
+        form = None
+        if cls == CLS_METRICS_SINGLE:
+            form = "single page form"
+        elif cls == CLS_METRICS_PAGE:
+            form = "split page form"
         if len(group) > 1:
             texts = {x[4] for x in group}
             if len(texts) == 1 and text0 is not None:
                 pieces.append(Piece(ident, paths, cls, step, size0, text0,
-                                    None, quality0))
+                                    None, quality0, form_state=form))
             else:
                 pieces.append(Piece(
                     ident, paths, cls, step, size0, None,
                     "not read in full: duplicate content disagreement "
-                    "between the paths that yield this piece", quality0))
+                    "between the paths that yield this piece", quality0,
+                    form_state=form))
             continue
         pieces.append(Piece(ident, paths, cls, step, size0, text0,
-                            reason0, quality0))
+                            reason0, quality0, form_state=form))
     pieces.sort(key=lambda p: p.paths[0])
     assembled, single_path = _assemble_metrics(pieces)
     if single_path is None:
@@ -233,7 +312,13 @@ def capture_read(root):
                         build_identity=identity, near_matches=near,
                         assembled_metrics=assembled,
                         metrics_single_path=single_path,
-                        walk_note=walk_note)
+                        walk_note=walk_note,
+                        tree_bytes=tree_bytes, tree_files=tree_files,
+                        tree_cut_paths=tuple(cut_rels),
+                        tree_cut_kind=cut_kind,
+                        tree_last_visited=last_visited,
+                        tree_byte_limit=TREE_BYTE_LIMIT,
+                        tree_file_limit=TREE_FILE_LIMIT)
 
 
 def deliver_report(text, root, report_path):

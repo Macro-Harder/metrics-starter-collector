@@ -106,6 +106,13 @@ class CapturedRead:
     assembled_metrics: object = None
     metrics_single_path: object = None
     walk_note: object = None
+    tree_bytes: int = 0
+    tree_files: int = 0
+    tree_cut_paths: tuple = ()
+    tree_cut_kind: object = None
+    tree_last_visited: object = None
+    tree_byte_limit: int = 25000000
+    tree_file_limit: int = 2000
 
     def pieces_of(self, *classes):
         return [p for p in self.pieces if p.record_class in classes]
@@ -1684,7 +1691,7 @@ def derive_report(captured):
             "Root: " + str(captured.root),
             "Build identity: no build identity was found in the tree",
             "Step universe: 0 steps",
-            "Pieces recognised: 0",
+            "0 pieces recognised",
             "Latest record timestamp: " +
             (captured.latest_timestamp or "no timestamp was found"),
             "Coverage statement: no usable records stand in the tree, "
@@ -1729,7 +1736,7 @@ def derive_report(captured):
         "Build identity: " + identity,
         "Step universe: %d steps (%s)" % (len(universe.evidenced),
                                           _step_list_text(universe.evidenced)),
-        "Pieces recognised: %d" % len(captured.pieces),
+        "%d pieces recognised" % len(captured.pieces),
         "Latest record timestamp: " +
         (captured.latest_timestamp or "no timestamp was found"),
     ]
@@ -1746,6 +1753,14 @@ def derive_report(captured):
                 for p in not_read))
     if captured.walk_note:
         coverage_bits.append(captured.walk_note)
+    if captured.tree_cut_paths:
+        coverage_bits.append(
+            "tree limit cut: the record part total of %d bytes in "
+            "%d files crossed the %s, and the pieces past the limit "
+            "were not read: %s"
+            % (captured.tree_bytes, captured.tree_files,
+               captured.tree_cut_kind or "tree limit",
+               "; ".join(captured.tree_cut_paths)))
     if not coverage_bits:
         coverage_bits.append("the capture stands complete for the "
                              "pieces recognised")
@@ -1760,10 +1775,18 @@ def derive_report(captured):
                                totals["not_yet_recordable"]))
 
     inventory_lines = ["## Piece inventory"]
+    if captured.tree_cut_paths:
+        inventory_lines.append(
+            "- Record part total: %d bytes in %d files | tree limits: "
+            "%d bytes and %d files | over limit"
+            % (captured.tree_bytes, captured.tree_files,
+               captured.tree_byte_limit, captured.tree_file_limit))
     for p in captured.pieces:
         state = p.quality_state or "read in full"
         if p.text is None and p.quality_state is None:
             state = "not read in full"
+        if p.form_state:
+            state = state + " | form: " + p.form_state
         for path in p.paths:
             inventory_lines.append("- %s | %s | %d bytes | %s"
                                    % (path, p.record_class, p.size, state))
@@ -1792,6 +1815,55 @@ def derive_report(captured):
                 "and derivations that need it follow the not read in "
                 "full rule." % (name, p.paths[0], p.paths[0],
                                 p.quality_state or "unreadable", code))
+    sample_paths = sorted(
+        [path for p in captured.pieces for path in p.paths] +
+        [path for path, note in captured.near_matches])
+    sample_text = ", ".join(sample_paths[:12])
+    if len(sample_paths) > 12:
+        sample_text += ", and further entries in that same order"
+    bias_text = (
+        "pieces are missing by walk order position, in sorted "
+        "relative path order, not spread evenly across the tree, so "
+        "pieces whose paths sort after the cut point are cut whole "
+        "and pieces whose paths sort before it are kept whole; the "
+        "bias direction is that later walk order positions are the "
+        "ones cut")
+    over_pieces = [p for p in captured.pieces
+                   if p.text is None and p.quality_state == "over limit"
+                   and not (p.not_read_reason and
+                            "tree limit" in p.not_read_reason)]
+    if over_pieces:
+        first_over = over_pieces[0]
+        limit_text = first_over.not_read_reason or "over limit"
+        if limit_text.startswith("over limit: "):
+            limit_text = limit_text[len("over limit: "):]
+        data_quality.append(
+            "Walk order sample for %s: What the record shows: the "
+            "%s cut the capture at %s; sampled entries in sorted "
+            "relative path order: %s. What follows: "
+            "over-limit-piece %s."
+            % (first_over.paths[0], limit_text, first_over.paths[0],
+               sample_text, bias_text))
+    if captured.tree_cut_paths:
+        cut_at = captured.tree_cut_paths[0]
+        last_seen = captured.tree_last_visited or cut_at
+        data_quality.append(
+            "Walk order sample for %s: What the record shows: the "
+            "%s cut the capture, with the last visited path before "
+            "the cut at %s and the first piece past the limit at "
+            "%s; sampled entries in sorted relative path order: %s. "
+            "What follows: over-limit-piece %s."
+            % (cut_at, captured.tree_cut_kind or "tree limit",
+               last_seen, cut_at, sample_text, bias_text))
+    if captured.walk_note:
+        last_seen = sample_paths[-1] if sample_paths else "none"
+        data_quality.append(
+            "Walk order sample for the whole walk bound: What the "
+            "record shows: the whole walk bound of 10000 entries "
+            "cut the capture, with the last visited path at %s; "
+            "sampled entries in sorted relative path order: %s. "
+            "What follows: over-limit-piece %s."
+            % (last_seen, sample_text, bias_text))
     if captured.definitions_version is None:
         datum = ("Datum line: the tree stated none for the definitions "
                  "version; form basis: the settled forms of this version "
