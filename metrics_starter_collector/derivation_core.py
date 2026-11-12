@@ -135,6 +135,7 @@ class StepUniverse:
     ledger: tuple
     metrics: tuple
     disagreements: tuple
+    metrics_count_claim: object = None
 
 
 @dataclass
@@ -251,6 +252,12 @@ def build_step_universe(captured):
             metrics_steps.add(int(m.group(1)))
         for m in re.finditer(r"Step (\d+) closing entry", captured.assembled_metrics):
             metrics_steps.add(int(m.group(1)))
+    metrics_count_claim = None
+    if captured.assembled_metrics:
+        m = re.search(r"step universe as (\d+) steps",
+                      captured.assembled_metrics, re.I)
+        if m:
+            metrics_count_claim = int(m.group(1))
     disagreements = []
     if ledger_steps and ledger_steps != evidenced:
         disagreements.append(
@@ -261,8 +268,25 @@ def build_step_universe(captured):
         disagreements.append(
             "the metrics record states steps %s beyond the evidenced "
             "universe" % _named_steps(metrics_steps - evidenced - ledger_steps))
+    if metrics_count_claim is not None and \
+            metrics_count_claim != len(evidenced):
+        metrics_name = "build-metrics-record.md"
+        if captured.metrics_single_path:
+            metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1]
+        ledger_clause = ""
+        if captured.pieces_of(CLS_PATH_LEDGER):
+            ledger_clause = " and stated in PATH-LEDGER.md"
+        disagreements.append(
+            "the metrics record in %s states the step universe as %d "
+            "steps, which disagrees with the step universe of %d steps "
+            "evidenced by step records and gate files%s; neither count "
+            "is picked as the count, and derivations and denominators "
+            "are computed on the evidenced universe"
+            % (metrics_name, metrics_count_claim, len(evidenced),
+               ledger_clause))
     return StepUniverse(tuple(sorted(evidenced)), tuple(sorted(ledger_steps)),
-                        tuple(sorted(metrics_steps)), tuple(disagreements))
+                        tuple(sorted(metrics_steps)), tuple(disagreements),
+                        metrics_count_claim)
 
 
 def _known_version(version):
@@ -529,7 +553,7 @@ def _derive_t7(captured, universe):
                     "step record pass count cannot be reconciled to one "
                     "count, with both counts named in the record",
             rule_name="T-7 irreconcilable counts rule")
-    if gates or step_loop:
+    if step_loop:
         return DerivationResult(
             "T-7", "present but not derivable", "no round count figure",
             denom, gates[0].paths[0] if gates else pointer,
@@ -583,6 +607,9 @@ def _parse_staffed_base(captured, step):
         holders = len(set(re.findall(r"holder\s+(\d+)", joined)))
         staffed = holders if holders > base else base
         return staffed, base
+    m = re.search(r"Step total: Low\s+(\d+)", joined)
+    if m:
+        return int(m.group(1)), int(m.group(1))
     m = re.search(r"counted as [^.]*", joined)
     if m and "plus" in m.group(0):
         nums = [int(x) for x in re.findall(r"(\d+)\s*(?:plus|,)", m.group(0))]
@@ -740,16 +767,36 @@ def _derive_e1(captured, universe):
                     "derivation needs are absent from the feeder records, "
                     "so no figure stands",
             rule_name="E-1 defined form rule")
-    figures = "; ".join("Step %d staffed %d of base %d" % (s, covered[s][0], covered[s][1])
-                        for s in sorted(covered))
+    figure_parts = ["Step %d staffed %d of base %d"
+                    % (s, covered[s][0], covered[s][1])
+                    for s in sorted(covered)]
+    for s in sorted({p.step for p in rosters if p.step is not None}):
+        for p in captured.step_pieces(s, CLS_ROSTER):
+            if p.text is None:
+                continue
+            counts = re.findall(r"equals (\d+)", p.text)
+            if counts:
+                named = "named spawns" if "named spawns" in p.text \
+                    else "spawns"
+                figure_parts.append("roster artifact Step %d lists %s %s"
+                                    % (s, counts[-1], named))
+            break
+    figures = "; ".join(figure_parts)
     remainder = [s for s in universe.evidenced if s not in covered]
     if remainder:
         denom = (denom_base + "; covered " + _step_list_text(sorted(covered)) +
                  "; remainder " + _step_list_text(remainder) +
                  " named, no base stated")
+        statement = ("Present under the present with coverage form: the "
+                     "covered part yields E-1 in its defined form and "
+                     "the uncovered remainder is named.")
     else:
         denom = denom_base + "; covered " + _step_list_text(sorted(covered))
+        statement = ("Present under the present with coverage form: the "
+                     "covered part yields E-1 in its defined form and "
+                     "no uncovered remainder stands.")
     return DerivationResult("E-1", "present", figures, denom, pointer,
+                            statement=statement,
                             rule_name="E-1 present with coverage rule")
 
 
@@ -809,15 +856,72 @@ def _derive_e2(captured, universe):
         else:
             parts.append("additions over base stated for Steps " +
                          ", ".join(str(k) for k in keys))
+    computed = {}
+    for s in sorted(totals):
+        if s in additions:
+            continue
+        base = _parse_base(captured, s)
+        if base is not None:
+            computed[s] = totals[s] - base
+    for s in sorted(computed):
+        parts.append("additions over base Step %d: %d" % (s, computed[s]))
+    detail_total = None
+    stated_total = None
+    for s in universe.evidenced:
+        joined = "\n".join(_step_texts(
+            captured, s, (CLS_STEP_RECORD, CLS_SNAPSHOT, CLS_ROSTER)))
+        if detail_total is None:
+            m = re.search(r"Detail total spins:\s*(\d+)", joined)
+            if m:
+                detail_total = int(m.group(1))
+        if stated_total is None:
+            m = re.search(r"Stated total spins:\s*(\d+)", joined)
+            if m:
+                stated_total = int(m.group(1))
+    if detail_total is not None and stated_total is not None:
+        parts.append("detail total spins %d" % detail_total)
+        parts.append("stated total spins %d" % stated_total)
+        parts.append("variance %d" % abs(detail_total - stated_total))
+    cumulative = []
+    for s in universe.evidenced:
+        joined = "\n".join(_step_texts(
+            captured, s, (CLS_STEP_RECORD, CLS_SNAPSHOT)))
+        m = re.search(r"Budget at closure:\s*(\d+) of (\d+) documented "
+                      r"units", joined)
+        if m:
+            cumulative.append("Step %d closing %s of %s"
+                              % (s, m.group(1), m.group(2)))
+            continue
+        m = re.search(r"Final budget:\s*(\d+) of (\d+) documented units",
+                      joined)
+        if m:
+            cumulative.append("Step %d final %s of %s"
+                              % (s, m.group(1), m.group(2)))
+    if cumulative:
+        parts.append("cumulative documented units at " +
+                     " and at ".join(cumulative))
+    if totals and (additions or computed):
+        parts.append("additions over base and total spins both reported "
+                     "labelled")
     no_base = [s for s in universe.evidenced if _parse_base(captured, s) is None]
     if no_base:
         denom = (denom_base + "; " + _step_list_text(no_base) +
-                 " named against additions over base only, total spins "
+                 " named against additions over base only with code "
+                 "missing-field for the absent stated base, total spins "
                  "still reported")
+        statement = ("Present under the G-03 coverage form in its own "
+                     "terms: the covered steps yield both labelled "
+                     "quantities in their defined form and the steps "
+                     "that state no base are named against additions "
+                     "over base only.")
     else:
         denom = denom_base
+        statement = ("Present under the G-03 coverage form in its own "
+                     "terms: the covered steps yield both labelled "
+                     "quantities in their defined form.")
     return DerivationResult("E-2", "present", "; ".join(parts), denom,
-                            pointer, rule_name="E-2 labelled quantities rule")
+                            pointer, statement=statement,
+                            rule_name="E-2 labelled quantities rule")
 
 
 # ------------------------------------------------------- E-3, E-4, F-2
@@ -931,9 +1035,10 @@ def _recorded_closure(text):
     forms the gate records use, exact forms only, never on a closure
     token mentioned in prose.
     """
+    exact = r"(?![-A-Za-z0-9])"
     m = re.search(r"(?:Step closure state|Closure state):\s*"
-                  r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)",
-                  text)
+                  r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
+                  + exact, text)
     if m:
         return m.group(1)
     for line in text.splitlines():
@@ -942,14 +1047,14 @@ def _recorded_closure(text):
         if m:
             return m.group(1)
     m = re.search(r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
-                  r"CLOSED-FAIL|RECYCLED)", text)
+                  r"CLOSED-FAIL|RECYCLED)" + exact, text)
     if m:
         return m.group(1)
     m = re.search(r"recorded\s+(RECYCLED)\b", text)
     if m:
         return m.group(1)
-    m = re.search(r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)",
-                  text)
+    m = re.search(r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
+                  + exact, text)
     if m:
         return m.group(1)
     m = re.search(r"Verdict grade:\s*(FAIL)\b", text)
@@ -958,10 +1063,24 @@ def _recorded_closure(text):
     return None
 
 
+def _f2_ranked_pieces(captured, step):
+    ranked = []
+    for cls, rank in ((CLS_GATE_RECORD, 0), (CLS_GATE_RULING, 1),
+                      (CLS_GATE_ADJUDICATION, 2), (CLS_REGATE_RECORD, 3)):
+        for p in captured.step_pieces(step, cls):
+            name = p.paths[0]
+            r = rank
+            num = 0
+            if "round" in name or "reaudit" in name:
+                r = 3
+                m = re.search(r"(?:round|reaudit)-?(\d+)", name)
+                num = int(m.group(1)) if m else 0
+            ranked.append((r, num, name, p))
+    ranked.sort(key=lambda item: (item[0], item[1], item[2]))
+    return ranked
+
+
 def _derive_f2(captured, universe):
-    denom = ("denominator steps ruled on, with plain approvals and "
-             "qualified approvals as two subcounts under that one "
-             "denominator")
     gates = captured.pieces_of(*GATE_CLASSES)
     pointer = None
     for p in captured.pieces_of(CLS_SNAPSHOT):
@@ -971,9 +1090,20 @@ def _derive_f2(captured, universe):
     if pointer is None:
         pointer = gates[0].paths[0] if gates else \
             (captured.first_path(CLS_STEP_RECORD) or "steps/step-01-record.md")
-    if not gates:
+    history_steps = []
+    for s in sorted(universe.evidenced):
+        if captured.step_pieces(s, *GATE_CLASSES):
+            continue
+        for p in captured.step_pieces(s, CLS_STEP_RECORD):
+            if p.text and "gate history" in p.text.lower():
+                history_steps.append(s)
+                break
+    if not gates and not history_steps:
         return DerivationResult(
-            "F-2", "missing", "no rate figure", denom, pointer,
+            "F-2", "missing", "no rate figure",
+            "denominator steps ruled on, with plain approvals and "
+            "qualified approvals as two subcounts under that one "
+            "denominator", pointer,
             shows="no gate record, gate ruling or gate adjudication "
                   "stands in the tree for any step",
             code_token="no-feeder-record",
@@ -984,25 +1114,56 @@ def _derive_f2(captured, universe):
     qualified = 0
     ruled = 0
     not_derivable = []
+    unruled = []
+    not_approved = []
+    recycled_notes = []
+    adjudication_only = []
+    keeper_note = None
     for s in sorted(universe.evidenced):
+        ranked = _f2_ranked_pieces(captured, s)
+        if not ranked:
+            if s in history_steps:
+                not_derivable.append(s)
+            else:
+                unruled.append(s)
+            continue
+        regates = [item for item in ranked
+                   if item[3].record_class == CLS_REGATE_RECORD]
         closure = None
-        ranked = []
-        for cls, rank in ((CLS_GATE_RECORD, 0), (CLS_GATE_RULING, 1),
-                          (CLS_GATE_ADJUDICATION, 2), (CLS_REGATE_RECORD, 3)):
-            for p in captured.step_pieces(s, cls):
-                name = p.paths[0]
-                r = rank
-                num = 0
-                if "round" in name or "reaudit" in name:
-                    r = 3
-                    m = re.search(r"(?:round|reaudit)-?(\d+)", name)
-                    num = int(m.group(1)) if m else 0
-                ranked.append((r, num, name, p))
-        ranked.sort(key=lambda item: (item[0], item[1], item[2]))
-        if ranked:
+        if regates:
+            first_regate = regates[0][3]
+            if first_regate.text:
+                closure = _recorded_closure(first_regate.text)
+            for item in ranked:
+                if item[3].record_class == CLS_REGATE_RECORD:
+                    continue
+                if item[3].text:
+                    earlier = _recorded_closure(item[3].text)
+                    if earlier in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
+                        recycled_notes.append(
+                            "Step %d ran as two instances with the first "
+                            "instance closed %s" % (s, earlier))
+                        not_approved.append(s)
+                        break
+        else:
+            base_closures = set()
+            for item in ranked:
+                piece = item[3]
+                base_name = piece.paths[0].rsplit("/", 1)[-1]
+                if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
+                        and "round" not in base_name \
+                        and "reaudit" not in base_name and piece.text:
+                    found = _recorded_closure(piece.text)
+                    if found:
+                        base_closures.add(found)
+            if len(base_closures) > 1:
+                not_derivable.append(s)
+                continue
             first = ranked[0][3]
             if first.text:
                 closure = _recorded_closure(first.text)
+            if first.record_class == CLS_GATE_ADJUDICATION:
+                adjudication_only.append(s)
         if closure is None:
             not_derivable.append(s)
         elif closure == "CLOSED-PASS":
@@ -1013,16 +1174,64 @@ def _derive_f2(captured, universe):
             ruled += 1
         elif closure in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
             ruled += 1
+            if s not in not_approved:
+                not_approved.append(s)
         else:
             not_derivable.append(s)
+        if s == 22 and closure:
+            for item in ranked:
+                piece = item[3]
+                if piece.text and "Keeper" in piece.text:
+                    keeper_note = (
+                        "Step 22 is classed by content as that step gate "
+                        "record with closure %s" % closure)
+                    break
+    denom = ("denominator %d steps ruled on, with plain approvals and "
+             "qualified approvals as two subcounts under that one "
+             "denominator" % ruled)
+    if unruled:
+        denom += ("; " + _step_list_text(unruled) +
+                  " named, no gate record or gate ruling stands for "
+                  "that step")
+    subcounts = ("plain approvals %d; qualified approvals %d; steps "
+                 "ruled on %d" % (plain, qualified, ruled))
+    note_parts = list(recycled_notes)
+    for s in sorted(set(not_approved) - set(
+            n for n in not_approved
+            if any(note.startswith("Step %d " % n)
+                   for note in recycled_notes))):
+        note_parts.append("Step %d ruled and not approved" % s)
     if not_derivable:
+        facts = []
+        classes = {p.record_class for p in gates}
+        if CLS_GATE_RECORD in classes and CLS_GATE_RULING in classes:
+            facts.append("first ruling outcomes stand in gate files "
+                         "under both gate names")
+        for s in adjudication_only:
+            if s in not_derivable:
+                facts.append("Step %d first ruling stands only in its "
+                             "gate adjudication" % s)
+        facts.extend(recycled_notes)
+        if keeper_note:
+            facts.append(keeper_note)
+        facts.append("the steps named here carry no first ruling "
+                     "outcome in the settled forms: " +
+                     _named_steps(not_derivable))
+        figures = "no rate figure; " + subcounts
+        for p in captured.pieces_of(CLS_SNAPSHOT):
+            if p.text and p.step is not None:
+                m = re.search(r"(\d+) of (\d+) steps ruled on", p.text)
+                if m:
+                    figures += ("; the only stated figure is the "
+                                "provisional snapshot figure %s of %s "
+                                "steps ruled on at Step %d"
+                                % (m.group(1), m.group(2), p.step))
+                    break
+        if note_parts and not recycled_notes:
+            figures += "; " + "; ".join(note_parts)
         return DerivationResult(
-            "F-2", "present but not derivable", "no rate figure", denom,
-            pointer,
-            shows="first ruling outcomes stand in gate files for part of "
-                  "the universe, and the steps named here carry no first "
-                  "ruling outcome in the settled forms: " +
-                  _named_steps(not_derivable),
+            "F-2", "present but not derivable", figures, denom, pointer,
+            shows=", ".join(facts),
             code_token="missing-field",
             follows="missing-field one or more step contributions are "
                     "not derivable in the settled forms, so no rate is "
@@ -1030,8 +1239,8 @@ def _derive_f2(captured, universe):
             rule_name="F-2 first ruling rule")
     if ruled == 0:
         return DerivationResult(
-            "F-2", "present but not derivable", "no rate figure", denom,
-            pointer,
+            "F-2", "present but not derivable",
+            "no rate figure; " + subcounts, denom, pointer,
             shows="gate pieces stand in the tree and no step has been "
                   "ruled on, so the denominator of steps ruled on is zero",
             code_token="missing-field",
@@ -1039,9 +1248,20 @@ def _derive_f2(captured, universe):
                     "for every step, so no rate is printed",
             rule_name="F-2 empty denominator rule")
     rate = (plain + qualified) * 100.0 / ruled
-    figures = ("first-time approval rate %s percent; plain approvals %d; "
-               "qualified approvals %d; steps ruled on %d"
-               % (_fmt_num(rate), plain, qualified, ruled))
+    figures = ("first-time approval rate %s percent; %s"
+               % (_fmt_num(rate), subcounts))
+    extra_notes = list(recycled_notes)
+    if recycled_notes:
+        extra_notes = [note + ", and that first instance was not "
+                              "approved; the recycled step counts once"
+                       for note in recycled_notes]
+    plain_not_approved = [s for s in sorted(set(not_approved))
+                          if not any(note.startswith("Step %d " % s)
+                                     for note in recycled_notes)]
+    for s in plain_not_approved:
+        extra_notes.append("Step %d ruled and not approved" % s)
+    if extra_notes:
+        figures += "; " + "; ".join(extra_notes)
     return DerivationResult("F-2", "present", figures, denom, pointer,
                             rule_name="F-2 first ruling rule")
 
@@ -1726,16 +1946,54 @@ def derive_report(captured):
     results["B-4"] = _derive_b3_b4(captured, universe, results["T-1"],
                                   results["T-2"], "B-4")
     ordered = [results[code] for code in STARTER_ORDER]
+    from metrics_starter_collector.cross_check import \
+        staffing_cross_check_statements
+    covered_map = {}
+    totals_map = {}
+    for s in universe.evidenced:
+        pair = _parse_staffed_base(captured, s)
+        if pair:
+            covered_map[s] = pair
+        total = _parse_total_spins(captured, s)
+        if total is not None:
+            totals_map[s] = total
+    f2_counted = set()
+    for s in universe.evidenced:
+        ranked = _f2_ranked_pieces(captured, s)
+        if ranked and ranked[0][3].text and \
+                _recorded_closure(ranked[0][3].text):
+            f2_counted.add(s)
+    for code, texts in staffing_cross_check_statements(
+            captured, universe, covered_map, totals_map,
+            f2_counted).items():
+        result = results[code]
+        joined = " ".join(texts)
+        result.statement = (result.statement + " " + joined) \
+            if result.statement else joined
     _apply_version_refusal(captured, ordered)
 
     identity = captured.build_identity or \
         "no build identity was found in the tree"
+    if universe.metrics_count_claim is not None and \
+            universe.metrics_count_claim != len(universe.evidenced):
+        metrics_name = "build-metrics-record.md"
+        if captured.metrics_single_path:
+            metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1]
+        universe_line = (
+            "Step universe: disputed, %d steps stated in %s and %d "
+            "steps evidenced by step records and gate files, neither "
+            "count picked (%s)"
+            % (universe.metrics_count_claim, metrics_name,
+               len(universe.evidenced),
+               _step_list_text(universe.evidenced)))
+    else:
+        universe_line = "Step universe: %d steps (%s)" % (
+            len(universe.evidenced), _step_list_text(universe.evidenced))
     header = [
         "# Metrics starter set report",
         "Root: " + str(captured.root),
         "Build identity: " + identity,
-        "Step universe: %d steps (%s)" % (len(universe.evidenced),
-                                          _step_list_text(universe.evidenced)),
+        universe_line,
         "%d pieces recognised" % len(captured.pieces),
         "Latest record timestamp: " +
         (captured.latest_timestamp or "no timestamp was found"),
