@@ -97,12 +97,15 @@ def staffing_cross_check_statements(captured, universe, covered,
     return statements
 
 
-def d1_cross_check_statement(feeder_result, table_items):
+def d1_cross_check_statement(feeder_result, table_items,
+                             feeder_items=None, metrics_name=None):
     """Return a record disagrees statement for the D-1 row, or None.
 
     Applies where the queue file governed the row and the metrics
     record decision table, standing as the cross check, supports a
-    different median figure.
+    different median figure. The statement names the disagreeing
+    record, the fact each side supports for any item whose fields
+    differ between the two feeders, and both median figures.
     """
     if table_items is None:
         return None
@@ -119,8 +122,64 @@ def d1_cross_check_statement(feeder_result, table_items):
     if feeder_median == table_median:
         return None
     from metrics_starter_collector.derivation_core import _fmt_num
-    return ("record disagrees: the metrics record "
-            "decision table supports a median of %s hours while the "
-            "governing feeder supports a median of %s hours; the row "
-            "follows the governing feeder."
-            % (_fmt_num(table_median), _fmt_num(feeder_median)))
+    name = metrics_name or "build-metrics-record.md"
+    table_facts = []
+    feeder_facts = []
+    if feeder_items:
+        table_by_item = {item["item"]: item for item in table_items}
+        for item in feeder_items:
+            other = table_by_item.get(item["item"])
+            if other is None:
+                continue
+            for field_name in ("raised", "presented", "ruled"):
+                if item[field_name] != other[field_name]:
+                    feeder_facts.append("item %s %s %s"
+                                        % (item["item"], field_name,
+                                           item[field_name]))
+                    table_facts.append("item %s %s %s"
+                                       % (other["item"], field_name,
+                                          other[field_name]))
+    if table_facts:
+        return ("record disagrees: %s decision table states %s and "
+                "supports a median of %s hours while the governing "
+                "feeder supports %s and a median of %s hours; the row "
+                "follows the governing feeder."
+                % (name, "; ".join(table_facts),
+                   _fmt_num(table_median), "; ".join(feeder_facts),
+                   _fmt_num(feeder_median)))
+    return ("record disagrees: %s decision table supports a median "
+            "of %s hours while the governing feeder supports a median "
+            "of %s hours; the row follows the governing feeder."
+            % (name, _fmt_num(table_median), _fmt_num(feeder_median)))
+
+
+def t4_cross_check_statement(feeder_durations, metrics_text,
+                             metrics_name=None):
+    """Return a record disagrees statement for the T-4 row, or None.
+
+    Applies where the metrics record states a T-4 wait figure and the
+    banked durations in the feeder records support a different figure.
+    feeder_durations is a list of (step, hours) pairs in feeder order.
+    """
+    if not metrics_text or not feeder_durations:
+        return None
+    import re
+    m = re.search(r"T-4 wait as\s+(\d+(?:\.\d+)?)\s*hours", metrics_text)
+    if not m:
+        return None
+    stated = float(m.group(1))
+    if any(stated == value for _, value in feeder_durations):
+        return None
+    from metrics_starter_collector.derivation_core import _fmt_num
+    name = metrics_name or "build-metrics-record.md"
+    if len(feeder_durations) == 1:
+        support = "%s hours" % _fmt_num(feeder_durations[0][1])
+    else:
+        support = "; ".join(
+            "Step %d: %s hours" % (step, _fmt_num(value))
+            if step is not None else "%s hours" % _fmt_num(value)
+            for step, value in feeder_durations)
+    return ("record disagrees: %s states T-4 wait as %s hours while "
+            "the feeder records support %s; the row follows the "
+            "feeder records."
+            % (name, _fmt_num(stated), support))

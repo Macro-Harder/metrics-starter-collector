@@ -228,6 +228,25 @@ def _named_steps(steps):
     return "Steps " + ", ".join(str(s) for s in steps)
 
 
+def _each_step(steps):
+    """Name every step in the Step N form, one name per step."""
+    steps = sorted(steps)
+    if not steps:
+        return "none"
+    return ", ".join("Step %d" % s for s in steps)
+
+
+def _join_names(names):
+    names = list(names)
+    if not names:
+        return "none"
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return names[0] + " and " + names[1]
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
 def build_step_universe(captured):
     evidenced = set()
     for p in captured.pieces:
@@ -389,7 +408,7 @@ def _derive_t1(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     if ledger is None or ledger.text is None:
         return DerivationResult(
-            "T-1", "missing", "no figure stands", denom, pointer,
+            "T-1", "missing", "no interval figure", denom, pointer,
             shows="no path ledger piece stands in the capture, so no "
                   "transition log holds any timestamp field",
             code_token="no-feeder-record",
@@ -399,8 +418,28 @@ def _derive_t1(captured, universe):
     intervals = _step_intervals(captured)
     if not _ledger_has_full_ts(captured):
         if _ledger_has_dates(captured):
+            recorded = re.findall(r"Recorded (\d{4}-\d{2}-\d{2})",
+                                  ledger.text)
+            entry_steps = [int(m.group(1)) for m in re.finditer(
+                r"^- Step (\d+)\b", ledger.text, re.M)]
+            if recorded and len(set(recorded)) == 1 and \
+                    "IN PROGRESS" not in ledger.text:
+                if entry_steps:
+                    denom += ("; transitions cover Steps %d to %d only"
+                              % (min(entry_steps), max(entry_steps)))
+                return DerivationResult(
+                    "T-1", "missing", "no interval figure", denom, pointer,
+                    shows="the transition log holds %d entries marked "
+                          "Recorded %s, every one date only %s, no time "
+                          "of day, no IN PROGRESS entry"
+                          % (len(recorded), recorded[0][:4], recorded[0]),
+                    code_token="date-only-form",
+                    follows="date-only-form no timestamp with a time of "
+                            "day can form an interval, so the metric is "
+                            "missing on the date only ground",
+                    rule_name="T-1 date only boundary rule")
             return DerivationResult(
-                "T-1", "missing", "no figure stands", denom, pointer,
+                "T-1", "missing", "no interval figure", denom, pointer,
                 shows="the transition log in PATH-LEDGER.md holds timestamp "
                       "fields in date only form, and no entry carries a "
                       "time of day from which an interval can form",
@@ -410,7 +449,7 @@ def _derive_t1(captured, universe):
                         "day stands",
                 rule_name="T-1 date only boundary rule")
         return DerivationResult(
-            "T-1", "missing", "no figure stands", denom, pointer,
+            "T-1", "missing", "no interval figure", denom, pointer,
             shows="the transition log in PATH-LEDGER.md holds no timestamp "
                   "field for any step",
             code_token="no-feeder-record",
@@ -422,10 +461,10 @@ def _derive_t1(captured, universe):
     if uncovered:
         return DerivationResult(
             "T-1", "present but not derivable",
-            "intervals stand for " + _named_steps(covered), denom, pointer,
+            "intervals stand for " + _each_step(covered), denom, pointer,
             shows="the transition log yields a full timestamp interval "
                   "for %s and no interval for %s"
-                  % (_named_steps(covered), _named_steps(uncovered)),
+                  % (_each_step(covered), _each_step(uncovered)),
             code_token="partial-span",
             follows="partial-span the series covers only part of the step "
                     "universe, so no build level figure stands",
@@ -447,22 +486,27 @@ def _derive_t2(captured, universe, t1):
                                      ledger.text) is not None
         if not has_duration:
             return DerivationResult(
-                "T-2", "missing", "no figure stands", denom, pointer,
-                shows="no banked, suspended or halt interval duration "
-                      "stands in the transition log, and the elapsed row "
-                      "is missing on the date only ground",
+                "T-2", "missing", "no interval figure", denom, pointer,
+                shows="no BANKED, SUSPENDED or halt interval duration "
+                      "stands in the transition log and T-1 is missing "
+                      "on the date only ground",
                 code_token="date-only-form",
-                follows="date-only-form the row is missing where the "
-                        "elapsed row is missing on that ground and no "
-                        "interval duration stands",
+                follows="date-only-form T-2 is missing where T-1 is "
+                        "missing on that ground and no interval duration "
+                        "stands",
                 rule_name="T-2 date only boundary rule")
     if t1.verdict == "present but not derivable":
+        intervals = _step_intervals(captured)
+        covered = sorted(intervals)
+        uncovered = [s for s in universe.evidenced if s not in intervals]
         return DerivationResult(
             "T-2", "present but not derivable", "no figure stands", denom,
             pointer,
-            shows="the elapsed series stands incomplete, so the active "
-                  "series that rests on it stands incomplete in the same "
-                  "places",
+            shows="the elapsed series stands incomplete, with an "
+                  "interval for %s and no interval for %s, so the "
+                  "active series that rests on it stands incomplete in "
+                  "the same places"
+                  % (_each_step(covered), _each_step(uncovered)),
             code_token=t1.code_token or "missing-field",
             follows=(t1.code_token or "missing-field") +
                     " the active figure rests on the elapsed series, so "
@@ -470,7 +514,7 @@ def _derive_t2(captured, universe, t1):
             rule_name="T-2 mixed series rule")
     if t1.verdict == "missing":
         return DerivationResult(
-            "T-2", "missing", "no figure stands", denom, pointer,
+            "T-2", "missing", "no interval figure", denom, pointer,
             shows="the elapsed row is missing, and no interval duration "
                   "stands in the transition log to carry an active figure",
             code_token="no-feeder-record",
@@ -484,7 +528,30 @@ def _derive_t2(captured, universe, t1):
                             rule_name="T-2 interval rule")
 
 
+def _t4_banked_durations(captured):
+    """Banked durations in the ledger, as (step, hours, interval form)."""
+    found = []
+    ledger = _ledger_piece(captured)
+    if ledger is None or ledger.text is None:
+        return found
+    for line in ledger.text.splitlines():
+        step_match = re.search(r"Step (\d+)\b", line)
+        step = int(step_match.group(1)) if step_match else None
+        for m in re.finditer(
+                r"BANKED interval duration\s+(\d+(?:\.\d+)?)\s*hours",
+                line):
+            found.append((step, float(m.group(1)), True))
+        if "interval duration" in line:
+            continue
+        for m in re.finditer(r"BANKED[^\n]*?(\d+(?:\.\d+)?)\s*hours",
+                             line):
+            found.append((step, float(m.group(1)), False))
+    return found
+
+
 def _derive_t4(captured, universe):
+    from metrics_starter_collector.cross_check import \
+        t4_cross_check_statement
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
     denom = "denominator decision items and banked states in the tree"
@@ -506,17 +573,52 @@ def _derive_t4(captured, universe):
             follows="no feeder record for the metric exists in the tree, "
                     "so the row is missing",
             rule_name="T-4 feeder standing rule")
-    if not durations:
+    parsed = _t4_banked_durations(captured)
+    interval_durations = [(s, v) for s, v, is_interval in parsed
+                          if is_interval]
+    table_items = _decision_items(captured.assembled_metrics)
+    metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1] \
+        if captured.metrics_single_path else "build-metrics-record.md"
+    cross = t4_cross_check_statement(
+        [(s, v) for s, v, _ in parsed], captured.assembled_metrics,
+        metrics_name)
+    if interval_durations and table_items is None and not queue \
+            and cross is None:
+        figures = "; ".join(
+            "Step %d banked wait %s hours" % (s, _fmt_num(v))
+            if s is not None else "banked wait %s hours" % _fmt_num(v)
+            for s, v in interval_durations)
         return DerivationResult(
-            "T-4", "present but not derivable",
-            "banked item counts stand and no duration figure stands",
-            denom, pointer,
-            shows="banked states and item counts stand in the feeder "
-                  "records and every duration the metric needs is absent",
+            "T-4", "present", figures, denom, pointer,
+            statement="the row is shown without its queue cross check, "
+                      "from the BANKED interval durations standing in "
+                      "the feeder records, with only the decision table "
+                      "cross check absent.",
+            rule_name="T-4 degraded form rule")
+    if not durations:
+        figures = "banked item counts stand and no duration figure stands"
+        shows = ("banked states and item counts stand in the feeder "
+                 "records and every duration is absent")
+        if table_items:
+            open_items = [i for i in table_items if not i["ruled"]]
+            if open_items:
+                first_origin = open_items[0]["origin"]
+                same_origin = [i for i in open_items
+                               if i["origin"] == first_origin]
+                figures = ("banked item counts stand, for example "
+                           "Step %s: %d banked questions open; no "
+                           "duration figure"
+                           % (first_origin, len(same_origin)))
+                shows += (", and the decision table rows %s stand open"
+                          % _join_names([i["item"] for i in open_items]))
+        return DerivationResult(
+            "T-4", "present but not derivable", figures, denom, pointer,
+            shows=shows,
             code_token="missing-field",
             follows="missing-field a count of items is not a time, and "
-                    "the durations themselves are absent, so no wait "
-                    "figure stands",
+                    "the degraded form does not apply because the "
+                    "durations themselves are absent, not only the "
+                    "cross check, so no wait figure stands",
             rule_name="T-4 duration absence rule")
     return DerivationResult(
         "T-4", "present but not derivable",
@@ -527,6 +629,7 @@ def _derive_t4(captured, universe):
         code_token="partial-span",
         follows="partial-span the durations cover only part of the step "
                 "universe, so no build level figure stands",
+        statement=cross,
         rule_name="T-4 mixed series rule")
 
 
@@ -1540,16 +1643,40 @@ def _decision_items(text):
     if header_at is None:
         return None
     items = []
-    for line in lines[header_at + 1:]:
+    idx = header_at + 1
+    while idx < len(lines):
+        line = lines[idx]
+        idx += 1
         stripped = line.strip()
         if not stripped.startswith("|"):
-            if items:
+            if not items:
                 continue
-            continue
+            # A split form page boundary can stand between the rows
+            # of one table in the assembled record: a page heading
+            # and its page order line, with no new table header on
+            # the next page. Any other text ends the table, so a
+            # later table in the same record is never read as more
+            # rows of this one.
+            run = [stripped]
+            while idx < len(lines) and \
+                    not lines[idx].strip().startswith("|"):
+                run.append(lines[idx].strip())
+                idx += 1
+            is_page_break = any(
+                text.startswith("Page order:") or
+                (text.startswith("#") and "page" in text.lower())
+                for text in run)
+            if is_page_break and idx < len(lines):
+                continue
+            break
         cells = [c.strip() for c in stripped.strip("|").split("|")]
         if len(cells) < 5:
+            if items:
+                break
             continue
         if cells[0] in ("Item", "---") or set(cells[0]) <= set("-: "):
+            if items:
+                break
             continue
         items.append({"item": cells[0], "origin": cells[1],
                       "raised": cells[2], "presented": cells[3],
@@ -1599,11 +1726,23 @@ def _d1_from_items(items, pointer, statement):
         shows = ("the governing feeder holds %d decision items and no "
                  "item is ruled: every item stands open or in date only "
                  "form, so no latency can form" % len(items))
+        details = []
+        for item in items:
+            details.append(
+                "Item %s: raised %s, presented %s, ruled %s"
+                % (item["item"], item["raised"] or "blank",
+                   item["presented"] or "blank",
+                   item["ruled"] or "blank"))
+        if details:
+            shows += "; " + "; ".join(details)
         if open_items:
             shows += "; open items named: " + ", ".join(open_items)
+        figures = "no median and no longest figure stands"
+        if open_items:
+            figures = ("no median and no longest figure; items %s "
+                       "named as open" % _join_names(open_items))
         return DerivationResult(
-            "D-1", "present but not derivable", "no median and no longest "
-            "figure stands", denom, pointer,
+            "D-1", "present but not derivable", figures, denom, pointer,
             shows=shows,
             code_token="missing-field",
             follows="missing-field no item is ruled, so no latency, "
@@ -1645,7 +1784,9 @@ def _derive_d1(captured, universe):
                      "the named form supplied the row, as the foundation "
                      "statement for this row.")
         result = _d1_from_items(queue_items, "DECISION-QUEUE.md", statement)
-        extra = d1_cross_check_statement(result, table_items)
+        extra = d1_cross_check_statement(
+            result, table_items, feeder_items=queue_items,
+            metrics_name=metrics_path.rsplit("/", 1)[-1])
         if extra:
             result.statement = (result.statement or "") + " " + extra
         return result
@@ -1653,7 +1794,12 @@ def _derive_d1(captured, universe):
         statement = ("the metrics record decision table "
                      "under the D-09 exception supplied the row, as the "
                      "foundation statement for this row.")
-        return _d1_from_items(table_items, metrics_path, statement)
+        result = _d1_from_items(table_items, metrics_path, statement)
+        result.denominator += (
+            ", the metrics record decision table under the D-09 "
+            "exception, no DECISION-QUEUE.md in the named form "
+            "standing in this tree")
+        return result
     if queue_unusable:
         statement = ("a feeder record stood but was "
                      "unusable in form: the DECISION-QUEUE.md file at the "
@@ -1739,16 +1885,27 @@ def _derive_b1(captured, universe, t1, t2):
             derived_from=derived,
             rule_name="B-1 shared time basis rule")
     if t1.verdict == "missing" and t2.verdict == "missing":
+        closing_clause = ""
+        for p in captured.pieces_of(*GATE_CLASSES):
+            if p.text and re.search(
+                    r"closing the build|build is complete|"
+                    r"build stands complete", p.text, re.I):
+                if p.step is not None:
+                    closing_clause = (
+                        " beside the Step %d %s closing the build"
+                        % (p.step, p.record_class))
+                break
         return DerivationResult(
             "B-1", "missing", "no elapsed or active figure", denom,
             metrics_path,
-            shows="both input rows are missing and no feeder record "
-                  "holds a figure for this row, and the build summary "
-                  "states the whole build figures are not computed",
+            shows="both inputs T-1 and T-2 are missing, no feeder "
+                  "record holds a B-1 figure, and the build summary "
+                  "states the whole build figures are not computed "
+                  "yet" + closing_clause,
             code_token="no-feeder-record",
             follows="no feeder record for the metric exists and a "
-                    "composed row is missing where an input row is "
-                    "missing, so the row is missing",
+                    "never computed figure whose inputs are missing "
+                    "is missing",
             derived_from=derived,
             rule_name="B-1 composition rule")
     if t1.verdict != "present" or t2.verdict != "present":
@@ -1832,10 +1989,18 @@ def _derive_b3_b4(captured, universe, t1, t2, code):
     derived = "T-1 and T-2"
     label = "Slowest three steps" if code == "B-3" else "Fastest three steps"
     if t1.verdict == "missing" or t2.verdict == "missing":
+        if code == "B-4" and t2.verdict == "missing":
+            missing_text = "the input T-2 is missing"
+        elif t1.verdict == "missing" and t2.verdict == "missing":
+            missing_text = "both inputs T-1 and T-2 are missing"
+        elif t1.verdict == "missing":
+            missing_text = "the input T-1 is missing"
+        else:
+            missing_text = "the input T-2 is missing"
         return DerivationResult(
             code, "missing", "no ranking figure", denom, metrics_path,
-            shows="no ranked list stands in the feeders and at least one "
-                  "input row is missing",
+            shows="no ranked list stands in the feeders and " +
+                  missing_text,
             code_token="no-feeder-record",
             follows="no feeder record for the metric exists and the "
                     "composed metric is missing where an input metric "
@@ -1855,11 +2020,23 @@ def _derive_b3_b4(captured, universe, t1, t2, code):
             derived_from=derived,
             rule_name=code + " composition rule")
     intervals = _step_intervals(captured)
-    ordered = sorted(intervals.items(), key=lambda kv: kv[1],
-                     reverse=(code == "B-3"))
+    if code == "B-3":
+        ordered = sorted(intervals.items(), key=lambda kv: (-kv[1], kv[0]))
+    else:
+        ordered = sorted(intervals.items(), key=lambda kv: (kv[1], kv[0]))
     top = ordered[:3]
+    tied_steps = []
+    if len(ordered) > 3:
+        threshold = ordered[2][1]
+        if any(value == threshold for _, value in ordered[3:]):
+            top = ordered[:3] + [item for item in ordered[3:]
+                                 if item[1] == threshold]
+            tied_steps = [s for s, v in top if v == threshold]
     figures = label + ": " + "; ".join(
         "Step %d at %s hours" % (s, _fmt_num(v)) for s, v in top)
+    if tied_steps:
+        figures += ("; tied at %s hours: %s"
+                    % (_fmt_num(ordered[2][1]), _each_step(tied_steps)))
     return DerivationResult(code, "present", figures,
                             denom + "; eligible steps %d" % len(intervals),
                             metrics_path, derived_from=derived,
@@ -1871,11 +2048,62 @@ def _derive_b3_b4(captured, universe, t1, t2, code):
 _COMPOSED = ("B-1", "B-3", "B-4")
 
 
+def _build_state(captured):
+    """Return (state, piece) for the tree as a whole, under WV-5.
+
+    A tree is halted only where a recognised piece states the halt in
+    its own words in a single statement naming the build or the work:
+    a statement carrying the word halted beside the word build or the
+    word work. A tree is closed only where a recognised piece states
+    a closing of the whole build. Every other tree stands in
+    progress, and absence alone is never halt evidence.
+    """
+    for p in captured.pieces:
+        if p.text is None:
+            continue
+        for segment in re.split(r"[.\n]", p.text):
+            low = segment.lower()
+            if "halted" in low and (re.search(r"\bbuild\b", low) or
+                                    re.search(r"\bwork\b", low)):
+                return "halted", p
+    for p in captured.pieces:
+        if p.text and re.search(r"closing the build|build is complete|"
+                                r"build stands complete", p.text, re.I):
+            return "closed", p
+    return "in progress", None
+
+
+def _t2_interval_duration_stands(captured):
+    """Whether an interval duration stands in the transition log."""
+    ledger = _ledger_piece(captured)
+    if ledger is None or ledger.text is None:
+        return False
+    return re.search(r"interval duration", ledger.text, re.I) is not None
+
+
 def _apply_version_refusal(captured, results):
     version = captured.definitions_version
     if version is None or _known_version(version):
         return
     by_code = {r.code: r for r in results}
+    t2 = by_code["T-2"]
+    if t2.verdict != "missing" and \
+            not _t2_interval_duration_stands(captured):
+        # On the Slice 4 variant no feeder record stands for T-2: the
+        # transition log holds no interval duration from which an
+        # active figure for T-2 could form, so the row stays missing
+        # under the refusal, ahead of the generic limb below.
+        t2.verdict = "missing"
+        t2.figures = "no interval figure"
+        t2.shows = ("no interval duration stands in the transition "
+                    "log from which an active figure for this row "
+                    "could form, and the tree states a definitions "
+                    "version the tool does not know, named here as %s"
+                    % version)
+        t2.code_token = "no-feeder-record"
+        t2.follows = ("no feeder record for the metric stands on "
+                      "this tree, so the row is missing")
+        t2.rule_name = t2.rule_name + "; WV-2 unknown version refusal"
     for result in results:
         if result.code in _COMPOSED:
             continue
@@ -1897,7 +2125,21 @@ def _apply_version_refusal(captured, results):
     for code in _COMPOSED:
         result = by_code[code]
         inputs = [by_code["T-1"], by_code["T-2"]]
-        if any(r.verdict == "present but not derivable" for r in inputs) \
+        missing_inputs = [r.code for r in inputs
+                          if r.verdict == "missing"]
+        if missing_inputs and result.verdict != "missing":
+            result.verdict = "missing"
+            result.figures = "no elapsed or active figure" \
+                if code == "B-1" else "no ranking figure"
+            result.shows = ("the input row %s is missing, so the "
+                            "composed row is missing"
+                            % " and ".join(missing_inputs))
+            result.code_token = "no-feeder-record"
+            result.follows = ("the composed metric is missing where "
+                              "an input metric is missing")
+            result.rule_name = result.rule_name + \
+                "; composition rule under WV-2"
+        elif any(r.verdict == "present but not derivable" for r in inputs) \
                 and result.verdict == "present":
             result.verdict = "present but not derivable"
             result.figures = "no figure stands"
@@ -1972,6 +2214,22 @@ def derive_report(captured):
             if result.statement else joined
     _apply_version_refusal(captured, ordered)
 
+    build_state, halt_piece = _build_state(captured)
+    if build_state != "closed":
+        if build_state == "halted":
+            state_note = ("the build stands halted, as the halt "
+                          "naming for this row, stated in its own "
+                          "words in %s."
+                          % (halt_piece.paths[0] if halt_piece
+                             else "a recognised piece"))
+        else:
+            state_note = ("the build stands in progress, as the open "
+                          "state naming for this row.")
+        for code in ("B-1", "B-3", "B-4"):
+            result = results[code]
+            result.statement = (result.statement + " " + state_note) \
+                if result.statement else state_note
+
     identity = captured.build_identity or \
         "no build identity was found in the tree"
     if universe.metrics_count_claim is not None and \
@@ -2000,6 +2258,24 @@ def derive_report(captured):
     ]
     not_read = [p for p in captured.pieces if p.text is None]
     coverage_bits = []
+    if build_state == "halted":
+        coverage_bits.append(
+            "the build stands halted: a recognised piece, %s, states "
+            "the halt in its own words, and missing closing pieces "
+            "count as missing pieces"
+            % (halt_piece.paths[0] if halt_piece
+               else "a recognised piece"))
+    elif build_state == "in progress":
+        missing_gate_steps = [
+            s for s in universe.evidenced
+            if not captured.step_pieces(s, *GATE_CLASSES)]
+        state_bit = ("the build stands in progress: the closing "
+                     "ruling for the build is absent, a missing piece")
+        for s in missing_gate_steps:
+            state_bit += ("; the closing ruling piece for Step %d "
+                          "(step-%02d gate record) is a missing piece"
+                          % (s, s))
+        coverage_bits.append(state_bit)
     if universe.disagreements:
         coverage_bits.append("step universe disagreement stands: " +
                              "; ".join(universe.disagreements))
@@ -2023,6 +2299,9 @@ def derive_report(captured):
         coverage_bits.append("the capture stands complete for the "
                              "pieces recognised")
     coverage = "Coverage statement: " + "; ".join(coverage_bits) + "."
+    if build_state != "closed":
+        header.append("Captured read statement: the verdicts in this "
+                      "report are verdicts on the captured read.")
     header.append(coverage)
     for cls in sorted(captured.inventory_totals):
         totals = captured.inventory_totals[cls]
