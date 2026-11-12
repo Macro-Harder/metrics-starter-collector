@@ -97,6 +97,55 @@ def staffing_cross_check_statements(captured, universe, covered,
     return statements
 
 
+def q4_cross_check_statement(captured, covered):
+    """Return a record disagrees statement for the Q-4 row, or None.
+
+    Applies where the metrics record states a Q-4 figure for a step
+    in the form Q-4 for Step N as X of Y and the first trace in the
+    feeder records supports a different figure. covered maps a step
+    to its feeder (landed, total) pair.
+    """
+    text = captured.assembled_metrics or ""
+    if not text:
+        return None
+    import re
+    name = _metrics_name(captured)
+    for m in re.finditer(r"Q-4 for Step (\d+) as (\d+) of (\d+)", text):
+        step = int(m.group(1))
+        stated = (int(m.group(2)), int(m.group(3)))
+        if step in covered and covered[step] != stated:
+            return ("record disagrees: %s states Q-4 for Step %d as "
+                    "%d of %d while the feeder records support %d of "
+                    "%d; the row follows the feeder records."
+                    % (name, step, stated[0], stated[1],
+                       covered[step][0], covered[step][1]))
+    return None
+
+
+def q3_contested_statement(captured, universe, origin_steps):
+    """Return a record disagrees statement for the Q-3 row, or None.
+
+    Applies where a register entry carries an origin step that the
+    metrics record step universe statement contests. The entry is
+    carried on the evidenced universe under the WV-4 bridge rule,
+    with the disagreement named, following the Slice 3 and Slice 4
+    statement line forms.
+    """
+    claim = getattr(universe, "metrics_count_claim", None)
+    if claim is None:
+        return None
+    name = _metrics_name(captured)
+    for step in _contested_steps(captured, universe):
+        if step in origin_steps:
+            return ("record disagrees: %s states the step universe "
+                    "as %d steps and does not include Step %d, while "
+                    "the feeder records support a register entry with "
+                    "origin step Step %d; the entry is carried on the "
+                    "evidenced universe and the row follows the feeder "
+                    "records." % (name, claim, step, step))
+    return None
+
+
 def d1_cross_check_statement(feeder_result, table_items,
                              feeder_items=None, metrics_name=None):
     """Return a record disagrees statement for the D-1 row, or None.

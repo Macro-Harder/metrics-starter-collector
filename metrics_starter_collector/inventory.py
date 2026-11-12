@@ -65,6 +65,22 @@ def classify(rel_path):
         return _EXACT[base], None
     if "cost-ledger" in base or "cost_ledger" in base:
         return CLS_COST_LEDGER, None
+    if parts[0] == "audit":
+        # Audit papers live under the audit directory. Their names use
+        # the step-01-red form in synthetic trees and the step12-red
+        # form in the target tree, and the step companion catch all
+        # for step records must not swallow them.
+        m = re.search(r"step-?(\d+)", base)
+        step = int(m.group(1)) if m else None
+        if "fix-register" in base:
+            return CLS_FIX_REGISTER, step
+        if "defect-register" in base:
+            return CLS_DEFECT_REGISTER, step
+        if "adjudication" in base:
+            return CLS_ADJUDICATION, step
+        return CLS_AUDIT_PAPER, step
+    if parts[0] == "registers" and base == "defect-register.md":
+        return CLS_DEFECT_REGISTER, None
     stem = base[:-3] if base.endswith(".md") else base
     if stem == "build-metrics-record":
         return CLS_METRICS_SINGLE, None
