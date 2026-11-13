@@ -407,10 +407,34 @@ def capture_read(root):
         # entries at the identity merge and read exactly as they do
         # where no such entry stands.
         broken = [x for x in group if x[4] is None]
-        standing = [x for x in group if x[4] is not None]
+        rest = [x for x in group if x[4] is not None]
         for x in broken:
             pieces.append(Piece(ident, x[7], x[1], x[2], x[3], None,
                                 x[6], x[5], form_state=form))
+        # An entry whose text carries no substantive content (an
+        # empty file: in the proven forms a zero byte file, or a
+        # file holding a single newline) stands in the same no
+        # content family. Where a substantive entry stands at the
+        # same identity, each such empty entry stands as its own
+        # piece, carrying its true read state (its empty text, its
+        # measured size, no quality fault and no not read reason),
+        # and never merges with or displaces the substantive piece:
+        # a disagreement requires two substantive differing texts,
+        # and an entry with no content has no content to disagree
+        # with. Where no substantive entry stands at the identity,
+        # the empty entries are not partitioned at all and keep the
+        # standing treatment exactly: identical empty entries still
+        # merge into one piece, and a lone empty entry stands as it
+        # stands today.
+        if any(x[4].strip() for x in rest):
+            empties = [x for x in rest if not x[4].strip()]
+            standing = [x for x in rest if x[4].strip()]
+            for x in empties:
+                pieces.append(Piece(ident, x[7], x[1], x[2], x[3],
+                                    x[4], x[6], x[5],
+                                    form_state=form))
+        else:
+            standing = rest
         if not standing:
             continue
         group = standing

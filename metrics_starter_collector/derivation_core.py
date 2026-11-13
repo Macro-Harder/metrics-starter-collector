@@ -362,7 +362,21 @@ def _feeder_stands(captured, code):
 # ------------------------------------------------------------- T-1 and T-2
 
 def _ledger_piece(captured):
+    """The single ledger piece the ledger feeders read.
+
+    Selection only: where a ledger piece carrying substantive text
+    stands in the identity group, that piece feeds the derivations,
+    even where a piece with no content at the canonical path sorts
+    ahead of its path, as the step record and metrics record
+    selections already feed from the sound duplicate on the same
+    shapes. Where no piece in the group carries substantive text,
+    the first piece in path order stands, so the standing not read
+    in full and empty forms hold unchanged.
+    """
     found = captured.pieces_of(CLS_PATH_LEDGER)
+    for piece in found:
+        if piece.text is not None and piece.text.strip():
+            return piece
     return found[0] if found else None
 
 
@@ -1767,6 +1781,28 @@ def _f2_ranked_pieces(captured, step):
                 num = int(m.group(1)) if m else 0
             ranked.append((r, num, name, p))
     ranked.sort(key=lambda item: (item[0], item[1], item[2]))
+    # Selection within each identity group, and nothing else: where
+    # a piece at an identity carries substantive text and a duplicate
+    # at the same identity carries none (its text was not read in
+    # full, or it carries no content at all), the ranked list rests
+    # on the substantive piece for that identity, so the gate record
+    # selection feeds from the readable duplicate as the step record
+    # and metrics record selections do on the same shapes. Where no
+    # piece at an identity carries substantive text, every piece at
+    # that identity stands in the ranked list as it stands today, so
+    # the standing not derivable forms hold unchanged. The ranked
+    # order itself, and every counting passage that rests on this
+    # list, are unchanged.
+    selected = {}
+    for item in ranked:
+        piece = item[3]
+        if piece.text is not None and piece.text.strip() and \
+                piece.identity not in selected:
+            selected[piece.identity] = piece
+    if selected:
+        ranked = [item for item in ranked
+                  if item[3].identity not in selected
+                  or item[3] is selected[item[3].identity]]
     return ranked
 
 

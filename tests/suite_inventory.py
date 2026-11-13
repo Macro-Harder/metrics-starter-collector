@@ -309,6 +309,30 @@ INVENTORY = {
             "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_25_negated_duration_no_timestamp_t2_true_ground",
         ],
     },
+    "test_q_step15_round4_duplicates": {
+        "count": 19,
+        "cases": [
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_control_directory_canonical_gate_aaa_duplicate_feeds",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_control_no_readable_gate_piece_forms_hold",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_control_no_readable_ledger_piece_forms_hold",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_directory_canonical_gate_sound_duplicate_feeds_f2",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_directory_canonical_ledger_sound_duplicate_feeds",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_fifo_canonical_ledger_sound_duplicate_feeds",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_malformed_canonical_gate_sound_duplicate_feeds_f2",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_26_malformed_canonical_ledger_sound_duplicate_feeds",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_control_differing_substantive_duplicates_still_merge",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_control_identical_empty_duplicates_still_merge",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_control_lone_empty_ledger_standing_treatment",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_control_lone_empty_step_record_standing_treatment",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_empty_canonical_ledger_sound_duplicate_feeds",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_newline_canonical_gate_sound_duplicate_feeds_f2",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_newline_duplicate_gate_record_f2_stands",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_newline_duplicate_step_record_sound_reads",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_zero_byte_at_canonical_sound_duplicate_reads",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_zero_byte_duplicate_gate_record_f2_stands",
+            "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_zero_byte_duplicate_step_record_sound_reads",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -318,4 +342,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 222
+TOTAL_CASES = 241
