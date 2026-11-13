@@ -495,6 +495,27 @@ INVENTORY = {
             "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_44_same_step_same_figure_denial_taken_out",
         ],
     },
+    "test_z_step15_round7_f2": {
+        "count": 16,
+        "cases": [
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_contested_record_governing_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_contested_ruling_behind_record_plain_branch_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_contested_ruling_behind_record_regate_branch_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_control_agreeing_record_and_ruling_counts_plain",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_control_contested_adjudication_behind_base_pair_counts_plain",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_control_sound_fail_ruling_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_46_control_sound_fail_ruling_with_regate_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_control_no_step_named_closure_counts",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_control_own_step_named_closure_counts",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_control_record_without_foreign_closure_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_closes_only_closure_ruling_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_closure_in_base_ruling_counts_nowhere",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_field_form_governing_record_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_recorded_as_governing_record_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_recorded_as_regate_branch_not_derivable",
+            "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_then_own_closure_in_one_piece_counts_own",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -504,4 +525,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 363
+TOTAL_CASES = 379

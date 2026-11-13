@@ -2098,38 +2098,65 @@ _CLOSURE_TOKENS = ("CLOSED-PASS", "CLOSED-QUALIFIED", "CLOSED-FAIL",
                    "RECYCLED")
 
 
-def _recorded_closure(text):
+def _closure_names_foreign_step(text, match, step):
+    """Whether the closure statement at a match names another step.
+
+    The statement is the sentence fragment holding the match: the
+    text from the last sentence stop or line break before the match
+    to the first sentence stop or line break after it. A Step number
+    in that fragment other than the piece own step makes the
+    statement a closure for that other step, not for this piece.
+    A fragment naming the piece own step, or naming no step at all,
+    keeps its standing reading.
+    """
+    if step is None:
+        return False
+    start = max(text.rfind(mark, 0, match.start())
+                for mark in (".", ";", "\n"))
+    stops = [pos for pos in (text.find(mark, match.end())
+                             for mark in (".", ";", "\n"))
+             if pos >= 0]
+    end = min(stops) if stops else len(text)
+    fragment = text[start + 1:end]
+    for found in re.finditer(r"Step (\d+)\b", fragment):
+        if int(found.group(1)) != step:
+            return True
+    return False
+
+
+def _recorded_closure(text, step=None):
     """Return the recorded closure state in a settled form, or None.
 
     Matching is on the recorded closure state field and on the verdict
     forms the gate records use, exact forms only, never on a closure
-    token mentioned in prose.
+    token mentioned in prose. Extraction is step scoped where the
+    piece step is given: a closure statement naming a different step
+    is not a closure for the piece own step and counts nowhere, so a
+    statement in a settled form whose sentence names another step is
+    passed over, and the scan continues to any later statement in
+    the settled forms that names the piece own step or names no
+    step at all. A piece whose only closure is foreign carries no
+    closure of its own.
     """
     exact = r"(?![-A-Za-z0-9])"
-    m = re.search(r"(?:Step closure state|Closure state):\s*"
-                  r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
-                  + exact, text)
-    if m:
-        return m.group(1)
-    for line in text.splitlines():
-        m = re.match(r"\s*(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|"
-                     r"RECYCLED)\s*[.,]", line)
-        if m:
+    patterns = (
+        (r"(?:Step closure state|Closure state):\s*"
+         r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
+         + exact, 0),
+        (r"^[ \t]*(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|"
+         r"RECYCLED)\s*[.,]", re.M),
+        (r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
+         r"CLOSED-FAIL|RECYCLED)" + exact, 0),
+        (r"recorded\s+(RECYCLED)\b", 0),
+        (r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
+         + exact, 0),
+        (r"Verdict grade:\s*(FAIL)\b", 0),
+    )
+    for pattern, flags in patterns:
+        for m in re.finditer(pattern, text, flags):
+            if _closure_names_foreign_step(text, m, step):
+                continue
             return m.group(1)
-    m = re.search(r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
-                  r"CLOSED-FAIL|RECYCLED)" + exact, text)
-    if m:
-        return m.group(1)
-    m = re.search(r"recorded\s+(RECYCLED)\b", text)
-    if m:
-        return m.group(1)
-    m = re.search(r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
-                  + exact, text)
-    if m:
-        return m.group(1)
-    m = re.search(r"Verdict grade:\s*(FAIL)\b", text)
-    if m:
-        return m.group(1)
     return None
 
 
@@ -2185,18 +2212,35 @@ def _f2_base_closures(ranked):
 
     Only the base forms count, the pieces whose file name carries
     no round or re-audit naming, as the F15-14 conflict guard has
-    always read them.
+    always read them. A base piece standing as a disagreement
+    merged piece carries no text of its own, so no closure can be
+    read from it; it stands in the set as a contested entry instead,
+    wherever it stands in the ranked order, behind a substantive
+    governing piece included. Where a substantive base closure
+    stands beside that entry the set holds more than one entry, so
+    the conflict guard in every consumer of this set treats the
+    step as contested and prints it present but not derivable,
+    whatever the governing piece carries. Where no substantive
+    base closure stands beside it, _f2_first_closure already
+    returns the contested governing form or a closure of None for
+    the step, so the not derivable form holds on that ground too.
     """
     closures = set()
     for item in ranked:
         piece = item[3]
         base_name = piece.paths[0].rsplit("/", 1)[-1]
-        if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
-                and "round" not in base_name \
-                and "reaudit" not in base_name and piece.text:
-            found = _recorded_closure(piece.text)
+        if piece.record_class not in (CLS_GATE_RECORD,
+                                      CLS_GATE_RULING) \
+                or "round" in base_name or "reaudit" in base_name:
+            continue
+        if piece.text:
+            found = _recorded_closure(piece.text, piece.step)
             if found:
                 closures.add(found)
+        elif piece.text is None and piece.not_read_reason and \
+                "duplicate content disagreement" in \
+                piece.not_read_reason:
+            closures.add("CONTESTED")
     return closures
 
 
@@ -2227,7 +2271,7 @@ def _f2_first_closure(ranked):
     for item in ranked:
         piece = item[3]
         if piece.text is not None and piece.text.strip():
-            return piece, _recorded_closure(piece.text)
+            return piece, _recorded_closure(piece.text, piece.step)
         if piece.text is None and piece.not_read_reason and \
                 "duplicate content disagreement" in \
                 piece.not_read_reason:
@@ -2307,7 +2351,7 @@ def _derive_f2(captured, universe):
                         or "reaudit" in base_name:
                     continue
                 if piece.text:
-                    earlier = _recorded_closure(piece.text)
+                    earlier = _recorded_closure(piece.text, piece.step)
                     if earlier in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
                         recycled_notes.append(
                             "Step %d ran as two instances with the first "
