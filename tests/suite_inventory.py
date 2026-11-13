@@ -438,6 +438,18 @@ INVENTORY = {
             "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_retracted_in_following_sentence_taken_out",
         ],
     },
+    "test_w_step15_round6_f2": {
+        "count": 7,
+        "cases": [
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_control_directory_record_sound_ruling_counts",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_control_identical_duplicate_record_counts",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_directory_before_no_closure_ruling_not_derivable",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_disagreement_record_with_ruling_behind_not_derivable",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_regate_directory_before_no_closure_adjudication",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_regate_twin_no_gate_record_no_closure_adjudication",
+            "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_twin_no_gate_record_no_closure_ruling_not_derivable",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -447,4 +459,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 321
+TOTAL_CASES = 328

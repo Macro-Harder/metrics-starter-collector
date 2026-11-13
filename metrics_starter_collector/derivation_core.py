@@ -2082,32 +2082,36 @@ def _f2_base_closures(ranked):
 def _f2_first_closure(ranked):
     """The piece carrying a step first ruling, and its closure.
 
-    Where the head piece in ranked order carries substantive text,
-    the first ruling rests on that piece alone, as it always has:
-    a substantive head carrying no closure in the settled forms
-    leaves the step not derivable, whatever stands behind it.
-    Where the head piece carries no content at all, its text not
-    read in full or empty, it carries no closure either, and it
-    does not erase a sound ruling at another alias form of the
-    same step: the first ruling then rests on the first piece in
-    ranked order across the step whole gate group that carries a
-    closure in the settled forms. Where no piece in the group
-    carries a settled closure, the head piece stands with a
+    One governing test in ranked order. The first piece carrying
+    substantive text governs, closure or not: a governing piece
+    carrying no closure in the settled forms leaves the step not
+    derivable, whatever stands behind it, as the pinned head rule
+    has always stated for a substantive head. A disagreement
+    merged piece also governs, as contested: it carries no text
+    of its own, because its copies disagree, and its copies
+    closures are the contest the base closure conflict guard
+    weighs, so it returns with a closure of None and the step is
+    not derivable on that ground. Only pieces carrying neither
+    substantive text nor a disagreement are passed over: a piece
+    with no content at all, its text not read in full or empty,
+    carries no closure either, and it does not erase a sound
+    ruling at another alias form of the same step, so the scan
+    continues past it to the governing piece. Where no governing
+    piece stands in the group, the head piece stands with a
     closure of None, so the standing not derivable forms hold
     unchanged.
     """
     if not ranked:
         return None, None
-    head = ranked[0][3]
-    if head.text is not None and head.text.strip():
-        return head, _recorded_closure(head.text)
     for item in ranked:
         piece = item[3]
-        if piece.text:
-            found = _recorded_closure(piece.text)
-            if found:
-                return piece, found
-    return head, None
+        if piece.text is not None and piece.text.strip():
+            return piece, _recorded_closure(piece.text)
+        if piece.text is None and piece.not_read_reason and \
+                "duplicate content disagreement" in \
+                piece.not_read_reason:
+            return piece, None
+    return ranked[0][3], None
 
 
 def _derive_f2(captured, universe):
