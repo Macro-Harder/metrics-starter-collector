@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metrics-starter-collector"
+version = "1.0.0"
+description = "Offline command line collector that reads one build record tree once and prints the 17 metric starter set rows in the settled report form"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.12"
+
+[project.scripts]
+metrics-starter-collector = "metrics_starter_collector.__main__:main"
+
+[tool.setuptools]
+packages = ["metrics_starter_collector"]
