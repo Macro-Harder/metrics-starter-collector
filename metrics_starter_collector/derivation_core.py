@@ -523,15 +523,23 @@ def _derive_t1(captured, universe):
 # only in a denial construction: in predicative position, with
 # a copula or a stance verb and a subject that is the duration
 # itself or one of its anaphoric carriers (claim, note,
-# statement, log, record), in the anaphoric form the wrong one,
-# or standing attributively on the duration itself, whether the
-# duration follows the word inside the part or the word stands
-# at the end of the part before the mention. As a bare
+# statement, log, record), in the anaphoric form the wrong one
+# (in its spaced form, or hyphenated as the wrong-one standing
+# on the duration itself), or standing attributively on the
+# duration itself, whether the duration follows the word
+# inside the part or the word stands at the end of the part
+# before the mention. The predicative construction still
+# counts where an adverb or a short phrase stands between the
+# copula and the listed word, and the carrying verbs take in
+# the stance verbs beside the copulas (became, appears, looks
+# and their common kin). The affirming not only form is no
+# denial on either side of a mention. As a bare
 # attributive modifier of another noun (an absent minded note,
 # a retracted note that still records, a withdrawn draft, a
 # wrong date) such a word denies nothing and takes nothing out.
 # Figures in the scope comparison are read in digits or in
-# number words, so a figure stated in words compares the same
+# number words, the hundred forms and the point forms among
+# them, so a figure stated in words compares the same
 # way a digit figure compares. A comma or a colon opens a new
 # clause part: a marker in another part takes
 # the mention out only where that part is about the mention's own
@@ -569,7 +577,12 @@ _LISTED_WORD_RE = re.compile(
     r"\b(absent|withdrawn|retracted|wrong)\b", re.I)
 _COPULA_RE = re.compile(
     r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
-    r"seemed|remains|remained)\s+(?:the\s+)?$", re.I)
+    r"seemed|remains|remained|become|becomes|became|appear|"
+    r"appears|appeared|look|looks|looked|stay|stays|stayed)"
+    r"(?:\s+(?:\w+ly|hereby|fully|also|now|then|"
+    r"noted\s+as|recorded\s+as|marked\s+as|listed\s+as|"
+    r"shown\s+as|described\s+as|reported\s+as|said\s+to\s+be))*"
+    r"\s+(?:the\s+)?$", re.I)
 _ANAPHORIC_SUBJECT_RE = re.compile(
     r"\b(?:duration|interval|banked|claim|note|statement|log|"
     r"record)\b", re.I)
@@ -684,7 +697,17 @@ def _listed_word_denies(part, own_after=False):
     one, or where the word stands attributively on the duration
     itself inside the part, before a duration word or a BANKED
     word, or after the duration word it modifies. A bare
-    attributive use on another noun counts for nothing.
+    attributive use on another noun counts for nothing. The
+    predicative construction still counts where an adverb or a
+    short phrase stands between the copula and the listed word
+    (was flatly withdrawn, is hereby withdrawn, was noted as
+    withdrawn), and the carrying verb set takes in the stance
+    verbs beside the copulas (became, appears, looks and their
+    common kin). The anaphoric wrong one counts in its
+    hyphenated form the wrong-one standing on the duration
+    itself, as in the wrong-one BANKED duration; a wrong-one
+    compound modifying another noun counts for nothing, as its
+    spaced twin does.
     """
     for match in _LISTED_WORD_RE.finditer(part):
         before_word = part[:match.start()]
@@ -696,9 +719,16 @@ def _listed_word_denies(part, own_after=False):
                 return True
             continue
         if match.group(1).lower() == "wrong" and \
-                re.search(r"\bthe\s+$", before_word, re.I) is not None and \
-                re.match(r"\s+one\b", after_word, re.I) is not None:
-            return True
+                re.search(r"\bthe\s+$", before_word, re.I) is not None:
+            one = re.match(r"(\s+|-)one\b", after_word, re.I)
+            if one is not None and one.group(1) == "-":
+                rest = after_word[one.end():].strip()
+                if not rest or rest[0] in ".,;:!?" or \
+                        re.match(r"(?:banked|interval|duration)\b",
+                                 rest, re.I) is not None:
+                    return True
+            elif one is not None:
+                return True
         if re.match(r"\s+(?:banked\s+)?(?:interval\s+)?duration\b",
                     after_word, re.I) is not None or \
                 re.match(r"\s+banked\b", after_word, re.I) is not None:
@@ -730,6 +760,18 @@ _NUMBER_WORD_VALUES = {
     "eighty": 80, "ninety": 90}
 _FIGURE_RE = re.compile(
     r"(\d+(?:\.\d+)?|"
+    r"(?:one|two|three|four|five|six|seven|eight|nine)\s+hundred"
+    r"(?:\s+(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|"
+    r"ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|"
+    r"nine))?|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
+    r"seventeen|eighteen|nineteen))?|"
+    r"(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|"
+    r"ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|"
+    r"nine))?|one|two|three|four|five|six|seven|eight|nine|ten|"
+    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
+    r"seventeen|eighteen|nineteen|twenty)\s+point\s+"
+    r"(?:one|two|three|four|five|six|seven|eight|nine)|"
     r"(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)"
     r"(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|"
     r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
@@ -740,8 +782,19 @@ _FIGURE_RE = re.compile(
 def _figure_value(token):
     if token[0].isdigit():
         return float(token)
-    return float(sum(_NUMBER_WORD_VALUES[part]
-                     for part in re.split(r"[ -]+", token.lower())))
+    words = [part for part in re.split(r"[\s-]+", token.lower())
+             if part and part != "and"]
+    if "point" in words:
+        idx = words.index("point")
+        whole = sum(_NUMBER_WORD_VALUES[part] for part in words[:idx])
+        frac = sum(_NUMBER_WORD_VALUES[part] for part in words[idx + 1:])
+        return whole + frac / 10.0
+    if "hundred" in words:
+        idx = words.index("hundred")
+        base = _NUMBER_WORD_VALUES[words[idx - 1]] if idx else 1
+        rest = sum(_NUMBER_WORD_VALUES[part] for part in words[idx + 1:])
+        return float(base * 100 + rest)
+    return float(sum(_NUMBER_WORD_VALUES[part] for part in words))
 
 
 def _clause_subject(text):
@@ -749,7 +802,9 @@ def _clause_subject(text):
 
     The figure is read in digits or in number words: the common
     forms one through twenty, the tens, and a tens form with a
-    unit, each standing before an hour or hours word.
+    unit, each standing before an hour or hours word, and beside
+    them the hundred forms (one hundred, two hundred) and the
+    point forms (five point five, read as 5.5).
     """
     step = re.search(r"Step (\d+)\b", text)
     figure = _FIGURE_RE.search(text)
@@ -820,15 +875,18 @@ def _before_negated_in_scope(before, after, mention):
 
     A marker in the mention's own clause part counts. A marker in
     an earlier comma or colon part counts only where that part is
-    not scoped to another subject.
+    not scoped to another subject. The affirming not only form
+    is stripped before matching, as on the after side, so a not
+    only construction in the before fragment is no denial.
     """
     parts = re.split(r"[,:]", before)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
-        denied = _BEFORE_NEGATION_RE.search(part) is not None or \
-            _listed_word_denies(part)
+        cleaned = re.sub(r"\bnot\s+only\b", "", part, flags=re.I)
+        denied = _BEFORE_NEGATION_RE.search(cleaned) is not None or \
+            _listed_word_denies(cleaned)
         if idx == len(parts) - 1 and \
-                _LISTED_SUFFIX_RE.search(part) is not None:
+                _LISTED_SUFFIX_RE.search(cleaned) is not None:
             denied = True
         if not denied:
             continue

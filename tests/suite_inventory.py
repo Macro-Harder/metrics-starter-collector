@@ -437,6 +437,32 @@ INVENTORY = {
             "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_zero_byte_duplicate_step_record_sound_reads",
         ],
     },
+    "test_q_step15_r8_denial_figures": {
+        "count": 21,
+        "cases": [
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_adverb_and_phrase_before_position_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_adverb_between_copula_and_word_after_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_adverb_interval_path_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_control_bare_attributive_uses_stand",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_control_other_subject_predicative_stands",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_control_plain_and_pinned_copulas_still_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_noted_as_phrase_after_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_stance_verbs_after_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_58_stance_verbs_before_and_interval_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_59_control_after_side_not_only_still_stands",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_59_control_genuine_before_negation_still_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_59_not_only_before_banked_stands",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_59_not_only_before_interval_stands",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_60_control_spaced_and_predicative_twins_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_60_control_wrong_one_other_subject_stands",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_60_hyphenated_attributive_wrong_one_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_61_control_digit_and_tens_forms_hold",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_61_hundred_different_figure_scopes_elsewhere",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_61_hundred_same_figure_taken_out",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_61_point_different_figure_scopes_elsewhere",
+            "tests.test_q_step15_r8_denial_figures.TestStep15Round8DenialFigures.test_f15_61_point_same_figure_taken_out",
+        ],
+    },
     "test_r_step15_round4_core": {
         "count": 25,
         "cases": [
@@ -629,4 +655,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 463
+TOTAL_CASES = 484
