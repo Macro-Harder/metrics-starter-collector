@@ -509,19 +509,37 @@ def _derive_t1(captured, universe):
 # Negation, denial and retraction markers for the duration tests.
 # A marker in the clause fragment before a mention, or in the
 # fragment after it up to the end of its sentence, takes that
-# mention out: the mention is denied in any auxiliary form (was not,
+# mention out where the marker stands inside the mention's own
+# clause scope: the mention is denied in any auxiliary form (was not,
 # has not been, was never, does not), after a comma, after
 # intervening words, or as a contraction, or it is denied by another
-# verb (cannot, absent, without, fails to record), quoted and
-# retracted, or only discussed or named as a heading. A neighbouring
-# line that denies any duration stands takes out a mention that
-# carries no value of its own.
+# verb or word (cannot, absent, without, fails to record, refuses to
+# record, unrecorded, missing, omitted, denied, removed, nowhere,
+# none recorded), quoted and retracted, or only discussed or named
+# as a heading. A comma or a colon opens a new clause part: a marker
+# in another part takes the mention out only where that part is not
+# scoped to another subject, carrying no duration mention of its
+# own and naming neither a different step nor a different figure.
+# A mention retracted by name in the following sentence on the same
+# line does not stand. A neighbouring line that denies any duration
+# stands takes out a mention that carries no value of its own. The
+# marker sets cover these proven shapes; an unlisted synonym
+# remains outside the handling, a known boundary of the cure.
 _BEFORE_NEGATION_RE = re.compile(
-    r"\b(?:no|not|never|without|cannot)\b|\b\w+n't\b|"
-    r"\bfails?\s+to\b|\bfailed\s+to\b", re.I)
+    r"\b(?:no|not|never|without|cannot|unrecorded|missing|omitted|"
+    r"denied|removed|nowhere|none)\b|\b\w+n't\b|"
+    r"\bfails?\s+to\b|\bfailed\s+to\b|\brefus(?:e|es|ed)\s+to\b",
+    re.I)
 _AFTER_NEGATION_RE = re.compile(
-    r"\b(?:not|never|no|cannot|absent|withdrawn|retracted)\b|"
+    r"\b(?:not|never|no|cannot|absent|withdrawn|retracted|"
+    r"unrecorded|missing|omitted|denied|removed|nowhere|none)\b|"
     r"\b\w+n't\b|\bwas\s+wrong\b|\bis\s+wrong\b", re.I)
+_RETRACTION_RE = re.compile(
+    r"\b(?:withdrawn|retracted)\b|\bwas\s+wrong\b|\bis\s+wrong\b",
+    re.I)
+_RETRACTION_REF_RE = re.compile(
+    r"\bthat\s+(?:claim|note|statement)\b", re.I)
+_SENTENCE_END_RE = re.compile(r"[.;]\"?(?:\s|$)")
 _NON_ASSERTIVE_RE = re.compile(
     r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
     r"\bsee\s+above\b", re.I)
@@ -552,6 +570,107 @@ def _after_is_negated(after):
     return _AFTER_NEGATION_RE.search(cleaned) is not None
 
 
+def _clause_subject(text):
+    """The step and the hours figure a clause part names."""
+    step = re.search(r"Step (\d+)\b", text)
+    figure = re.search(r"(\d+(?:\.\d+)?)\s*hours", text, re.I)
+    return (int(step.group(1)) if step else None,
+            float(figure.group(1)) if figure else None)
+
+
+def _subclause_scoped_elsewhere(part, mention_step, mention_figure):
+    """Whether a clause part is scoped to another subject.
+
+    A part carrying its own duration mention, or naming a
+    different step or a different hours figure than the mention
+    under test, belongs to that other subject, so a denial marker
+    inside it does not reach the mention under test.
+    """
+    if re.search(r"interval duration", part, re.I) or \
+            re.search(r"\bBANKED\b", part, re.I):
+        return True
+    step, figure = _clause_subject(part)
+    if mention_step is not None and step is not None and \
+            step != mention_step:
+        return True
+    if mention_figure is not None and figure is not None and \
+            figure != mention_figure:
+        return True
+    return False
+
+
+def _mention_subject(before, after, mention):
+    """The step and figure of the clause the mention stands in.
+
+    The clause is the part after the last comma or colon before
+    the mention, the mention itself, and the part before the
+    first comma or colon after it.
+    """
+    before_parts = re.split(r"[,:]", before)
+    after_parts = re.split(r"[,:]", after)
+    own = (before_parts[-1] if before_parts else "") + " " + \
+        mention + " " + (after_parts[0] if after_parts else "")
+    return _clause_subject(own)
+
+
+def _before_negated_in_scope(before, after, mention):
+    """Whether a marker before a mention takes the mention out.
+
+    A marker in the mention's own clause part counts. A marker in
+    an earlier comma or colon part counts only where that part is
+    not scoped to another subject.
+    """
+    parts = re.split(r"[,:]", before)
+    step, figure = _mention_subject(before, after, mention)
+    for idx, part in enumerate(parts):
+        if _BEFORE_NEGATION_RE.search(part) is None:
+            continue
+        if idx == len(parts) - 1:
+            return True
+        if not _subclause_scoped_elsewhere(part, step, figure):
+            return True
+    return False
+
+
+def _after_negated_in_scope(after, before, mention):
+    """The after side of _before_negated_in_scope, on the same scope.
+
+    A marker in the mention's own clause part counts. A marker in
+    a later comma or colon part counts only where that part is
+    not scoped to another subject.
+    """
+    parts = re.split(r"[,:]", after)
+    step, figure = _mention_subject(before, after, mention)
+    for idx, part in enumerate(parts):
+        if not _after_is_negated(part):
+            continue
+        if idx == 0:
+            return True
+        if not _subclause_scoped_elsewhere(part, step, figure):
+            return True
+    return False
+
+
+def _retracted_in_following_sentence(line, end):
+    """Whether the next sentence on the line retracts the mention.
+
+    The following sentence must name the claim it takes back
+    (that claim, that note or that statement) and carry a
+    retraction marker, so an unrelated following sentence never
+    takes a standing mention out.
+    """
+    rest = line[end:]
+    match = _SENTENCE_END_RE.search(rest)
+    if match is None:
+        return False
+    following = rest[match.end():]
+    match = _SENTENCE_END_RE.search(following)
+    if match is not None:
+        following = following[:match.start()]
+    return _RETRACTION_REF_RE.search(following) is not None and \
+        _RETRACTION_RE.search(following) is not None
+
+
 def _neighbouring_denial(lines, idx):
     for other in (idx - 1, idx + 1):
         if 0 <= other < len(lines) and \
@@ -572,11 +691,13 @@ def _interval_duration_mentions_stand(text):
         for m in re.finditer(r"interval duration", line, re.I):
             before, after = _clause_fragments(line, m.start(),
                                               m.end())
-            if _BEFORE_NEGATION_RE.search(before):
+            if _before_negated_in_scope(before, after, m.group(0)):
                 continue
-            if _after_is_negated(after):
+            if _after_negated_in_scope(after, before, m.group(0)):
                 continue
             if _NON_ASSERTIVE_RE.search(after):
+                continue
+            if _retracted_in_following_sentence(line, m.end()):
                 continue
             valued = re.search(r"\d", before + after) is not None \
                 or "banked" in before.lower()
@@ -591,7 +712,7 @@ def _banked_duration_stands(text):
 
     The BANKED alternative takes the same negation handling as the
     interval duration path: a BANKED mention denied in its own
-    clause, before it or after it, stands as no duration.
+    clause scope, before it or after it, stands as no duration.
     """
     for line in text.splitlines():
         for m in re.finditer(r"BANKED", line):
@@ -599,9 +720,11 @@ def _banked_duration_stands(text):
                                               m.end())
             if re.search(r"\d", after) is None:
                 continue
-            if _BEFORE_NEGATION_RE.search(before):
+            if _before_negated_in_scope(before, after, m.group(0)):
                 continue
-            if _after_is_negated(after):
+            if _after_negated_in_scope(after, before, m.group(0)):
+                continue
+            if _retracted_in_following_sentence(line, m.end()):
                 continue
             return True
     return False
@@ -703,13 +826,17 @@ def _t4_banked_durations(captured):
 
     def _banked_mention_denied(line, start):
         # The T-2 BANKED alternative's negation handling, shared:
-        # a BANKED mention denied in its own clause, by a marker in
-        # the clause fragment before it or in the fragment after
-        # it, stands as no duration.
+        # a BANKED mention denied in its own clause scope, by a
+        # marker in the clause fragment before it or in the
+        # fragment after it, or retracted in the following
+        # sentence on the line, stands as no duration.
         before, after = _clause_fragments(
             line, start, start + len("BANKED"))
-        return _BEFORE_NEGATION_RE.search(before) is not None or \
-            _after_is_negated(after)
+        return _before_negated_in_scope(before, after, "BANKED") or \
+            _after_negated_in_scope(after, before, "BANKED") or \
+            _retracted_in_following_sentence(
+                line, start + len("BANKED"))
+
     for line in ledger.text.splitlines():
         step_match = re.search(r"Step (\d+)\b", line)
         step = int(step_match.group(1)) if step_match else None
@@ -760,9 +887,13 @@ def _derive_t4(captured, universe):
             for m in re.finditer(r"banked", line, re.I):
                 before, after = _clause_fragments(
                     line, m.start(), m.end())
-                if _BEFORE_NEGATION_RE.search(before) is not None:
+                if _before_negated_in_scope(before, after,
+                                            m.group(0)):
                     continue
-                if _after_is_negated(after):
+                if _after_negated_in_scope(after, before,
+                                           m.group(0)):
+                    continue
+                if _retracted_in_following_sentence(line, m.end()):
                     continue
                 banked = True
                 if re.search(r"\d+(?:\.\d+)?\s*hours", after):

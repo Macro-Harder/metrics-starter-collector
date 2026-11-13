@@ -415,6 +415,29 @@ INVENTORY = {
             "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_empty_canonical_queue_sound_duplicate_feeds",
         ],
     },
+    "test_v_step15_round5_duration": {
+        "count": 18,
+        "cases": [
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_control_comma_denial_same_clause_still_taken_out",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_control_not_only_guard_still_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_control_quoted_retracted_same_sentence_taken_out",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_control_semicolon_form_still_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_control_two_line_standing_beside_negated_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_form_a_standing_then_denial_other_step_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_form_b_denial_then_standing_comma_but_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_form_c_denial_colon_standing_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_form_d_standing_colon_denial_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_36_form_e_denial_of_other_figure_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_banked_alternative_missing_t2_and_t4",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_control_following_sentence_affirmation_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_control_two_sentence_other_step_denial_stands",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_missing_before_mention_date_only_true_ground",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_new_denial_words_date_only_true_ground",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_refusal_missing_word_t2_missing_no_feeder",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_refuses_to_record_date_only_true_ground",
+            "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_retracted_in_following_sentence_taken_out",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -424,4 +447,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 303
+TOTAL_CASES = 321
