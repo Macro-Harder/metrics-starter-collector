@@ -545,7 +545,12 @@ def _derive_t1(captured, universe):
 # the mention itself, so its marker reaches the mention. A mention
 # retracted by name in the following sentence on the same line
 # does not stand, and the sentence end detection in that test
-# ignores abbreviation stops as it ignores decimals. A
+# follows the true sentence boundary rule stated at
+# _dot_ends_sentence: a stop inside a decimal, an abbreviation
+# from the completed set, or a person's initials is no sentence
+# end, while an abbreviation stop at a true sentence end, before
+# a capitalised sentence opening word or at the end of the
+# passage, still ends the sentence. A
 # neighbouring line that denies any duration stands takes out a
 # mention that carries no value of its own. The marker sets cover
 # these proven shapes; an unlisted synonym remains outside the
@@ -574,7 +579,7 @@ _RETRACTION_RE = re.compile(
     re.I)
 _RETRACTION_REF_RE = re.compile(
     r"\bthat\s+(?:claim|note|statement|record)\b", re.I)
-_SENTENCE_END_RE = re.compile(r"[.;]\"?(?:\s|$)")
+_SENTENCE_END_RE = re.compile(r"[.;?!]\"?(?:\s|$)")
 _NON_ASSERTIVE_RE = re.compile(
     r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
     r"\bsee\s+above\b", re.I)
@@ -588,15 +593,57 @@ def _clause_fragments(line, start, end):
 
     The before fragment runs from the last sentence or clause break
     before the mention; the after fragment runs to the end of the
-    mention's own sentence.
+    mention's own sentence. A semicolon is a clause break on both
+    sides. A full stop is a break only where it ends a sentence
+    under the true sentence boundary rule at _dot_ends_sentence:
+    a stop inside a decimal, an abbreviation from the completed
+    set, or a person's initials does not truncate a fragment, and
+    an abbreviation stop at a true sentence end still does.
     """
     before_all = line[:start]
-    cut = max(before_all.rfind("."), before_all.rfind(";"))
+    cut = -1
+    for pos, char in enumerate(before_all):
+        if char == ";" or \
+                (char == "." and _dot_ends_sentence(before_all, pos)):
+            cut = pos
     before = before_all[cut + 1:]
     after_all = line[end:]
-    stops = [i for i in (after_all.find("."), after_all.find(";"))
-             if i >= 0]
-    after = after_all[:min(stops)] if stops else after_all
+    after = after_all
+    for pos, char in enumerate(after_all):
+        if char == ";" or \
+                (char == "." and _dot_ends_sentence(after_all, pos)):
+            after = after_all[:pos]
+            break
+    return before, after
+
+
+def _sentence_scope_fragments(line, start, end):
+    """The sentence scope fragments around a mention in one line.
+
+    The before fragment runs from the last true sentence end
+    before the mention and the after fragment runs to the first
+    true sentence end after it, under the true sentence boundary
+    rule at _dot_ends_sentence, with question and exclamation
+    marks as sentence ends. A semicolon is no break here: it is
+    a clause break for the denial scoping in _clause_fragments,
+    which is unchanged, but the T-4 attribution search reads the
+    mention's whole sentence scope, the parts beyond the first
+    semicolon included.
+    """
+    before_all = line[:start]
+    cut = -1
+    for pos, char in enumerate(before_all):
+        if char in "?!" or \
+                (char == "." and _dot_ends_sentence(before_all, pos)):
+            cut = pos
+    before = before_all[cut + 1:]
+    after_all = line[end:]
+    after = after_all
+    for pos, char in enumerate(after_all):
+        if char in "?!" or \
+                (char == "." and _dot_ends_sentence(after_all, pos)):
+            after = after_all[:pos]
+            break
     return before, after
 
 
@@ -818,23 +865,69 @@ _ABBREVIATION_WORDS = frozenset({
     "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
 
 
+_SENTENCE_STARTERS = frozenset({
+    "a", "an", "and", "at", "but", "by", "closure", "for",
+    "he", "here", "however", "in", "it", "its", "note", "of",
+    "on", "outcome", "she", "step", "that", "the", "then",
+    "there", "these", "they", "this", "those", "verdict", "we"})
+
+
+def _dot_ends_sentence(text, pos):
+    """Whether the full stop at pos in a text ends a sentence.
+
+    The true sentence boundary rule, shared by the closure
+    fragment test, the clause fragments and the sentence end
+    detection: a stop inside a decimal (a digit on both sides)
+    is not an end; a stop closing an abbreviation from the
+    completed set in _ABBREVIATION_WORDS, a stop closing a dotted
+    form, and a stop after a single letter initial are not ends
+    either, so a person's initials never truncate a sentence.
+    Such a stop still ends the sentence at a true sentence end:
+    where nothing but a closing quote follows it in the passage,
+    or where a capitalised sentence opening word follows it (the
+    words a sentence in these records opens with, held in
+    _SENTENCE_STARTERS), as a title before a person's name does
+    not. Every other full stop ends the sentence.
+    """
+    if 0 < pos and pos + 1 < len(text) and \
+            text[pos - 1].isdigit() and text[pos + 1].isdigit():
+        return False
+    token = re.search(r"([A-Za-z]+(?:\.[A-Za-z]+)*)$", text[:pos])
+    if token is None:
+        return True
+    word = token.group(1)
+    if word.lower() not in _ABBREVIATION_WORDS and \
+            "." not in word and len(word) != 1:
+        return True
+    rest = text[pos + 1:].lstrip()
+    if rest[:1] in ("\"", "'"):
+        rest = rest[1:].lstrip()
+    if not rest:
+        return True
+    next_word = re.match(r"([A-Za-z]+)", rest)
+    if next_word is None:
+        return False
+    word = next_word.group(1)
+    if len(word) == 1:
+        return False
+    return word[0].isupper() and \
+        word.lower() in _SENTENCE_STARTERS
+
+
 def _find_sentence_end(text):
     """The first sentence end match in a text, or None.
 
-    A full stop that closes an abbreviation (e.g., i.e. and the
-    common abbreviation forms) is not a sentence end, as a stop
-    inside a decimal is already no match for the sentence end
-    pattern, so a sentence carrying an abbreviation before its
-    true end is read whole.
+    A full stop ends a sentence only under the true sentence
+    boundary rule at _dot_ends_sentence, so a sentence carrying
+    an abbreviation, a decimal or a person's initials before its
+    true end is read whole, and a sentence ending on an
+    abbreviation still ends where the next sentence opens.
+    Semicolons, question marks and exclamation marks are ends
+    wherever they stand.
     """
     for match in _SENTENCE_END_RE.finditer(text):
-        if text[match.start()] != ".":
-            return match
-        token = re.search(r"([A-Za-z]+(?:\.[A-Za-z]+)*)$",
-                          text[:match.start()])
-        if token is not None and \
-                (token.group(1).lower() in _ABBREVIATION_WORDS or
-                 "." in token.group(1)):
+        if text[match.start()] == "." and \
+                not _dot_ends_sentence(text, match.start()):
             continue
         return match
     return None
@@ -2245,26 +2338,77 @@ _CLOSURE_TOKENS = ("CLOSED-PASS", "CLOSED-QUALIFIED", "CLOSED-FAIL",
                    "RECYCLED")
 
 
+_CLOSURE_EXACT = r"(?![-A-Za-z0-9])"
+_CLOSURE_PATTERNS = (
+    (r"(?:Step closure state|Closure state):\s*"
+     r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
+     + _CLOSURE_EXACT, 0),
+    (r"^[ \t]*(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|"
+     r"RECYCLED)\s*[.,]", re.M),
+    (r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
+     r"CLOSED-FAIL|RECYCLED)" + _CLOSURE_EXACT, 0),
+    (r"recorded\s+(RECYCLED)\b", 0),
+    (r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
+     + _CLOSURE_EXACT, 0),
+    (r"Verdict grade:\s*(FAIL)\b", 0),
+)
+
+
+def _closure_match_spans(text):
+    """The (start, end) span of every settled closure match."""
+    spans = []
+    for pattern, flags in _CLOSURE_PATTERNS:
+        for m in re.finditer(pattern, text, flags):
+            spans.append((m.start(), m.end()))
+    return spans
+
+
 def _closure_names_foreign_step(text, match, step):
     """Whether the closure statement at a match names another step.
 
-    The statement is the sentence fragment holding the match: the
-    text from the last sentence stop or line break before the match
-    to the first sentence stop or line break after it. A Step number
-    in that fragment other than the piece own step makes the
-    statement a closure for that other step, not for this piece.
-    A fragment naming the piece own step, or naming no step at all,
-    keeps its standing reading.
+    The statement is the fragment holding the match, bounded by
+    true sentence boundaries under the rule at _dot_ends_sentence:
+    the last true sentence end or line break before the match, and
+    the first one after it, where a stop inside an abbreviation
+    from the completed set, a decimal, or a person's initials is
+    no end, a semicolon before the match is no end either, and
+    question and exclamation marks are ends. A comma in the
+    closure sentence stays inside the fragment. The fragment is
+    also bounded by the neighbouring closure statements in the
+    same sentence: it starts after an earlier closure match in
+    the sentence, and it ends at a semicolon after the match or
+    at the conjunction joining a later closure match in the
+    sentence, so a Step number standing in a different closure
+    statement of the same sentence, or in a clause after the
+    match, is not part of this statement. A Step number in that
+    fragment other than the piece own step makes the statement a
+    closure for that other step, not for this piece. A fragment
+    naming the piece own step, or naming no step at all, keeps
+    its standing reading.
     """
     if step is None:
         return False
-    start = max(text.rfind(mark, 0, match.start())
-                for mark in (".", ";", "\n"))
-    stops = [pos for pos in (text.find(mark, match.end())
-                             for mark in (".", ";", "\n"))
-             if pos >= 0]
-    end = min(stops) if stops else len(text)
-    fragment = text[start + 1:end]
+    start = 0
+    for pos in range(match.start()):
+        char = text[pos]
+        if char == "\n" or char in "?!" or \
+                (char == "." and _dot_ends_sentence(text, pos)):
+            start = pos + 1
+    end = len(text)
+    for pos in range(match.end(1), len(text)):
+        char = text[pos]
+        if char == "\n" or char in "?!;" or \
+                (char == "." and _dot_ends_sentence(text, pos)):
+            end = pos
+            break
+    for span_start, span_end in _closure_match_spans(text):
+        if span_end <= match.start() and span_end > start:
+            start = span_end
+        if span_start >= match.end():
+            join = text.find(" and ", match.end(), span_start)
+            if 0 <= join < end:
+                end = join
+    fragment = text[start:end]
     for found in re.finditer(r"Step (\d+)\b", fragment):
         if int(found.group(1)) != step:
             return True
@@ -2285,21 +2429,7 @@ def _recorded_closure(text, step=None):
     step at all. A piece whose only closure is foreign carries no
     closure of its own.
     """
-    exact = r"(?![-A-Za-z0-9])"
-    patterns = (
-        (r"(?:Step closure state|Closure state):\s*"
-         r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
-         + exact, 0),
-        (r"^[ \t]*(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|"
-         r"RECYCLED)\s*[.,]", re.M),
-        (r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
-         r"CLOSED-FAIL|RECYCLED)" + exact, 0),
-        (r"recorded\s+(RECYCLED)\b", 0),
-        (r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
-         + exact, 0),
-        (r"Verdict grade:\s*(FAIL)\b", 0),
-    )
-    for pattern, flags in patterns:
+    for pattern, flags in _CLOSURE_PATTERNS:
         for m in re.finditer(pattern, text, flags):
             if _closure_names_foreign_step(text, m, step):
                 continue

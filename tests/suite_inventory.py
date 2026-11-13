@@ -328,6 +328,40 @@ INVENTORY = {
             "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_21_refusal_control_interval_words_t2_not_derivable_unknown_version",
         ],
     },
+    "test_o_step15_r8_boundary": {
+        "count": 29,
+        "cases": [
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_abbreviation_capt_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_abbreviation_dr_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_abbreviation_eg_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_closure_first_full_stop_counts_own",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_closure_first_semicolon_counts_own",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_comma_twin_stays_foreign",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_own_step_after_abbreviation_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_step_after_dotted_stop_stays_foreign",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_control_two_steps_one_statement_stays_discarded",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_decimal_version_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_dotted_foreign_with_fail_adjudication_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_exclamation_boundary_own_fail_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_field_form_after_question_own_fail_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_initials_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_own_fail_before_exclamation_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_question_boundary_own_fail_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_semicolon_inside_sentence_foreign_not_derivable",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_shared_sentence_foreign_first_own_fail_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_55_shared_sentence_own_first_own_fail_counts",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_abbreviation_at_mention_sentence_end_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_control_abbreviation_at_passage_end_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_control_decimal_claim_retraction_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_control_genuine_banked_duration_stands",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_control_title_before_name_retraction_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_control_version_in_retracting_sentence_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_decimal_attribution_part_after_decimal_searched",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_decimal_denial_scopes_elsewhere_stands",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_initials_in_retracting_sentence_taken_out",
+            "tests.test_o_step15_r8_boundary.TestStep15Round8Boundary.test_f15_56_initials_unvalued_retraction_taken_out",
+        ],
+    },
     "test_o_step15_round3_shell": {
         "count": 8,
         "cases": [
@@ -575,4 +609,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 419
+TOTAL_CASES = 448
