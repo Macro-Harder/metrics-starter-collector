@@ -75,6 +75,27 @@ INVENTORY = {
             "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_plus_short_row_duplicate_weaker_form",
         ],
     },
+    "test_ab_step15_r11_denial": {
+        "count": 16,
+        "cases": [
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_86_article_phrases_after_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_86_article_phrases_before_and_interval_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_86_control_other_subject_article_phrases_stand",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_86_control_set_off_twins_still_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_86_quoted_adverb_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_87_control_other_subject_new_rejoin_shapes_stand",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_87_em_dash_parenthetical_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_87_long_reporting_clause_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_87_present_tense_reporting_verbs_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_88_compound_surnames_stand",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_88_control_mention_itself_new_joins_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_88_intervening_adverbs_stand",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_88_reason_clause_joins_stand",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_89_before_side_article_phrase_complement_stands",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_89_control_plain_doubled_stands_and_genuine_denial_taken_out",
+            "tests.test_ab_step15_r11_denial.TestStep15Round11Denial.test_f15_89_split_complement_parenthetical_stands",
+        ],
+    },
     "test_ab_step15_round7_duration": {
         "count": 25,
         "cases": [
@@ -869,4 +890,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 653
+TOTAL_CASES = 669

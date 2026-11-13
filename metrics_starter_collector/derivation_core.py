@@ -538,25 +538,41 @@ def _derive_t1(captured, universe):
 # (plain adverbs such as soon and already, stacked adverbs
 # joined by and, degree adverbs such as very and pretty, the
 # parenthetical phrases in fact, in practice and for all
-# intents and purposes), the progressive participles becoming
-# and getting, and a parenthesised group inside the run; a
-# run token is never a copula form and never an article, so
-# the run cannot cross a new clause's verb. A parenthetical
+# intents and purposes), the article carrying prepositional
+# phrases read as one phrase token by shape (in the end, in
+# a sense, on the record, at the time, in the long run, by
+# the book), a quoted adverb, the progressive participles becoming
+# and getting, a parenthesised group inside the run, and a
+# group set off by a pair of em or en dashes inside the run; a
+# run token is never a copula form and never a bare article, so
+# the run cannot cross a new clause's verb or a new subject's
+# article standing alone. A parenthetical
 # clause set off by commas between the copula and the listed
 # word (was, Lane noted, withdrawn) is rejoined by the scope
-# tests before the parts are read, and adverbs stacked with
+# tests before the parts are read, its reporting verb read by
+# tense form and its length standing in any number of words,
+# and adverbs stacked with
 # a comma in place of and are rejoined there in the same way.
 # After a conjunction in the mention's
 # own after part, a new subject is read with an article, as
-# a bare name, as an initialled name, or as a pronoun from
+# a bare name (a hyphenated or internal capital surname as a
+# plain one), as an initialled name, or as a pronoun from
 # the closed personal pronoun class, under any clause joining
-# conjunction, the pronoun it still naming
+# conjunction (the reason clause joiners as, since and
+# because among them), with an adverb standing between the
+# conjunction and the subject read as part of the join, the pronoun it still naming
 # the mention itself. The affirming frame family is no
 # denial on either side of a mention: not only and not just
 # in their contiguous forms, the comma split frame (not,
 # only,), and the doubled frame whose complement negates a
 # listed word (not only was it not withdrawn), the
-# complement's run being the same shared run, while a
+# complement's run being the same shared run, so a complement
+# split by a comma parenthetical, whose subject stands
+# inverted after its copula (not only was it not, Lane
+# noted, withdrawn), and a complement carrying an article
+# phrase (not only was the duration not in the end
+# withdrawn) are removed with the frame as their contiguous
+# twins are, while a
 # genuine denial standing beside a frame, outside its
 # scope, still denies. As a bare
 # attributive modifier of another noun (an absent minded note,
@@ -611,20 +627,35 @@ _LISTED_WORD_RE = re.compile(
 # position (flatly, soon, very, pretty, in, fact, and their
 # kin, an open class read by position, not by list), one of
 # the stated participle or as phrases (becoming, getting,
-# noted as, recorded as, said to be and their listed kin), or
-# a parenthesised group set off inside the run (was (Lane
-# noted) withdrawn). A run token is never a copula or stance
-# verb form and never an article, so a run cannot cross a new
-# clause's verb or a new subject's article to reach a listed
-# word, and a capitalised name is no run token either.
+# noted as, recorded as, said to be and their listed kin), a
+# prepositional phrase carrying an article (in the end, in a
+# sense, on the record, at the time, in the long run, by the
+# book: a preposition, the article, and up to three lowercase
+# words, read as one phrase token by its shape), a quoted
+# group set off inside the run (was "flatly" withdrawn), a
+# parenthesised group set off inside the run (was (Lane
+# noted) withdrawn), or a group set off by a pair of em or en
+# dashes inside the run (was — Lane noted — withdrawn). A run
+# token is never a copula or stance verb form and never a
+# bare article, so a run cannot cross a new clause's verb or
+# a new subject's article to reach a listed word: an article
+# stands in a run only inside the prepositional phrase that
+# carries it, and the subject tests still decide whose
+# predication the listed word is, so the draft in the end
+# withdrawn leaves a standing figure standing. A capitalised
+# name is no single run token either.
 _RUN_TOKEN = (
     r"(?:noted\s+as|recorded\s+as|marked\s+as|listed\s+as|"
     r"shown\s+as|described\s+as|reported\s+as|said\s+to\s+be|"
     r"becoming|getting|"
+    r"(?:in|on|at|by|for|to|of|from|with|under|over|after|"
+    r"before|during|through|against)\s+(?:the|a|an)\s+"
+    r"(?:[a-z][\w'-]*\s+){0,2}[a-z][\w'-]*|"
     r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
     r"seemed|remains|remained|become|becomes|became|appear|"
     r"appears|appeared|look|looks|looked|stay|stays|stayed|"
-    r"the|a|an)\b)[a-z][\w'-]*|\([^)]*\))")
+    r"the|a|an)\b)[a-z][\w'-]*|\([^)]*\)|\"[^\"]*\"|"
+    r"—[^—]*—|–[^–]*–)")
 _COPULA_RE = re.compile(
     r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
     r"seemed|remains|remained|become|becomes|became|becoming|"
@@ -726,9 +757,16 @@ def _predicative_subject_denies(prefix, own_after):
     pronoun (and she became withdrawn, and you became
     withdrawn); the joining conjunction is any clause joining
     conjunction (and, but, or, nor, yet, although, though,
-    while, whereas), and a yet standing between the
-    conjunction and the subject (and yet Lane became
-    withdrawn) is part of the join, not the subject. The
+    while, whereas, and the reason clause joiners as, since
+    and because, which join a new clause as the listed
+    conjunctions do), an adverb standing between the
+    conjunction and the subject (and yet Lane, and also Lane,
+    and then Lane became withdrawn: one lowercase word in
+    adverb position, read by position, where yet alone stood
+    before) is part of the join, not the subject, and a name
+    is read by its surname shape: a hyphenated surname
+    (Lane-Smith) and a surname carrying an internal capital
+    (McLane) are name tokens as a plain surname is. The
     pronoun set is the closed personal pronoun class. The
     pronoun it names the mention itself, as an article subject
     naming the duration or one of its carriers does, and
@@ -741,16 +779,18 @@ def _predicative_subject_denies(prefix, own_after):
     if own_after:
         joined = re.search(
             r"\b(?:and|but|or|nor|yet|although|though|while|"
-            r"whereas)\s+(?:yet\s+)?"
+            r"whereas|as|since|because)\s+"
+            r"(?:[a-z][\w'-]*\s+)?"
             r"(?:(?:the|that|this|a|an)\s+|"
             r"(he|she|it|they|we|you|I)\b)", prefix, re.I)
         pronoun = joined.group(1) if joined is not None else None
         if joined is None:
             joined = re.search(
                 r"\b(?:and|but|or|nor|yet|although|though|while|"
-                r"whereas)\s+(?:yet\s+)?"
-                r"(?:(?:[A-Z]\.\s+)+[A-Z][a-z]+|"
-                r"(?:[A-Z]\.\s+)+|[A-Z][a-z]+)\s+", prefix)
+                r"whereas|as|since|because)\s+"
+                r"(?:[a-z][\w'-]*\s+)?"
+                r"(?:(?:[A-Z]\.\s+)+[A-Z][A-Za-z'-]*|"
+                r"(?:[A-Z]\.\s+)+|[A-Z][A-Za-z'-]*)\s+", prefix)
         if joined is not None:
             if pronoun is not None and pronoun.lower() == "it":
                 return True
@@ -788,14 +828,27 @@ def _listed_word_denies(part, own_after=False):
     flatly withdrawn, was pretty flatly withdrawn), the
     parenthetical phrases (was in fact withdrawn, was in
     practice withdrawn, was for all intents and purposes
-    withdrawn), the progressive participles (is becoming
+    withdrawn), the article carrying prepositional phrases
+    (was in the end withdrawn, was on the record withdrawn,
+    read as one phrase token by shape), a quoted adverb (was
+    "flatly" withdrawn), the progressive participles (is becoming
     withdrawn, the copula carrying becoming in its run, and
     becoming standing in the verb set itself; is getting
-    withdrawn), and a parenthesised group inside the run (was
-    (Lane noted) withdrawn) all stand in the run. A run token
-    is never a copula or stance verb form and never an
+    withdrawn), a parenthesised group inside the run (was
+    (Lane noted) withdrawn), and a group set off by a pair of
+    em or en dashes inside the run (was — Lane noted —
+    withdrawn) all stand in the run. A run token
+    is never a copula or stance verb form and never a bare
     article, so the run cannot cross a new clause's verb or a
-    new subject's article. A parenthetical clause set off by
+    new subject's article standing alone. The subject of the
+    predication may also stand inverted, immediately after
+    the copula, in the frame and question order (was it not
+    withdrawn): an anaphoric pronoun in that position, with a
+    negation standing between it and the listed word, is the
+    mention's own subject, so a doubled frame complement
+    split by a parenthetical (not only was it not, Lane
+    noted, withdrawn) reads as the predication it states
+    before the frame cleaning reads it. A parenthetical clause set off by
     commas between the copula and the word is rejoined by the
     scope tests before this test reads the part, as
     _merge_parenthetical_parts states, and adverbs stacked
@@ -816,6 +869,13 @@ def _listed_word_denies(part, own_after=False):
         if copula is not None:
             if _predicative_subject_denies(
                     before_word[:copula.start()], own_after):
+                return True
+            inverted = re.match(
+                r"[a-z]+\s+(?:it|that|this)\b",
+                before_word[copula.start():], re.I)
+            if inverted is not None and re.search(
+                    r"\b(?:not|never)\b|\w+n't\b",
+                    before_word[copula.start():], re.I) is not None:
                 return True
             continue
         if match.group(1).lower() == "wrong" and \
@@ -902,14 +962,24 @@ def _join_split_frame_parts(parts):
     return parts
 
 
+# A reporting verb is read by its tense form, not by tense
+# enumeration: the named reporting verbs in their past forms
+# and in their present third person forms (noted and notes,
+# said and says, observed and observes, pointed out and
+# points out), and beside them any verb form in the past
+# tense ending in ed or the present third person ending in
+# s, the same family in either tense.
 _REPORTING_VERB = (
-    r"(?:noted|said|observed|remarked|reported|recorded|added|"
-    r"wrote|commented|explained|stated|confirmed|declared|"
-    r"announced|asserted|pointed\s+out|[a-z]+ed)")
+    r"(?:noted|notes|said|says|observed|observes|remarked|"
+    r"remarks|reported|reports|recorded|records|added|adds|"
+    r"wrote|writes|commented|comments|explained|explains|"
+    r"stated|states|confirmed|confirms|declared|declares|"
+    r"announced|announces|asserted|asserts|pointed\s+out|"
+    r"points\s+out|[a-z]+ed|[a-z]+s)")
 _PARENTHETICAL_PART_RE = re.compile(
     r"^\s*(?:(?:in|for|by|as|to|at|on|of)\s+"
     r"(?:[a-z][\w'-]*\s+){0,5}[a-z][\w'-]*|"
-    r"(?:as\s+)?(?:[A-Za-z][\w'.]*\s+){0,9}"
+    r"(?:as\s+)?(?:[A-Za-z][\w'.]*\s+)*"
     + _REPORTING_VERB + r")\s*$", re.I)
 _ADVERB_CONTINUATION_RE = re.compile(
     r"^\s*(?:and\s+)?(?:[a-z][\w'-]*\s+)*?"
@@ -931,9 +1001,11 @@ def _merge_parenthetical_parts(parts, after_side):
     form) splits the predicative construction across three
     comma parts, none of which denies on its own. Where the
     middle part is a parenthetical (a reporting clause of any
-    short length before a reporting verb, such as Lane noted,
-    as Lane noted or as the reviewer Lane quite rightly noted,
-    or a short prepositional phrase such as in fact, in short,
+    length before a reporting verb read by its tense form,
+    such as Lane noted, Lane notes, as Lane noted or as the
+    senior reviewing officer Lane quite rightly and very
+    carefully noted, the words before the verb standing in
+    any number, or a short prepositional phrase such as in fact, in short,
     in practice or for all intents and purposes), the first
     part ends on a copula or its intervening run, and the
     three parts rejoined read as a denial construction under
@@ -949,7 +1021,13 @@ def _merge_parenthetical_parts(parts, after_side):
     part on either side keeps its standing position, and a
     rejoined part whose subject is another subject (the draft
     was, Lane noted, withdrawn) denies nothing under the same
-    subject test and is left split and standing.
+    subject test and is left split and standing. A rejoined
+    doubled affirming frame complement, whose subject stands
+    inverted after the copula (not only was it not, Lane
+    noted, withdrawn, and its in fact twin), denies under the
+    inverted subject rule at _listed_word_denies, is merged
+    on the same terms, and is then removed with its frame by
+    the frame cleaning, so the affirmed figure stands.
     """
     parts = list(parts)
     idx = 0
