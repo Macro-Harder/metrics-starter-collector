@@ -1094,25 +1094,71 @@ def _derive_t2(captured, universe, t1):
                             rule_name="T-2 interval rule")
 
 
+_RECORDED_FOR_STEP_RE = re.compile(
+    r"\brecorded\s+for\s+Step\s+(\d+)\b", re.I)
+_APPENDIX_PART_RE = re.compile(r"\bappendix\b", re.I)
+
+
+def _attribution_candidate(part):
+    """The attribution a clause part offers, as (tier, step).
+
+    A part carrying a denial marker, under the standing before
+    and after negation sets or a listed word in a denial
+    construction, is denial scoped: it offers no attribution at
+    all, whatever step it names, a recorded for wording inside
+    such a part included, because the part states a non recording
+    or a denial about its own subject, not what this figure was
+    recorded for. The affirming not only form carries no denial,
+    as on the after side negation test. Any other part naming a
+    step offers that step in one of three tiers: tier 0, a part
+    stating what the figure was recorded for, which offers the
+    step its recorded for wording names; tier 1, a part merely
+    naming a step; tier 2, a part naming a step only inside an
+    appendix clause, which names the step as the subject of its
+    appendix and not as the figure's step. A part naming no step
+    offers nothing.
+    """
+    cleaned = re.sub(r"\bnot\s+only\b", "", part, flags=re.I)
+    if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
+            _AFTER_NEGATION_RE.search(cleaned) is not None or \
+            _listed_word_denies(cleaned):
+        return None
+    recorded = _RECORDED_FOR_STEP_RE.search(part)
+    if recorded is not None:
+        return (0, int(recorded.group(1)))
+    step, _figure = _clause_subject(part)
+    if step is None:
+        return None
+    if _APPENDIX_PART_RE.search(part) is not None:
+        return (2, step)
+    return (1, step)
+
+
 def _t4_banked_durations(captured):
     """Banked durations in the ledger, as (step, hours, interval form).
 
     A BANKED mention denied in its own clause feeds no duration,
     under the same negation handling the T-2 BANKED alternative
     takes in _banked_duration_stands. Each figure is attributed
-    to the step its own clause neighbourhood names, under the
-    clause scope the duration helpers already use: the before
-    and after fragments _clause_fragments computes for the
-    mention. Precedence inside that neighbourhood: the step
-    named inside the mention's own clause part governs first;
-    where the own part names no step, a step named in an after
-    part governs, nearest part first, because a part after the
-    figure states what the figure was recorded for; where no
-    after part names a step, a step named in a before part
-    governs, nearest part first. A figure whose neighbourhood
-    names no step keeps the line's first Step token, the standing
-    attribution, because that token is the only step the line
-    names for it.
+    to the step its own sentence scope names. The mention's own
+    clause part is read under the clause scope the duration
+    helpers already use, the before and after fragments
+    _clause_fragments computes for the mention, and a step named
+    there governs first. Where the own part names no step, the
+    search widens to the mention's whole sentence scope, the
+    fragments _sentence_scope_fragments computes: every comma,
+    colon and semicolon part of that sentence, the parts beyond
+    the first semicolon included, the denial scoping keeping its
+    own semicolon breaks unchanged. Precedence over those parts,
+    each tier searched with after parts before before parts and
+    the nearest part first on each side: first a part stating
+    what the figure was recorded for, then a part merely naming
+    a step, then a part naming a step only inside an appendix
+    clause. A denial scoped part does not attribute at all, in
+    any tier, under the test at _attribution_candidate. A figure
+    whose sentence scope names no step keeps the line's first
+    Step token, the standing attribution, because that token is
+    the only step the line names for it.
     """
     found = []
     ledger = _ledger_piece(captured)
@@ -1139,20 +1185,26 @@ def _t4_banked_durations(captured):
             before, after, match.group(0))
         if step is not None:
             return step
-        # The own part names no step: widen to the adjacent parts
-        # of the same sentence scope, the parts of the before and
-        # after fragments beyond the own part. After parts govern
-        # before before parts, nearest part first on each side.
-        after_parts = re.split(r"[,:;]", after)
-        for part in after_parts[1:]:
-            step, _figure = _clause_subject(part)
-            if step is not None:
-                return step
-        before_parts = re.split(r"[,:;]", before)
-        for part in reversed(before_parts[:-1]):
-            step, _figure = _clause_subject(part)
-            if step is not None:
-                return step
+        # The own part names no step: widen to the parts of the
+        # mention's whole sentence scope beyond the own part, the
+        # first segment on each side being the own part's own
+        # segment. The parts stand in side and distance order,
+        # after parts nearest first, then before parts nearest
+        # first, and the tiers at _attribution_candidate govern
+        # across that order: a recorded for part ahead of a part
+        # merely naming a step, that ahead of an appendix part,
+        # and a denial scoped part nowhere.
+        wide_before, wide_after = _sentence_scope_fragments(
+            line, match.start(), match.end())
+        after_parts = re.split(r"[,:;]", wide_after)
+        before_parts = re.split(r"[,:;]", wide_before)
+        ordered = after_parts[1:] + \
+            list(reversed(before_parts[:-1]))
+        candidates = [_attribution_candidate(part) for part in ordered]
+        for tier in (0, 1, 2):
+            for candidate in candidates:
+                if candidate is not None and candidate[0] == tier:
+                    return candidate[1]
         return line_step
 
     for line in ledger.text.splitlines():

@@ -393,6 +393,26 @@ INVENTORY = {
             "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_25_negated_duration_no_timestamp_t2_true_ground",
         ],
     },
+    "test_p_step15_r8_attribution": {
+        "count": 15,
+        "cases": [
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_appendix_part_nearest_recorded_for_governs",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_appendix_shows_part_recorded_for_governs",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_after_plain_governs_over_before_plain",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_before_denial_farther_recorded_nearest",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_before_semicolon_subordinate_attributes",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_comma_twin_attributes",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_own_part_governs_over_recorded_for",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_previous_sentence_step_outside_scope",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_recorded_for_parts_nearest_first",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_control_two_after_parts_nearest_first",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_denial_part_alone_does_not_attribute",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_denial_part_nearest_recorded_for_governs",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_part_beyond_second_semicolon_attributes",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_semicolon_after_part_recorded_for_attributes",
+            "tests.test_p_step15_r8_attribution.TestStep15Round8Attribution.test_f15_57_semicolon_denial_then_recorded_for_attributes",
+        ],
+    },
     "test_q_step15_round4_duplicates": {
         "count": 19,
         "cases": [
@@ -609,4 +629,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 448
+TOTAL_CASES = 463
