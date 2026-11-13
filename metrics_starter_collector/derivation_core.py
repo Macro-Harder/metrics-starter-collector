@@ -1148,7 +1148,16 @@ def _subclause_scoped_elsewhere(part, mention_step, mention_figure):
     to another named subject in plain words, a definite noun
     phrase or a no or none subject phrase naming a thing that is
     not the duration, is likewise scoped to that other subject.
+    A part whose recorded for wording is falsity scoped, under
+    the test at _falsity_scoped_recorded_for in the attribution
+    passages below, is scoped to that recording: a falsity
+    predicate stated of a recording (the claim recorded for
+    Step 2 was wrong) denies the attribution of that recording,
+    not the figure itself, so its listed word does not reach a
+    mention standing in another part.
     """
+    if _falsity_scoped_recorded_for(part):
+        return True
     step, figure = _clause_subject(part)
     if mention_step is not None and step is not None and \
             step != mention_step:
@@ -1534,30 +1543,56 @@ _RECORDED_FOR_STEP_RE = re.compile(
     r"\brecorded\s+for\s+Step\s+(\d+)\b", re.I)
 _APPENDIX_PART_RE = re.compile(r"\bappendix\b", re.I)
 _FALSITY_RE = re.compile(
-    r"\bin\s+error\b|\bfalse\b|\bincorrect\b|\bmistaken\b|"
-    r"\berroneous\b|\bincorrectly\b|\bmistakenly\b", re.I)
-_SEGMENT_SPLIT_RE = re.compile(
-    r"[,:;.!?]|\s+(?:and|but)\s+", re.I)
+    r"\bin\s+error\b|\bfalse\b|\bwrong\b|\bincorrect\b|"
+    r"\bmistaken\b|\berroneous\b|\buntrue\b|\binvalid\b|"
+    r"\bspurious\b|\bfabricated\b|"
+    r"\bincorrectly\b|\bmistakenly\b|\berroneously\b|"
+    r"\bfalsely\b|\bwrongly\b", re.I)
+_SEGMENT_CONJUNCTION_RE = re.compile(
+    r"\s+(?:and|but|or|while)\s+", re.I)
+
+
+def _segment_bounds(text):
+    """The segment bounds of a text, as (start, end) pairs.
+
+    A comma, colon, semicolon, question mark or exclamation
+    mark is always a bound. A full stop is a bound only where
+    it ends a sentence under the true sentence boundary rule
+    at _dot_ends_sentence, the same rule the sentence scope
+    readings follow: a stop inside a decimal, a dotted form, a
+    person's initials, or an abbreviation the rule holds is no
+    end (Dr., Prof., e.g.) does not cut a segment, so a falsity
+    predicate standing after such a stop in the same clause
+    stands in the wording's own segment. A conjunction joining
+    two statements is a bound, in the join set the closure
+    fragment reading takes: and, but, or and while.
+    """
+    bounds = []
+    for pos, char in enumerate(text):
+        if char in ",:;!?" or \
+                (char == "." and _dot_ends_sentence(text, pos)):
+            bounds.append((pos, pos + 1))
+    for match in _SEGMENT_CONJUNCTION_RE.finditer(text):
+        bounds.append((match.start(), match.end()))
+    bounds.sort()
+    return bounds
 
 
 def _segment_of(text, pos):
     """The segment of a text around a position, and its offset.
 
-    A segment is the run between two segment bounds: a comma,
-    colon, semicolon or sentence stop, or a conjunction joining
-    two statements (and, but). A recorded for wording and the
-    words that govern it stand in one segment; a denial and a
-    genuine recorded for joined by a conjunction stand in two.
+    A segment is the run between two segment bounds, at
+    _segment_bounds. A recorded for wording and the words that
+    govern it stand in one segment; a denial and a genuine
+    recorded for joined by a conjunction stand in two.
     """
     start = 0
-    for match in _SEGMENT_SPLIT_RE.finditer(text):
-        if match.start() >= pos:
-            break
-        start = match.end()
     end = len(text)
-    for match in _SEGMENT_SPLIT_RE.finditer(text, start):
-        if match.start() >= pos:
-            end = match.start()
+    for bound_start, bound_end in _segment_bounds(text):
+        if bound_start < pos:
+            start = bound_end
+        elif bound_start >= pos and end == len(text):
+            end = bound_start
             break
     return text[start:end], pos - start
 
@@ -1567,13 +1602,23 @@ def _recorded_for_scoped(part, match):
 
     The wording is read inside its own segment of the part. It
     is denial scoped where its segment carries a falsity
-    predicate (in error, false, incorrect, mistaken, erroneous
-    and their adverb forms), a listed word in a denial
-    construction, or a negation marker standing before the
-    wording (no interval duration was recorded for, it was not
-    recorded for). A falsity predicate is a denial predicate
-    beyond the marker sets: a recording stated to be in error
-    or false is denied, not offered, whatever step it names.
+    predicate (in error, false, wrong, incorrect, mistaken,
+    erroneous, untrue, invalid, spurious, fabricated, and the
+    adverb forms of the listed bases), a listed word in a
+    denial construction, or a negation marker standing before
+    the wording (no interval duration was recorded for, it was
+    not recorded for). A falsity predicate is a denial
+    predicate beyond the marker sets: a recording stated to be
+    in error or false is denied, not offered, whatever step it
+    names and whatever subject carries the predicate, a plain
+    common noun subject (the entry recorded for Step 2 was
+    wrong) as much as a carrier subject, and the bare form
+    standing after the wording (recorded for Step 2 wrong)
+    with them. The predicate set at _FALSITY_RE is the bound
+    of this limb: the falsity adjectives and participles the
+    register and the round 9 papers name, with their adverb
+    forms; a further synonym stands outside it, as the marker
+    sets' own boundary states for their family.
     """
     segment, _offset = _segment_of(part, match.start())
     cleaned = _clean_affirming_frame(segment)
@@ -1588,6 +1633,59 @@ def _recorded_for_scoped(part, match):
             if negation.start() < offset:
                 return True
     return False
+
+
+def _falsity_scoped_recorded_for(part):
+    """Whether a part's recorded for wording is falsity scoped.
+
+    True where any recorded for wording in the part stands in
+    a segment carrying a falsity predicate, under the falsity
+    limb of _recorded_for_scoped alone: the negation and
+    listed word limbs are not read here, so a plain denial
+    wording (no interval duration was recorded for) does not
+    make its part falsity scoped. The clause scope test at
+    _subclause_scoped_elsewhere reads this to keep a falsity
+    predicate stated of a recording from denying a figure
+    standing in another part.
+    """
+    for match in _RECORDED_FOR_STEP_RE.finditer(part):
+        segment, _offset = _segment_of(part, match.start())
+        cleaned = _clean_affirming_frame(segment)
+        if _FALSITY_RE.search(cleaned) is not None:
+            return True
+    return False
+
+
+_BARE_RECORDED_FOR_RE = re.compile(
+    r"recorded\s+for\s+Step\s+\d+\.?$", re.I)
+
+
+def _bare_recorded_for_part(part):
+    """Whether a part is a bare recorded for wording alone.
+
+    The part, stripped of its surrounding space, is the
+    recorded for wording and nothing else, so the part states
+    no subject of its own: what governs such a part stands in
+    the part before it.
+    """
+    return _BARE_RECORDED_FOR_RE.match(part.strip()) is not None
+
+
+def _standalone_falsity_part(part):
+    """Whether a part states a falsity claim and no wording.
+
+    The part carries a falsity predicate and names no recorded
+    for wording and no step, so its claim is about the
+    recording as such (the recording is in error, the claim is
+    false), and a bare recorded for part standing immediately
+    after it completes that claim. A falsity part carrying its
+    own recorded for wording (the claim recorded for Step 2 is
+    false) scopes that wording alone and completes nothing.
+    """
+    cleaned = _clean_affirming_frame(part)
+    return _FALSITY_RE.search(cleaned) is not None and \
+        _RECORDED_FOR_STEP_RE.search(part) is None and \
+        re.search(r"Step\s+\d+\b", part) is None
 
 
 def _genuine_recorded_for_step(part):
@@ -1616,9 +1714,22 @@ def _fallback_step(line):
     segment carries a negation marker, a falsity predicate, or
     a listed word in a denial construction is passed over, and
     the first token standing outside denial scope governs.
-    Where every token stands inside denial scope, and where the
-    line names no step at all, the figure keeps no step.
+    A token standing in a segment that is a bare recorded for
+    wording, where the segment immediately before it in the
+    line is a standalone falsity segment, is likewise passed
+    over: that wording is denial scoped by the falsity claim
+    it completes, under the same bound as at
+    _attribution_candidate, and the fallback does not land on
+    it. Where every token stands inside denial scope, and
+    where the line names no step at all, the figure keeps no
+    step.
     """
+    spans = []
+    span_start = 0
+    for bound_start, bound_end in _segment_bounds(line):
+        spans.append((span_start, bound_start))
+        span_start = bound_end
+    spans.append((span_start, len(line)))
     for match in re.finditer(r"Step (\d+)\b", line):
         segment, _offset = _segment_of(line, match.start())
         cleaned = _clean_affirming_frame(segment)
@@ -1627,11 +1738,21 @@ def _fallback_step(line):
                 _FALSITY_RE.search(cleaned) is not None or \
                 _listed_word_denies(cleaned):
             continue
+        span_index = next(
+            idx for idx, (lo, hi) in enumerate(spans)
+            if lo <= match.start() < hi or
+            (idx == len(spans) - 1 and match.start() == hi))
+        if span_index >= 1 and \
+                _bare_recorded_for_part(segment) and \
+                _standalone_falsity_part(
+                    line[spans[span_index - 1][0]:
+                         spans[span_index - 1][1]]):
+            continue
         return int(match.group(1))
     return None
 
 
-def _attribution_candidate(part):
+def _attribution_candidate(part, previous_part=None):
     """The attribution a clause part offers, as (tier, step).
 
     A part stating what the figure was recorded for, in a
@@ -1656,9 +1777,24 @@ def _attribution_candidate(part):
     naming a step only inside an appendix clause, which names
     the step as the subject of its appendix and not as the
     figure's step. A part naming no step offers nothing.
+
+    One further scope stands on the previous part, where the
+    caller supplies it: a bare recorded for part, a part that
+    is the wording alone with no subject of its own, standing
+    immediately after a standalone falsity part (at
+    _standalone_falsity_part: a falsity claim naming no wording
+    and no step, as in the recording is in error, recorded for
+    Step 2) is completed by that claim and is denial scoped by
+    it, so it offers nothing. A falsity part carrying its own
+    wording completes nothing, and a recorded for part carrying
+    its own subject is governed by its own segment alone.
     """
     genuine = _genuine_recorded_for_step(part)
     if genuine is not None:
+        if previous_part is not None and \
+                _bare_recorded_for_part(part) and \
+                _standalone_falsity_part(previous_part):
+            return None
         return (0, genuine)
     cleaned = _clean_affirming_frame(part)
     if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
@@ -1756,14 +1892,24 @@ def _t4_banked_durations(captured):
         # first, and the tiers at _attribution_candidate govern
         # across that order: a recorded for part ahead of a part
         # merely naming a step, that ahead of an appendix part,
-        # and a denial scoped part nowhere.
+        # and a denial scoped part nowhere. Each part is read
+        # with the part standing immediately before it in
+        # sentence order, so a bare recorded for part completed
+        # by a standalone falsity claim in that part is scoped
+        # by it, under the bound at _attribution_candidate.
         wide_before, wide_after = _sentence_scope_fragments(
             line, match.start(), match.end())
         after_parts = re.split(r"[,:;]", wide_after)
         before_parts = re.split(r"[,:;]", wide_before)
-        ordered = after_parts[1:] + \
-            list(reversed(before_parts[:-1]))
-        candidates = [_attribution_candidate(part) for part in ordered]
+        ordered = [(part, after_parts[idx - 1])
+                   for idx, part in enumerate(after_parts)
+                   if idx >= 1]
+        ordered += [(part, before_parts[idx - 1] if idx >= 1
+                      else None)
+                    for idx, part in reversed(
+                        list(enumerate(before_parts[:-1])))]
+        candidates = [_attribution_candidate(part, previous)
+                      for part, previous in ordered]
         for tier in (0, 1, 2):
             for candidate in candidates:
                 if candidate is not None and candidate[0] == tier:

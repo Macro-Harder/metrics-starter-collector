@@ -813,6 +813,29 @@ INVENTORY = {
             "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_shared_part_falsity_and_genuine_recorded_for",
         ],
     },
+    "test_y_step15_r10_attribution": {
+        "count": 18,
+        "cases": [
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_controls_erroneous_and_subject_discipline",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_kin_predicates_never_attribute",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_kin_predicates_with_genuine_govern_step1",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_alone_attributes_nothing",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_carrier_on_before_side_genuine_governs",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_carrier_subject_does_not_erase_mention",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_carrier_with_genuine_governs_step1",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_non_carrier_subjects_scope",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_80_wrong_with_genuine_recorded_for_governs_step1",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_adjacent_falsity_part_scopes_bare_recorded_for",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_adjacent_falsity_then_genuine_governs",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_control_falsity_with_own_wording_scopes_no_next",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_controls_title_genuine_and_no_title_twin",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_false_or_bound_genuine_governs",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_or_bound_fallback_skips_scoped_step",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_or_bound_genuine_governs",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_title_stop_does_not_insulate_falsity",
+            "tests.test_y_step15_r10_attribution.TestStep15Round10Attribution.test_f15_81_while_bound_genuine_governs",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -822,4 +845,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 616
+TOTAL_CASES = 634
