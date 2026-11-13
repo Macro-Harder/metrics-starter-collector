@@ -2508,6 +2508,17 @@ def _closure_match_spans(text):
     return spans
 
 
+_CLOSURE_JOIN_RE = re.compile(
+    r",|;|:|\s+(?:and|or|but|while)\s+|\s+[-—–]\s+", re.I)
+
+
+def _first_closure_join(text, lo, hi):
+    """The first closure statement join in text[lo:hi], or None."""
+    if hi <= lo:
+        return None
+    return _CLOSURE_JOIN_RE.search(text, lo, hi)
+
+
 def _closure_names_foreign_step(text, match, step):
     """Whether the closure statement at a match names another step.
 
@@ -2518,18 +2529,29 @@ def _closure_names_foreign_step(text, match, step):
     from the completed set, a decimal, or a person's initials is
     no end, a semicolon before the match is no end either, and
     question and exclamation marks are ends. A comma in the
-    closure sentence stays inside the fragment. The fragment is
+    closure sentence stays inside the fragment where no second
+    closure statement stands in the sentence. The fragment is
     also bounded by the neighbouring closure statements in the
-    same sentence: it starts after an earlier closure match in
-    the sentence, and it ends at a semicolon after the match or
-    at the conjunction joining a later closure match in the
-    sentence, so a Step number standing in a different closure
-    statement of the same sentence, or in a clause after the
-    match, is not part of this statement. A Step number in that
-    fragment other than the piece own step makes the statement a
-    closure for that other step, not for this piece. A fragment
-    naming the piece own step, or naming no step at all, keeps
-    its standing reading.
+    same sentence, at the full join set: a comma, a semicolon,
+    and, or, but, while, a colon, or a dash. A join counts as a
+    bound only where it joins two closure statements, that is,
+    where a second closure match stands on its other side in
+    the same sentence. After the match, the fragment ends at
+    the first such join between the match and the nearest
+    later closure match. Before the match, the fragment begins
+    after the first such join following the nearest earlier
+    closure match, so a step named after that earlier match's
+    token, as the completion of the earlier statement, stays
+    with that earlier statement and does not leak into this
+    one; where no join stands between the earlier match and
+    this one, the fragment begins at the earlier match's end,
+    as before. A Step number standing in a different closure
+    statement of the same sentence is therefore not part of
+    this statement. A Step number in that fragment other than
+    the piece own step makes the statement a closure for that
+    other step, not for this piece. A fragment naming the
+    piece own step, or naming no step at all, keeps its
+    standing reading.
     """
     if step is None:
         return False
@@ -2546,13 +2568,19 @@ def _closure_names_foreign_step(text, match, step):
                 (char == "." and _dot_ends_sentence(text, pos)):
             end = pos
             break
-    for span_start, span_end in _closure_match_spans(text):
-        if span_end <= match.start() and span_end > start:
-            start = span_end
-        if span_start >= match.end():
-            join = text.find(" and ", match.end(), span_start)
-            if 0 <= join < end:
-                end = join
+    spans = sorted(_closure_match_spans(text))
+    earlier = [span_end for span_start, span_end in spans
+               if span_end <= match.start() and span_end > start]
+    if earlier:
+        earlier_end = max(earlier)
+        join = _first_closure_join(text, earlier_end, match.start())
+        start = join.end() if join is not None else earlier_end
+    later = [span_start for span_start, span_end in spans
+             if span_start >= match.end()]
+    if later:
+        join = _first_closure_join(text, match.end(), min(later))
+        if join is not None and join.start() < end:
+            end = join.start()
     fragment = text[start:end]
     for found in re.finditer(r"Step (\d+)\b", fragment):
         if int(found.group(1)) != step:

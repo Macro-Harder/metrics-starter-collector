@@ -539,6 +539,23 @@ INVENTORY = {
             "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_38_control_contested_counted_step_claimed",
         ],
     },
+    "test_s_step15_r9_closure": {
+        "count": 12,
+        "cases": [
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_after_colon_dash_foreign_does_not_poison",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_after_comma_foreign_does_not_poison_own_fail",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_after_or_but_while_foreign_does_not_poison",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_control_after_and_semicolon_own_fail_counts",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_control_comma_inside_single_own_statement_counts",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_control_comma_inside_single_statement_stays_foreign",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_control_pattern_precedence_field_form_first",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_control_two_steps_one_statement_stays_discarded",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_step_after_earlier_token_comma_does_not_leak",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_step_after_earlier_token_field_form_next_counts",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_step_after_earlier_token_named_own_step_reads_fail",
+            "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_step_after_earlier_token_other_joins_do_not_leak",
+        ],
+    },
     "test_t_step15_round5_counting": {
         "count": 11,
         "cases": [
@@ -684,4 +701,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 508
+TOTAL_CASES = 520
