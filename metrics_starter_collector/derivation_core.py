@@ -518,8 +518,22 @@ def _derive_t1(captured, universe):
 # none recorded, absent, withdrawn, retracted, was wrong, is
 # wrong), quoted and retracted, or only discussed or named as a
 # heading. The before set and the after set carry the same listed
-# words, so a listed word works in either position. A comma or a
-# colon opens a new clause part: a marker in another part takes
+# words, so a listed word works in either position. Four of the
+# listed words (absent, withdrawn, retracted and wrong) count
+# only in a denial construction: in predicative position, with
+# a copula or a stance verb and a subject that is the duration
+# itself or one of its anaphoric carriers (claim, note,
+# statement, log, record), in the anaphoric form the wrong one,
+# or standing attributively on the duration itself, whether the
+# duration follows the word inside the part or the word stands
+# at the end of the part before the mention. As a bare
+# attributive modifier of another noun (an absent minded note,
+# a retracted note that still records, a withdrawn draft, a
+# wrong date) such a word denies nothing and takes nothing out.
+# Figures in the scope comparison are read in digits or in
+# number words, so a figure stated in words compares the same
+# way a digit figure compares. A comma or a colon opens a new
+# clause part: a marker in another part takes
 # the mention out only where that part is about the mention's own
 # subject. A part naming a different step or a different figure is
 # scoped to that other subject, and so is a part carrying a bare
@@ -538,19 +552,28 @@ def _derive_t1(captured, universe):
 # handling, a known boundary of the cure.
 _BEFORE_NEGATION_RE = re.compile(
     r"\b(?:no|not|never|without|cannot|unrecorded|missing|omitted|"
-    r"denied|removed|nowhere|none|absent|withdrawn|retracted)\b|"
-    r"\b\w+n't\b|\bwas\s+wrong\b|\bis\s+wrong\b|"
+    r"denied|removed|nowhere|none)\b|"
+    r"\b\w+n't\b|"
     r"\bfails?\s+to\b|\bfailed\s+to\b|\brefus(?:e|es|ed)\s+to\b",
     re.I)
 _AFTER_NEGATION_RE = re.compile(
-    r"\b(?:not|never|no|cannot|absent|withdrawn|retracted|"
+    r"\b(?:not|never|no|cannot|"
     r"unrecorded|missing|omitted|denied|removed|nowhere|none)\b|"
-    r"\b\w+n't\b|\bwas\s+wrong\b|\bis\s+wrong\b", re.I)
+    r"\b\w+n't\b", re.I)
+_LISTED_WORD_RE = re.compile(
+    r"\b(absent|withdrawn|retracted|wrong)\b", re.I)
+_COPULA_RE = re.compile(
+    r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
+    r"seemed|remains|remained)\s+(?:the\s+)?$", re.I)
+_ANAPHORIC_SUBJECT_RE = re.compile(
+    r"\b(?:duration|interval|banked|claim|note|statement|log|"
+    r"record)\b", re.I)
 _RETRACTION_RE = re.compile(
-    r"\b(?:withdrawn|retracted)\b|\bwas\s+wrong\b|\bis\s+wrong\b",
+    r"\b(?:withdrawn|retracted)\b|\bwas\s+wrong\b|\bis\s+wrong\b|"
+    r"\bis\s+the\s+wrong\s+one\b",
     re.I)
 _RETRACTION_REF_RE = re.compile(
-    r"\bthat\s+(?:claim|note|statement)\b", re.I)
+    r"\bthat\s+(?:claim|note|statement|record)\b", re.I)
 _SENTENCE_END_RE = re.compile(r"[.;]\"?(?:\s|$)")
 _NON_ASSERTIVE_RE = re.compile(
     r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
@@ -577,22 +600,119 @@ def _clause_fragments(line, start, end):
     return before, after
 
 
-def _after_is_negated(after):
+def _predicative_subject_denies(prefix, own_after):
+    """Whether a predicative listed word denies the mention.
+
+    In the mention's own after part the subject is the mention
+    itself, unless the part joins a new subject clause with a
+    conjunction, in which case that subject decides. In any
+    other part the subject stands in the text before the copula:
+    it denies where it names the duration, one of its anaphoric
+    carriers, or a bare anaphoric pronoun, and it does not deny
+    where it names another subject, as a wrong date does not.
+    """
+    if own_after:
+        joined = re.search(
+            r"\b(?:and|but|although|though|while)\s+"
+            r"(?:the|that|this|a|an)\s+", prefix, re.I)
+        if joined is not None:
+            return _ANAPHORIC_SUBJECT_RE.search(
+                prefix[joined.start():]) is not None
+        return True
+    stripped = prefix.strip()
+    if not stripped:
+        return True
+    if _ANAPHORIC_SUBJECT_RE.search(prefix) is not None:
+        return True
+    return re.search(r"\b(?:that|this|it)$", stripped,
+                     re.I) is not None
+
+
+def _listed_word_denies(part, own_after=False):
+    """Whether a listed word stands in a denial construction.
+
+    The listed words absent, withdrawn, retracted and wrong
+    count only where the word is predicative with a denying
+    subject, where wrong stands in the anaphoric form the wrong
+    one, or where the word stands attributively on the duration
+    itself inside the part, before a duration word or a BANKED
+    word, or after the duration word it modifies. A bare
+    attributive use on another noun counts for nothing.
+    """
+    for match in _LISTED_WORD_RE.finditer(part):
+        before_word = part[:match.start()]
+        after_word = part[match.end():]
+        copula = _COPULA_RE.search(before_word)
+        if copula is not None:
+            if _predicative_subject_denies(
+                    before_word[:copula.start()], own_after):
+                return True
+            continue
+        if match.group(1).lower() == "wrong" and \
+                re.search(r"\bthe\s+$", before_word, re.I) is not None and \
+                re.match(r"\s+one\b", after_word, re.I) is not None:
+            return True
+        if re.match(r"\s+(?:banked\s+)?(?:interval\s+)?duration\b",
+                    after_word, re.I) is not None or \
+                re.match(r"\s+banked\b", after_word, re.I) is not None:
+            return True
+        if re.search(r"(?:duration|banked)\s+$", before_word,
+                     re.I) is not None:
+            return True
+    return False
+
+
+_LISTED_SUFFIX_RE = re.compile(
+    r"\b(?:absent|withdrawn|retracted|wrong)(?:\s+banked)?\s*$",
+    re.I)
+
+
+def _after_is_negated(after, own=False):
     cleaned = re.sub(r"\bnot\s+only\b", "", after, flags=re.I)
-    return _AFTER_NEGATION_RE.search(cleaned) is not None
+    return _AFTER_NEGATION_RE.search(cleaned) is not None or \
+        _listed_word_denies(cleaned, own_after=own)
+
+
+_NUMBER_WORD_VALUES = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17,
+    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
+    "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
+    "eighty": 80, "ninety": 90}
+_FIGURE_RE = re.compile(
+    r"(\d+(?:\.\d+)?|"
+    r"(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)"
+    r"(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|"
+    r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
+    r"twelve|thirteen|fourteen|fifteen|sixteen|seventeen|"
+    r"eighteen|nineteen|twenty)\s*hours?\b", re.I)
+
+
+def _figure_value(token):
+    if token[0].isdigit():
+        return float(token)
+    return float(sum(_NUMBER_WORD_VALUES[part]
+                     for part in re.split(r"[ -]+", token.lower())))
 
 
 def _clause_subject(text):
-    """The step and the hours figure a clause part names."""
+    """The step and the hours figure a clause part names.
+
+    The figure is read in digits or in number words: the common
+    forms one through twenty, the tens, and a tens form with a
+    unit, each standing before an hour or hours word.
+    """
     step = re.search(r"Step (\d+)\b", text)
-    figure = re.search(r"(\d+(?:\.\d+)?)\s*hours?\b", text, re.I)
+    figure = _FIGURE_RE.search(text)
     return (int(step.group(1)) if step else None,
-            float(figure.group(1)) if figure else None)
+            _figure_value(figure.group(1)) if figure else None)
 
 
 _OTHER_SUBJECT_RE = re.compile(
     r"\bthe\s+(?!duration\b|interval\b|banked\b|step\b|claim\b|"
-    r"note\b|statement\b|log\b)[a-z]+", re.I)
+    r"note\b|statement\b|log\b|record\b)[a-z]+", re.I)
 _OTHER_SUBJECT_HEAD_RE = re.compile(
     r"^\s*(?:no|none)\s+(?!duration\b|interval\b|banked\b|"
     r"recorded\b|such\b)[a-z]+", re.I)
@@ -658,7 +778,12 @@ def _before_negated_in_scope(before, after, mention):
     parts = re.split(r"[,:]", before)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
-        if _BEFORE_NEGATION_RE.search(part) is None:
+        denied = _BEFORE_NEGATION_RE.search(part) is not None or \
+            _listed_word_denies(part)
+        if idx == len(parts) - 1 and \
+                _LISTED_SUFFIX_RE.search(part) is not None:
+            denied = True
+        if not denied:
             continue
         if idx == len(parts) - 1:
             return True
@@ -677,7 +802,7 @@ def _after_negated_in_scope(after, before, mention):
     parts = re.split(r"[,:]", after)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
-        if not _after_is_negated(part):
+        if not _after_is_negated(part, own=idx == 0):
             continue
         if idx == 0:
             return True
@@ -688,6 +813,7 @@ def _after_negated_in_scope(after, before, mention):
 
 _ABBREVIATION_WORDS = frozenset({
     "e.g", "i.e", "etc", "cf", "vs", "dr", "mr", "mrs", "ms",
+    "prof", "capt", "lt", "col", "gen", "sen", "rep", "gov",
     "st", "approx", "fig", "dept", "est", "inc", "ltd", "jr",
     "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
 
@@ -718,9 +844,9 @@ def _retracted_in_following_sentence(line, end):
     """Whether the next sentence on the line retracts the mention.
 
     The following sentence must name the claim it takes back
-    (that claim, that note or that statement) and carry a
-    retraction marker, so an unrelated following sentence never
-    takes a standing mention out.
+    (that claim, that note, that statement or that record) and
+    carry a retraction marker, so an unrelated following sentence
+    never takes a standing mention out.
     """
     rest = line[end:]
     match = _find_sentence_end(rest)

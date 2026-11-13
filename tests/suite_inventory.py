@@ -51,6 +51,36 @@ INVENTORY = {
             "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_plus_short_row_duplicate_weaker_form",
         ],
     },
+    "test_ab_step15_round7_duration": {
+        "count": 25,
+        "cases": [
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_49_control_log_and_statement_forms_still_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_49_control_plain_other_subjects_still_scope_elsewhere",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_49_record_withdrawn_after_clause_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_49_record_withdrawn_before_clause_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_49_record_withdrawn_unvalued_interval_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_absent_minded_clerk_after_position_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_absent_minded_note_banked_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_absent_minded_note_interval_path_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_control_denial_positions_still_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_retracted_note_still_records_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_withdrawn_draft_replaced_by_duration_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_50_wrong_date_beside_standing_duration_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_51_completed_title_set_retraction_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_51_control_dr_mr_and_true_end_after_abbreviation",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_51_control_title_before_mention_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_51_prof_and_capt_banked_retraction_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_51_prof_and_capt_unvalued_retraction_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_53_control_digit_different_figure_still_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_53_different_figure_in_words_scopes_elsewhere",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_53_same_figure_in_words_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_53_tens_word_different_figures_scope_elsewhere",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_54_control_wrong_other_noun_stands",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_54_is_the_wrong_one_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_54_wrong_banked_attributive_taken_out",
+            "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_54_wrong_interval_duration_taken_out",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -545,4 +575,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 394
+TOTAL_CASES = 419
