@@ -506,22 +506,102 @@ def _derive_t1(captured, universe):
                             rule_name="T-1 interval rule")
 
 
+# Negation, denial and retraction markers for the duration tests.
+# A marker in the clause fragment before a mention, or in the
+# fragment after it up to the end of its sentence, takes that
+# mention out: the mention is denied in any auxiliary form (was not,
+# has not been, was never, does not), after a comma, after
+# intervening words, or as a contraction, or it is denied by another
+# verb (cannot, absent, without, fails to record), quoted and
+# retracted, or only discussed or named as a heading. A neighbouring
+# line that denies any duration stands takes out a mention that
+# carries no value of its own.
+_BEFORE_NEGATION_RE = re.compile(
+    r"\b(?:no|not|never|without|cannot)\b|\b\w+n't\b|"
+    r"\bfails?\s+to\b|\bfailed\s+to\b", re.I)
+_AFTER_NEGATION_RE = re.compile(
+    r"\b(?:not|never|no|cannot|absent|withdrawn|retracted)\b|"
+    r"\b\w+n't\b|\bwas\s+wrong\b|\bis\s+wrong\b", re.I)
+_NON_ASSERTIVE_RE = re.compile(
+    r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
+    r"\bsee\s+above\b", re.I)
+_NEIGHBOUR_DENIAL_RE = re.compile(
+    r"\bno\s+(?:such\s+)?(?:interval\s+)?duration\b|"
+    r"\bduration\s+(?:is|was)\s+not\s+recorded\b", re.I)
+
+
+def _clause_fragments(line, start, end):
+    """The clause fragments around a mention in one line.
+
+    The before fragment runs from the last sentence or clause break
+    before the mention; the after fragment runs to the end of the
+    mention's own sentence.
+    """
+    before_all = line[:start]
+    cut = max(before_all.rfind("."), before_all.rfind(";"))
+    before = before_all[cut + 1:]
+    after_all = line[end:]
+    stops = [i for i in (after_all.find("."), after_all.find(";"))
+             if i >= 0]
+    after = after_all[:min(stops)] if stops else after_all
+    return before, after
+
+
+def _after_is_negated(after):
+    cleaned = re.sub(r"\bnot\s+only\b", "", after, flags=re.I)
+    return _AFTER_NEGATION_RE.search(cleaned) is not None
+
+
+def _neighbouring_denial(lines, idx):
+    for other in (idx - 1, idx + 1):
+        if 0 <= other < len(lines) and \
+                _NEIGHBOUR_DENIAL_RE.search(lines[other]):
+            return True
+    return False
+
+
 def _interval_duration_mentions_stand(text):
     """Whether an interval duration stands in a text.
 
-    A mention inside a negated sentence does not stand: a negation
-    word in the same clause before the mention, or a negation word
-    directly after it, takes that mention out. Any other mention
-    stands.
+    A mention inside a negated, denied or retracted statement does
+    not stand, in any of the shapes the markers above cover. Any
+    other mention stands.
+    """
+    lines = text.splitlines()
+    for idx, line in enumerate(lines):
+        for m in re.finditer(r"interval duration", line, re.I):
+            before, after = _clause_fragments(line, m.start(),
+                                              m.end())
+            if _BEFORE_NEGATION_RE.search(before):
+                continue
+            if _after_is_negated(after):
+                continue
+            if _NON_ASSERTIVE_RE.search(after):
+                continue
+            valued = re.search(r"\d", before + after) is not None \
+                or "banked" in before.lower()
+            if not valued and _neighbouring_denial(lines, idx):
+                continue
+            return True
+    return False
+
+
+def _banked_duration_stands(text):
+    """Whether a BANKED line carrying a number stands as a duration.
+
+    The BANKED alternative takes the same negation handling as the
+    interval duration path: a BANKED mention denied in its own
+    clause, before it or after it, stands as no duration.
     """
     for line in text.splitlines():
-        for m in re.finditer(r"interval duration", line, re.I):
-            before = line[:m.start()]
-            after = line[m.end():]
-            if re.search(r"\b(?:no|not|never)\b[^.;]*$", before, re.I):
+        for m in re.finditer(r"BANKED", line):
+            before, after = _clause_fragments(line, m.start(),
+                                              m.end())
+            if re.search(r"\d", after) is None:
                 continue
-            if re.search(r"^\s*(?:is\s+)?(?:not|never)\b", after,
-                         re.I):
+            if _BEFORE_NEGATION_RE.search(before):
+                continue
+            if _after_is_negated(after):
                 continue
             return True
     return False
@@ -530,7 +610,7 @@ def _interval_duration_mentions_stand(text):
 def _t2_duration_stands(text):
     """The T-2 duration test over a transition log text."""
     return _interval_duration_mentions_stand(text) or \
-        re.search(r"BANKED[^\n]*\d", text) is not None
+        _banked_duration_stands(text)
 
 
 def _derive_t2(captured, universe, t1):
@@ -1779,6 +1859,14 @@ def _f2_ranked_pieces(captured, step):
                 r = 3
                 m = re.search(r"(?:round|reaudit)-?(\d+)", name)
                 num = int(m.group(1)) if m else 0
+            if cls == CLS_REGATE_RECORD:
+                # G-02 order: base form first, regate variants last.
+                # A regate record ranks behind every piece that is
+                # not itself a regate, numbered round or re-audit
+                # named rulings included, so a regate is the counted
+                # first ruling only where no earlier ruling piece
+                # stands.
+                r = 4
             ranked.append((r, num, name, p))
     ranked.sort(key=lambda item: (item[0], item[1], item[2]))
     # Selection within each identity group, and nothing else: where

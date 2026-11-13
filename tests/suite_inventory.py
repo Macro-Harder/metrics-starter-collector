@@ -333,6 +333,36 @@ INVENTORY = {
             "tests.test_q_step15_round4_duplicates.TestStep15Round4Duplicates.test_f15_27_zero_byte_duplicate_step_record_sound_reads",
         ],
     },
+    "test_r_step15_round4_core": {
+        "count": 25,
+        "cases": [
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_adjudication_first_fail_with_regate",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_numbered_ruling_without_regate_counts_fail",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_recycled_step_counted_once_by_first_ruling",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_regate_alone_counts_as_first_ruling",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_regate_conflicting_base_closures_not_derivable",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_regate_round_ruling_fail_beside_record_pass",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_control_unnumbered_reaudit_fail_with_regate",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_mixed_steps_numbered_fail_beside_clean_pass",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_reaudit1_fail_ruling_with_regate_counts_not_approved",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_reaudit1_pass_ruling_with_regate_fail_counts_plain",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_round1_fail_ruling_with_regate_counts_not_approved",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_28_round2_fail_ruling_with_regate_counts_not_approved",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_after_auxiliary_negations_date_only_true_ground",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_after_comma_intervening_contraction_date_only",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_after_negations_no_timestamp_true_ground",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_control_banked_number_without_interval_words_stands",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_control_before_negation_still_true_ground",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_control_genuine_banked_duration_still_stands",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_control_refusal_genuine_duration_unknown_version",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_control_standing_beside_negated_mention_still_stands",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_negated_banked_line_with_number_date_only",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_neighbouring_clause_denials_date_only",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_other_denial_shapes_date_only",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_quoted_and_retracted_mentions_date_only",
+            "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_refusal_negated_mention_t2_missing_no_feeder",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -342,4 +372,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 241
+TOTAL_CASES = 266
