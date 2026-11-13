@@ -1411,6 +1411,17 @@ _INTRODUCING_ABBREVIATION_WORDS = frozenset({"e.g", "i.e"})
 _JOINING_ABBREVIATION_WORDS = frozenset({"cf", "vs", "viz", "a.k.a"})
 
 
+# Words that open a sentence of their own and so can never
+# stand as the name a joining abbreviation governs: the
+# temporal and discourse sentence openers. A joining
+# abbreviation stop before one of these, or before a token
+# opening on a figure, stands at a true sentence end.
+_SENTENCE_OPENER_WORDS = frozenset({
+    "yesterday", "today", "tomorrow", "afterwards", "afterward",
+    "meanwhile", "thereafter", "subsequently", "however",
+    "finally", "later", "soon", "then", "next"})
+
+
 _DEGREE_ABBREVIATION_WORDS = frozenset({
     "ph.d", "m.d", "ed.d", "ll.d", "d.phil"})
 
@@ -1444,7 +1455,13 @@ def _dot_ends_sentence(text, pos):
     where the word before it is et) does not end a sentence
     before a following token either, because each stands
     between the names it joins and the token after its stop
-    is the name it governs, as a title governs its name; and
+    is the name it governs, as a title governs its name; a
+    joining abbreviation stop does end a sentence where the
+    token after it cannot be that governed name, because it
+    opens a sentence of its own: a token opening on a figure,
+    or a sentence opening adverb in _SENTENCE_OPENER_WORDS
+    (Yesterday the first of them), so a joining abbreviation
+    standing at a true sentence end ends its sentence; and
     any other abbreviation (U.S., p.m. and their class) ends
     a sentence before any capitalised token, whatever word
     opens the next sentence, and does not end one before a
@@ -1490,9 +1507,15 @@ def _dot_ends_sentence(text, pos):
     if word.lower() in _TITLE_ABBREVIATION_WORDS or \
             word.lower() in _DEGREE_ABBREVIATION_WORDS or \
             word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
-            word.lower() in _JOINING_ABBREVIATION_WORDS or \
-            et_al or \
             len(word) == 1:
+        return False
+    if word.lower() in _JOINING_ABBREVIATION_WORDS or et_al:
+        if rest[0].isdigit():
+            return True
+        opener = re.match(r"([A-Za-z]+)", rest)
+        if opener is not None and \
+                opener.group(1).lower() in _SENTENCE_OPENER_WORDS:
+            return True
         return False
     if rest[0].isdigit():
         return True
@@ -3336,34 +3359,141 @@ _CLOSURE_JOIN_RE = re.compile(
     r"\s+|\s+[-—–]\s+|\s*[—–]\s*", re.I)
 
 
+# The genuine clause joiners the positional reading takes,
+# beside the listed joins in _CLOSURE_JOIN_RE: the
+# subordinating words that can stand in the joiner position
+# between two closure statements and join them as clauses.
+# A word in that position that is not one of these, and is
+# not a phrase below, is no joiner, whatever its position:
+# a verb head (counts, states) is the earlier statement's
+# own predicate, a lowercase name head (reyes) is the
+# following statement's subject, and an adverb head (soon,
+# yesterday) is a modifier, and none of them joins the two
+# statements as clauses.
+_POSITIONAL_JOINER_WORDS = frozenset({
+    "after", "although", "assuming", "because", "before",
+    "considering", "given", "if", "lest", "notwithstanding",
+    "once", "provided", "providing", "since", "supposing",
+    "though", "till", "unless", "until", "when", "whenever",
+    "where", "whereas", "wherever", "while", "whilst"})
+
+
+# Multi word joiners bound at their first word. The for
+# fear phrase stands here on its own ground: the word for
+# alone is no joiner, because for Step N is a statement
+# completion, but for fear carries no for Step N completion
+# after it, so the completion ground of the exclusion does
+# not reach it.
+_POSITIONAL_JOINER_PHRASES = (
+    "even though", "in case", "for fear", "as though", "as if")
+
+
+def _positional_rest_bound(rest):
+    """Whether a free punctuation bound stands in a join rest.
+
+    The rest of a segment after a joiner is read up to its
+    first Step naming, or to its end where it carries none:
+    punctuation standing after that naming belongs to the
+    joined clause itself (an aside after the foreign ruling,
+    a comma pair setting off a note after it) and does not
+    disarm the join. Before the naming, a punctuation mark
+    disarms the join only where it stands free as the
+    segment's own separator, and is left to the scan at
+    _first_closure_join, so a phrase standing before such a
+    bound is never misread as part of a join: a hyphen inside
+    a word (well-known) is no separator, and punctuation
+    standing as or inside a set off aside that closes inside
+    the rest is no separator either, the aside being crossed
+    as the scan crosses a closed aside. An aside opening in
+    the rest and never closing in it is a bound, as it is in
+    the scan.
+    """
+    step = re.search(r"Step\s+\d+\b", rest)
+    limit = step.start() if step is not None else len(rest)
+    pos = 0
+    while pos < limit:
+        char = rest[pos]
+        if char in "\"([{":
+            closing = {"\"": "\"", "(": ")", "[": "]",
+                       "{": "}"}[char]
+            if char == "\"":
+                found = rest.find("\"", pos + 1, limit)
+                if found < 0:
+                    return True
+                pos = found + 1
+                continue
+            level = 1
+            scan = pos + 1
+            while scan < limit and level:
+                if rest[scan] == char:
+                    level += 1
+                elif rest[scan] == closing:
+                    level -= 1
+                scan += 1
+            if level:
+                return True
+            pos = scan
+            continue
+        if char in ",;:—–)]}":
+            return True
+        if char == "-":
+            before = rest[pos - 1] if pos > 0 else ""
+            after = rest[pos + 1] if pos + 1 < len(rest) else ""
+            if not (before.isalnum() and after.isalnum()):
+                return True
+        pos += 1
+    return False
+
+
 def _positional_closure_join(text, lo, hi):
     """A closure join read by position, or None.
 
     The segment between two closure matches opens with the
-    earlier match's own completion, where it carries one (a
-    for Step N completion, or a quoted, parenthesised or
-    bracketed completion standing at the segment's head), and
-    the word standing in the joiner position, at the head of
-    the segment or immediately after that completion, is a
-    join whatever word it is: that position is where a clause
-    joining word stands between two closure statements, so
-    the subordinating side of the join set is completed by
-    position rather than by vocabulary, and a multi word
-    joiner (in case, even though) is bound at its first word.
-    The reading is bounded in four stated places. The word
-    for opens a completion, not a join, where it does not
-    carry the for Step N form; an article (the, a, an) opens
-    a noun phrase, not a join; a word governing a Step naming
-    directly after it (in Step 3, by Step 3) is a preposition
-    inside the earlier statement, not a join; and where the
-    rest of the segment carries a punctuation, dash, quote,
-    parenthesis or bracket bound, that bound is the segment's
-    separator and is left to the scan at _first_closure_join,
-    so a phrase standing before such a bound (by Lane for
-    Step 3, before a comma) is never misread as a joiner.
-    A capitalised word is a name or a sentence subject onset,
-    not a joiner, and a joiner word is followed by a space,
-    as the listed joins are.
+    earlier match's own completions, where it carries any
+    (a for Step N completion, or a quoted, parenthesised or
+    bracketed completion standing at the segment's head,
+    in sequence where two stand in a row, in either order),
+    and the word standing in the joiner position, at the
+    head of the segment or immediately after the last of
+    those completions, bounds the fragment only where it is
+    a genuine clause joiner: a single word in
+    _POSITIONAL_JOINER_WORDS or a phrase in
+    _POSITIONAL_JOINER_PHRASES, bound at its first word.
+    The position alone does not make a joiner: a verb head,
+    a lowercase name head, an adverb head, an article (the,
+    a, an), a capitalised word and a preposition in that
+    position are constituents of one of the two statements,
+    not a join between them, and the fragment is not cut
+    there, so a single statement naming two steps keeps its
+    settled not derivable reading. The word for alone opens
+    a completion, not a join, where it does not carry the
+    for Step N form; the phrase for fear is a joiner under
+    its own entry above. Where the segment carries
+    completions at its head and no joiner word stands after
+    them, the bound stands at the end of the last completion
+    where the next word is this, the onset of the following
+    statement, so completions in sequence do not leak the
+    step they name into the following statement.
+    The reading is bounded in the places stated here. A word
+    governing a Step naming directly after it (in Step 3, by
+    Step 3) is a preposition inside the earlier statement,
+    not a join; a joiner whose own clause opens on that
+    naming as its subject is the exception, read by the
+    naming's shape: Step N followed by a predicate word
+    (was, is, were, recorded, closes, closed, stands) is a
+    clause subject, as in provided Step 3 was recorded as,
+    and any other word after the naming leaves it a governed
+    naming, not a subject. Where a free punctuation bound
+    stands in the rest before its Step naming, at
+    _positional_rest_bound, that bound is the segment's
+    separator and is left to the scan, so a phrase standing
+    before such a bound is never misread as a joiner.
+    A joiner word is followed by a space, as the listed
+    joins are. Stated bound of this reading: a genuine
+    clause joiner standing outside _POSITIONAL_JOINER_WORDS,
+    _POSITIONAL_JOINER_PHRASES and the listed joins in
+    _CLOSURE_JOIN_RE does not bound by position; those
+    vocabularies are the design's bound for the class.
     """
     if text[:lo].count("\"") % 2 == 1:
         return None
@@ -3377,51 +3507,71 @@ def _positional_closure_join(text, lo, hi):
     if pos >= hi:
         return None
     cand = pos
-    if text[pos] in "\"([":
-        closing = {"\"": "\"", "(": ")", "[": "]"}[text[pos]]
-        if text[pos] == "\"":
-            found = text.find("\"", pos + 1, hi)
-            if found < 0:
-                return None
-            cand = found + 1
-        else:
-            level = 1
-            scan = pos + 1
-            while scan < hi and level:
-                if text[scan] == text[pos]:
-                    level += 1
-                elif text[scan] == closing:
-                    level -= 1
-                scan += 1
-            if level:
-                return None
-            cand = scan
-        while cand < hi and text[cand] == " ":
-            cand += 1
-    else:
-        completion = re.match(r"for\s+Step\s+\d+\b", text[pos:hi])
-        if completion is not None:
-            cand = pos + completion.end()
+    completion_end = None
+    while cand < hi:
+        if text[cand] in "\"([":
+            closing = {"\"": "\"", "(": ")", "[": "]"}[text[cand]]
+            if text[cand] == "\"":
+                found = text.find("\"", cand + 1, hi)
+                if found < 0:
+                    return None
+                cand = found + 1
+            else:
+                level = 1
+                scan = cand + 1
+                while scan < hi and level:
+                    if text[scan] == text[cand]:
+                        level += 1
+                    elif text[scan] == closing:
+                        level -= 1
+                    scan += 1
+                if level:
+                    return None
+                cand = scan
+            completion_end = cand
             while cand < hi and text[cand] == " ":
                 cand += 1
+            continue
+        completion = re.match(r"for\s+Step\s+\d+\b", text[cand:hi])
+        if completion is not None:
+            cand = cand + completion.end()
+            completion_end = cand
+            while cand < hi and text[cand] == " ":
+                cand += 1
+            continue
+        break
     if cand >= hi:
         return None
-    match = re.match(r"([A-Za-z]+)", text[cand:hi])
-    if match is None:
+    join_end = None
+    for phrase in _POSITIONAL_JOINER_PHRASES:
+        if text[cand:cand + len(phrase)] == phrase:
+            after_phrase = cand + len(phrase)
+            if after_phrase < hi and text[after_phrase] == " ":
+                join_end = after_phrase
+            break
+    if join_end is None:
+        match = re.match(r"([A-Za-z]+)", text[cand:hi])
+        if match is not None and \
+                match.group(1) in _POSITIONAL_JOINER_WORDS:
+            end = cand + match.end()
+            if end < hi and text[end] == " ":
+                join_end = end
+    if join_end is None:
+        if completion_end is not None:
+            onset = re.match(r"([A-Za-z]+)", text[cand:hi])
+            if onset is not None and onset.group(1) == "this":
+                return (completion_end, completion_end)
         return None
-    word = match.group(1)
-    if not word.islower() or word in ("for", "the", "a", "an"):
+    rest = text[join_end:hi]
+    if re.match(r"\s*Step\s+\d+\b", rest) is not None:
+        subject = re.match(
+            r"Step\s+\d+\s+(?:was|is|were|recorded|closes|"
+            r"closed|stands)\b", rest.lstrip())
+        if subject is None:
+            return None
+    if _positional_rest_bound(rest):
         return None
-    end = cand + match.end()
-    if end < hi and text[end] != " ":
-        return None
-    rest = text[end:hi]
-    if re.search(r"[,;:\"()\[\]{}—–-]", rest) is not None:
-        return None
-    following = re.match(r"\s*([A-Za-z]+)", rest)
-    if following is not None and following.group(1) == "Step":
-        return None
-    return (cand, end)
+    return (cand, join_end)
 
 
 def _first_closure_join(text, lo, hi, before_side=False,

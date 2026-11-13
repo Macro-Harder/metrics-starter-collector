@@ -165,6 +165,27 @@ INVENTORY = {
             "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_standalone_wrong_then_genuine_governs",
         ],
     },
+    "test_ae_step15_r12_boundary_closure": {
+        "count": 16,
+        "cases": [
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_100_control_joining_beside_name_holds",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_100_et_al_sentence_end_direct",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_100_et_al_sentence_end_frames_count_own_fail",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_96_adverb_heads_do_not_bind",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_96_control_genuine_positional_joiners_still_bind",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_96_control_settled_forms_hold",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_96_lowercase_name_heads_do_not_bind",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_96_verb_heads_do_not_bind",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_97_aside_after_step_naming_still_binds",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_97_control_punctuation_bound_before_step_governs",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_97_hyphen_inside_word_still_binds",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_98_control_for_step_completion_is_no_join",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_98_for_fear_binds_both_sides",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_98_provided_step_subject_still_binds",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_99_control_single_completions_hold",
+            "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_99_two_completions_in_sequence_do_not_leak",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -929,4 +950,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 698
+TOTAL_CASES = 714
