@@ -469,6 +469,32 @@ INVENTORY = {
             "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_malformed_queue_weaker_form",
         ],
     },
+    "test_y_step15_round6_duration": {
+        "count": 21,
+        "cases": [
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_appendix_missing_other_clause_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_bare_duration_other_figure_scoped_elsewhere",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_control_other_step_record_missing_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_cured_banked_denials_still_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_cured_denials_about_duration_still_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_no_record_earlier_work_before_clause_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_none_charged_to_budget_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_none_of_reviewers_before_clause_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_41_none_the_worse_interval_path_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_42_before_words_banked_valued_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_42_before_words_unvalued_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_42_control_after_words_still_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_43_abbreviation_banked_retraction_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_43_abbreviation_unvalued_retraction_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_43_control_abbreviation_before_mention_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_43_control_decimal_and_quoted_end_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_43_control_marker_before_abbreviation_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_44_control_different_step_or_figure_stands",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_44_nested_other_step_then_same_step_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_44_same_step_no_figure_denial_taken_out",
+            "tests.test_y_step15_round6_duration.TestStep15Round6Duration.test_f15_44_same_step_same_figure_denial_taken_out",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -478,4 +504,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 342
+TOTAL_CASES = 363

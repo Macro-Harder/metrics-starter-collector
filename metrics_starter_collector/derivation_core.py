@@ -515,19 +515,31 @@ def _derive_t1(captured, universe):
 # intervening words, or as a contraction, or it is denied by another
 # verb or word (cannot, absent, without, fails to record, refuses to
 # record, unrecorded, missing, omitted, denied, removed, nowhere,
-# none recorded), quoted and retracted, or only discussed or named
-# as a heading. A comma or a colon opens a new clause part: a marker
-# in another part takes the mention out only where that part is not
-# scoped to another subject, carrying no duration mention of its
-# own and naming neither a different step nor a different figure.
-# A mention retracted by name in the following sentence on the same
-# line does not stand. A neighbouring line that denies any duration
-# stands takes out a mention that carries no value of its own. The
-# marker sets cover these proven shapes; an unlisted synonym
-# remains outside the handling, a known boundary of the cure.
+# none recorded, absent, withdrawn, retracted, was wrong, is
+# wrong), quoted and retracted, or only discussed or named as a
+# heading. The before set and the after set carry the same listed
+# words, so a listed word works in either position. A comma or a
+# colon opens a new clause part: a marker in another part takes
+# the mention out only where that part is about the mention's own
+# subject. A part naming a different step or a different figure is
+# scoped to that other subject, and so is a part carrying a bare
+# duration mention with a different figure, and a part whose
+# denial attaches to another named subject in plain words (the
+# appendix, the budget, the reviewers, the earlier work). A part
+# carrying a duration mention of the same step and the same figure
+# as the mention, or a duration denial naming neither, is about
+# the mention itself, so its marker reaches the mention. A mention
+# retracted by name in the following sentence on the same line
+# does not stand, and the sentence end detection in that test
+# ignores abbreviation stops as it ignores decimals. A
+# neighbouring line that denies any duration stands takes out a
+# mention that carries no value of its own. The marker sets cover
+# these proven shapes; an unlisted synonym remains outside the
+# handling, a known boundary of the cure.
 _BEFORE_NEGATION_RE = re.compile(
     r"\b(?:no|not|never|without|cannot|unrecorded|missing|omitted|"
-    r"denied|removed|nowhere|none)\b|\b\w+n't\b|"
+    r"denied|removed|nowhere|none|absent|withdrawn|retracted)\b|"
+    r"\b\w+n't\b|\bwas\s+wrong\b|\bis\s+wrong\b|"
     r"\bfails?\s+to\b|\bfailed\s+to\b|\brefus(?:e|es|ed)\s+to\b",
     re.I)
 _AFTER_NEGATION_RE = re.compile(
@@ -573,28 +585,51 @@ def _after_is_negated(after):
 def _clause_subject(text):
     """The step and the hours figure a clause part names."""
     step = re.search(r"Step (\d+)\b", text)
-    figure = re.search(r"(\d+(?:\.\d+)?)\s*hours", text, re.I)
+    figure = re.search(r"(\d+(?:\.\d+)?)\s*hours?\b", text, re.I)
     return (int(step.group(1)) if step else None,
             float(figure.group(1)) if figure else None)
+
+
+_OTHER_SUBJECT_RE = re.compile(
+    r"\bthe\s+(?!duration\b|interval\b|banked\b|step\b|claim\b|"
+    r"note\b|statement\b|log\b)[a-z]+", re.I)
+_OTHER_SUBJECT_HEAD_RE = re.compile(
+    r"^\s*(?:no|none)\s+(?!duration\b|interval\b|banked\b|"
+    r"recorded\b|such\b)[a-z]+", re.I)
 
 
 def _subclause_scoped_elsewhere(part, mention_step, mention_figure):
     """Whether a clause part is scoped to another subject.
 
-    A part carrying its own duration mention, or naming a
-    different step or a different hours figure than the mention
-    under test, belongs to that other subject, so a denial marker
-    inside it does not reach the mention under test.
+    A part naming a different step or a different hours figure
+    than the mention under test belongs to that other subject, so
+    a denial marker inside it does not reach the mention. A part
+    carrying its own duration mention belongs to another subject
+    only where its step or its figure distinguishes it from the
+    mention in that way; a duration part naming the same step and
+    the same figure, or naming neither, is about the mention
+    itself. A part with no duration mention whose denial attaches
+    to another named subject in plain words, a definite noun
+    phrase or a no or none subject phrase naming a thing that is
+    not the duration, is likewise scoped to that other subject.
     """
-    if re.search(r"interval duration", part, re.I) or \
-            re.search(r"\bBANKED\b", part, re.I):
-        return True
     step, figure = _clause_subject(part)
     if mention_step is not None and step is not None and \
             step != mention_step:
         return True
     if mention_figure is not None and figure is not None and \
             figure != mention_figure:
+        return True
+    if re.search(r"interval duration", part, re.I) or \
+            re.search(r"\bBANKED\b", part, re.I) or \
+            re.search(r"\bduration\b", part, re.I):
+        if step is not None and mention_step is None:
+            return True
+        if figure is not None and mention_figure is None:
+            return True
+        return False
+    if _OTHER_SUBJECT_RE.search(part) is not None or \
+            _OTHER_SUBJECT_HEAD_RE.search(part) is not None:
         return True
     return False
 
@@ -651,6 +686,34 @@ def _after_negated_in_scope(after, before, mention):
     return False
 
 
+_ABBREVIATION_WORDS = frozenset({
+    "e.g", "i.e", "etc", "cf", "vs", "dr", "mr", "mrs", "ms",
+    "st", "approx", "fig", "dept", "est", "inc", "ltd", "jr",
+    "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
+
+
+def _find_sentence_end(text):
+    """The first sentence end match in a text, or None.
+
+    A full stop that closes an abbreviation (e.g., i.e. and the
+    common abbreviation forms) is not a sentence end, as a stop
+    inside a decimal is already no match for the sentence end
+    pattern, so a sentence carrying an abbreviation before its
+    true end is read whole.
+    """
+    for match in _SENTENCE_END_RE.finditer(text):
+        if text[match.start()] != ".":
+            return match
+        token = re.search(r"([A-Za-z]+(?:\.[A-Za-z]+)*)$",
+                          text[:match.start()])
+        if token is not None and \
+                (token.group(1).lower() in _ABBREVIATION_WORDS or
+                 "." in token.group(1)):
+            continue
+        return match
+    return None
+
+
 def _retracted_in_following_sentence(line, end):
     """Whether the next sentence on the line retracts the mention.
 
@@ -660,11 +723,11 @@ def _retracted_in_following_sentence(line, end):
     takes a standing mention out.
     """
     rest = line[end:]
-    match = _SENTENCE_END_RE.search(rest)
+    match = _find_sentence_end(rest)
     if match is None:
         return False
     following = rest[match.end():]
-    match = _SENTENCE_END_RE.search(following)
+    match = _find_sentence_end(following)
     if match is not None:
         following = following[:match.start()]
     return _RETRACTION_REF_RE.search(following) is not None and \
