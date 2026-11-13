@@ -678,6 +678,32 @@ INVENTORY = {
             "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_twin_no_gate_record_no_closure_ruling_not_derivable",
         ],
     },
+    "test_w_step15_r10_denial": {
+        "count": 21,
+        "cases": [
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_comma_stacked_adverbs_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_control_other_subject_new_forms_stand",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_further_degree_adverbs_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_getting_progressive_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_plain_adverbs_after_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_74_plain_adverbs_before_and_interval_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_comma_phrase_parenthetical_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_control_other_subject_parenthetical_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_further_phrases_in_run_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_further_reporting_verbs_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_longer_reporting_clause_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_75_parentheses_parenthetical_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_76_control_figure_itself_new_conjunctions_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_76_initialled_name_after_conjunction_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_76_new_conjunctions_stand",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_76_pronoun_you_after_conjunction_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_control_genuine_denial_beside_frame_taken_out",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_doubled_frame_before_position_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_doubled_frame_in_fact_complement_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_doubled_frame_recorded_as_complement_stands",
+            "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_doubled_frame_widened_neighbours_stand",
+        ],
+    },
     "test_x_step15_round6_t4": {
         "count": 14,
         "cases": [
@@ -774,4 +800,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 578
+TOTAL_CASES = 599
