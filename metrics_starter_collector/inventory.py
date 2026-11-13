@@ -132,7 +132,19 @@ def identity_for(record_class, step, rel_path):
 
 
 _FORM_A_ITEM = re.compile(
-    r"^\s*(\d+)\.\s+[^:\n]+:\s*(NOT IN FORCE|IN FORCE)\b")
+    r"^\s*(\d+)\.\s+([^:\n]+):\s*(NOT IN FORCE|IN FORCE)\b")
+
+# The five E-03 record change names, by change number. The short
+# forms are the names as the M-2 settlement states them; change 1
+# also carries the longer form the metrics record itself uses.
+_RECORD_CHANGE_NAMES = {
+    1: ("timestamped state transitions",
+        "timestamped state transitions in the path record"),
+    2: ("decision queue timestamps and origin",),
+    3: ("origin step on findings",),
+    4: ("agent-turn and per-agent engagement telemetry",),
+    5: ("explicit loop round markers",),
+}
 
 
 def record_change_force(assembled_text):
@@ -141,11 +153,15 @@ def record_change_force(assembled_text):
     A force statement in Form A is a numbered list in the assembled
     metrics record text, each item naming one record change and
     stating IN FORCE or NOT IN FORCE immediately after the name.
-    Returns a dict from change number to its force words. Prose
-    restatements (Form B) are not parsed here: a restatement by
-    number creates no force state on its own. Where a number stands
-    twice, the first statement in the list governs, because the
-    brief states no precedence for conflicting statements.
+    An item records a force state only where its stated name is the
+    E-03 name of the change its number names: an item naming no
+    E-03 change, or naming a change other than its number, records
+    no force state. Returns a dict from change number to its force
+    words. Prose restatements (Form B) are not parsed here: a
+    restatement by number creates no force state on its own. Where
+    a number stands twice, the first statement in the list governs,
+    because the brief states no precedence for conflicting
+    statements.
     """
     states = {}
     if not assembled_text:
@@ -153,9 +169,17 @@ def record_change_force(assembled_text):
     for line in assembled_text.splitlines():
         m = _FORM_A_ITEM.match(line)
         if m:
+            if m.group(1) != str(int(m.group(1))):
+                continue
             number = int(m.group(1))
+            names = _RECORD_CHANGE_NAMES.get(number)
+            if names is None:
+                continue
+            stated = " ".join(m.group(2).split()).lower()
+            if stated not in names:
+                continue
             if number not in states:
-                states[number] = m.group(2)
+                states[number] = m.group(3)
     return states
 
 

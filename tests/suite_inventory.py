@@ -269,6 +269,15 @@ INVENTORY = {
             "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_19_dangling_near_match_outside_target_listed",
         ],
     },
+    "test_n_step15_round2_parser": {
+        "count": 4,
+        "cases": [
+            "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_20_agenda_list_in_metrics_record_records_no_force_state",
+            "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_21_date_only_banked_line_t2_missing_no_feeder_record",
+            "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_21_refusal_banked_without_interval_words_t2_missing_no_feeder",
+            "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_21_refusal_control_interval_words_t2_not_derivable_unknown_version",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -278,4 +287,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 197
+TOTAL_CASES = 201
