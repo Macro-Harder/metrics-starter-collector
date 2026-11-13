@@ -252,6 +252,23 @@ INVENTORY = {
             "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_16_date_only_banked_duration_t2_statement_true",
         ],
     },
+    "test_m_step15_round2_shell": {
+        "count": 12,
+        "cases": [
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_13_dangling_duplicate_identity_sound_record_reads",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_13_fifo_duplicate_identity_sound_record_reads",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_13_loop_duplicate_identity_sound_record_reads",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_17_outside_alias_destination_delivered",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_17_plain_outside_destination_delivered",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_17_root_alias_escape_link_destination_refused",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_17_root_alias_new_file_destination_refused",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_18_control_dangling_link_reason_stands",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_18_link_to_fifo_inside_tree_true_reason",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_19_control_dangling_unrecognised_name_not_listed",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_19_dangling_near_match_inside_target_listed",
+            "tests.test_m_step15_round2_shell.TestStep15Round2Shell.test_f15_19_dangling_near_match_outside_target_listed",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -261,4 +278,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 185
+TOTAL_CASES = 197

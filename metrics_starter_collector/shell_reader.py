@@ -227,6 +227,13 @@ def capture_read(root):
                             damaged[rel] = (
                                 "unreadable-piece: unreadable: dangling "
                                 "link, the link target does not stand")
+                    elif not target.exists() and \
+                            inventory.near_match_note(rel) is not None:
+                        # A dangling link at a near match name is not
+                        # a piece, but the name stands in the near
+                        # match listing, in the same form as a regular
+                        # file at that name.
+                        entries.append(rel)
                     continue
                 if full.is_file():
                     entries.append(rel)
@@ -235,9 +242,26 @@ def capture_read(root):
                     entries.append(rel)
                 elif inventory.classify(rel) is not None:
                     entries.append(rel)
-                    damaged[rel] = (
-                        "unreadable-piece: unreadable: dangling link, "
-                        "the link target does not stand")
+                    if target.exists():
+                        # The target stands but is not a regular
+                        # file: a FIFO, a socket or a device at the
+                        # end of the link. The reason states that
+                        # true damage, in the same form the direct
+                        # case at a recognised name uses.
+                        damaged[rel] = (
+                            "unreadable-piece: unreadable: not a "
+                            "regular file")
+                    else:
+                        damaged[rel] = (
+                            "unreadable-piece: unreadable: dangling "
+                            "link, the link target does not stand")
+                elif not target.exists() and \
+                        inventory.near_match_note(rel) is not None:
+                    # As in the outside target passage above: a
+                    # dangling link at a near match name stands in
+                    # the near match listing, in the same form as a
+                    # regular file at that name.
+                    entries.append(rel)
                 continue
             if full.is_file():
                 entries.append(rel)
@@ -362,13 +386,30 @@ def capture_read(root):
     pieces = []
     for ident in sorted(raw, key=lambda i: min(x[0] for x in raw[i])):
         group = sorted(raw[ident], key=lambda x: x[0])
-        rel0, cls, step, size0, text0, quality0, reason0 = group[0][:7]
-        paths = tuple(sorted({p for x in group for p in x[7]}))
+        cls = group[0][1]
+        step = group[0][2]
         form = None
         if cls == CLS_METRICS_SINGLE:
             form = "single page form"
         elif cls == CLS_METRICS_PAGE:
             form = "split page form"
+        # A damaged entry never merges with another entry at the
+        # same identity and never displaces a sound one: there is no
+        # second content for it to disagree with, because the damaged
+        # path has no content at all. Each damaged entry stands as
+        # its own piece, marked with its true damage, and the sound
+        # entries at the identity merge and read exactly as they do
+        # where no damaged entry stands.
+        broken = [x for x in group if x[0] in damaged]
+        standing = [x for x in group if x[0] not in damaged]
+        for x in broken:
+            pieces.append(Piece(ident, x[7], x[1], x[2], x[3], None,
+                                x[6], x[5], form_state=form))
+        if not standing:
+            continue
+        group = standing
+        rel0, cls, step, size0, text0, quality0, reason0 = group[0][:7]
+        paths = tuple(sorted({p for x in group for p in x[7]}))
         if len(group) > 1:
             texts = {x[4] for x in group}
             if len(texts) == 1 and text0 is not None:
@@ -536,6 +577,28 @@ def deliver_report(text, root, report_path):
         for candidate in (dest_resolved, dest_named):
             if candidate == base or base in candidate.parents:
                 inside = True
+    if not inside:
+        # Every prefix of the named destination is checked in
+        # resolved form as well. A destination named through an
+        # alias of the root itself resolves into the tree at that
+        # prefix, even where neither the full named path nor the
+        # fully resolved path lies inside the tree, as with a report
+        # named through the root alias and then out through a link
+        # standing inside the tree. Such a destination is refused in
+        # the same form: the write would pass through the tree read.
+        prefix = Path(dest_named.anchor)
+        for part in dest_named.parts[1:]:
+            prefix = prefix / part
+            try:
+                resolved_prefix = prefix.resolve()
+            except (OSError, RuntimeError) as exc:
+                raise UsageError(
+                    "deliver the report: destination %s: %s"
+                    % (report_path, exc))
+            if resolved_prefix == root_resolved or \
+                    root_resolved in resolved_prefix.parents:
+                inside = True
+                break
     if inside:
         raise UsageError(
             "deliver the report: destination %s: the destination lies "
