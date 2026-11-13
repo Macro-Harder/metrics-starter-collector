@@ -350,10 +350,37 @@ def deliver_report(text, root, report_path):
         raise UsageError(
             "deliver the report: destination %s: the parent directory "
             "does not stand" % (report_path,))
-    tmp = parent / (destination.name + ".tmp-msc")
+    # A destination that stands as something other than a plain file,
+    # or a link to something other than a plain file, is written
+    # through its own name, never replaced. Replacing such a name
+    # would destroy the name itself and could report success where
+    # the target cannot be written at all, as a link to a full device
+    # shows. Writing through the name lets the operating system
+    # failure stand, and the destination is left as it stood.
+    write_through = False
+    if destination.is_symlink():
+        write_through = not dest_resolved.is_file()
+    elif destination.exists() and not destination.is_file():
+        write_through = True
+    if write_through:
+        try:
+            with open(destination, "w", encoding="utf-8",
+                      newline="\n") as handle:
+                handle.write(text)
+        except OSError as exc:
+            raise UsageError("deliver the report: destination %s: %s"
+                             % (report_path, exc))
+        return
+    # A link to a plain file delivers to the resolved file, so the
+    # link itself stands. Any other plain destination delivers to
+    # itself. Both go by way of a temporary file in the same
+    # directory and a replace, so a failure leaves no partial file
+    # and a prior file at the destination is left as it stood.
+    target = dest_resolved if destination.is_symlink() else destination
+    tmp = target.parent / (target.name + ".tmp-msc")
     try:
         tmp.write_text(text, encoding="utf-8", newline="\n")
-        os.replace(str(tmp), str(destination))
+        os.replace(str(tmp), str(target))
     except OSError as exc:
         try:
             if tmp.exists():

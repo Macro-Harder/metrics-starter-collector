@@ -3399,7 +3399,7 @@ def derive_report(captured):
             "Build identity: no build identity was found in the tree",
             "Step universe: 0 steps",
             "0 pieces recognised",
-            "Latest record timestamp: " +
+            "Live line: latest record timestamp: " +
             (captured.latest_timestamp or "no timestamp was found"),
             "Coverage statement: no usable records stand in the tree, "
             "so the report carries no metric rows",
@@ -3518,7 +3518,7 @@ def derive_report(captured):
         "Build identity: " + identity,
         universe_line,
         "%d pieces recognised" % len(captured.pieces),
-        "Latest record timestamp: " +
+        "Live line: latest record timestamp: " +
         (captured.latest_timestamp or "no timestamp was found"),
     ]
     not_read = [p for p in captured.pieces if p.text is None]
@@ -3571,10 +3571,13 @@ def derive_report(captured):
     for cls in sorted(captured.inventory_totals):
         totals = captured.inventory_totals[cls]
         header.append(
-            "Class %s: expected %d, found %d, not found %d, not yet "
-            "recordable %d" % (cls, totals["expected"], totals["found"],
-                               totals["not_found"],
-                               totals["not_yet_recordable"]))
+            "Class %s: expected %d, found %d"
+            % (cls, totals["expected"], totals["found"]))
+        header.append(
+            "Class %s: not found %d" % (cls, totals["not_found"]))
+        header.append(
+            "Class %s: not yet recordable %d"
+            % (cls, totals["not_yet_recordable"]))
 
     inventory_lines = ["## Piece inventory"]
     if captured.tree_cut_paths:
