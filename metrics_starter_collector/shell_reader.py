@@ -34,7 +34,7 @@ class UsageError(Exception):
 
 
 _FULL_TS = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})"
-                      r"(?:\s*(CST|UTC|EST|EDT|CDT))?")
+                      r"(?::(\d{2}))?(?:\s*(CST|UTC|EST|EDT|CDT))?")
 _DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
@@ -43,12 +43,13 @@ def _latest_timestamp(texts):
     best_key = None
     for text in texts:
         for m in _FULL_TS.finditer(text):
-            key = (m.group(1), m.group(2))
+            key = (m.group(1), m.group(2), m.group(3),
+                   m.group(4) or "00")
             if best_key is None or key > best_key:
                 best_key = key
                 best = m.group(0)
         for m in _DATE.finditer(text):
-            key = (m.group(1), "00:00")
+            key = (m.group(1), "00", "00", "00")
             if best_key is None or key > best_key:
                 best_key = key
                 best = m.group(1)

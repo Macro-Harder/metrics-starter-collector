@@ -200,6 +200,15 @@ INVENTORY = {
             "tests.test_h_row_helpers.TestRowHelpers.test_row_block_isolates_prefixed_markdown_rows",
         ],
     },
+    "test_i_live_line": {
+        "count": 4,
+        "cases": [
+            "tests.test_i_live_line.TestLiveLine.test_live_line_later_hour_in_earlier_walked_file_wins",
+            "tests.test_i_live_line.TestLiveLine.test_live_line_later_minute_in_later_walked_file_wins",
+            "tests.test_i_live_line.TestLiveLine.test_live_line_later_second_in_later_walked_file_wins",
+            "tests.test_i_live_line.TestLiveLine.test_live_line_on_golden_tree_names_latest_timestamp",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -209,4 +218,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 153
+TOTAL_CASES = 157
