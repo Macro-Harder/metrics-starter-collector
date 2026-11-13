@@ -291,6 +291,24 @@ INVENTORY = {
             "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_over_limit_duplicate_sound_record_reads",
         ],
     },
+    "test_p_step15_round3_core": {
+        "count": 13,
+        "cases": [
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_adjudication_first_fail_with_regate_counts_not_approved",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_control_recycled_step_still_counted_once_by_first_ruling",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_control_regate_conflicting_base_closures_not_derivable",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_regate_adjudication_fail_beside_record_pass",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_regate_adjudication_fail_beside_ruling_pass",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_23_regate_round_ruling_fail_beside_record_pass",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_24_absent_path_ledger_t4_wording_unchanged",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_24_dangling_path_ledger_t4_named_not_read",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_24_fifo_path_ledger_t4_named_not_read",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_24_malformed_path_ledger_t4_named_not_read",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_25_control_genuine_duration_t2_statement_stands",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_25_negated_duration_date_only_t2_true_ground",
+            "tests.test_p_step15_round3_core.TestStep15Round3Core.test_f15_25_negated_duration_no_timestamp_t2_true_ground",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -300,4 +318,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 209
+TOTAL_CASES = 222

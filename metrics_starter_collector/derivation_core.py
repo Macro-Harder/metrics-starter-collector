@@ -492,6 +492,33 @@ def _derive_t1(captured, universe):
                             rule_name="T-1 interval rule")
 
 
+def _interval_duration_mentions_stand(text):
+    """Whether an interval duration stands in a text.
+
+    A mention inside a negated sentence does not stand: a negation
+    word in the same clause before the mention, or a negation word
+    directly after it, takes that mention out. Any other mention
+    stands.
+    """
+    for line in text.splitlines():
+        for m in re.finditer(r"interval duration", line, re.I):
+            before = line[:m.start()]
+            after = line[m.end():]
+            if re.search(r"\b(?:no|not|never)\b[^.;]*$", before, re.I):
+                continue
+            if re.search(r"^\s*(?:is\s+)?(?:not|never)\b", after,
+                         re.I):
+                continue
+            return True
+    return False
+
+
+def _t2_duration_stands(text):
+    """The T-2 duration test over a transition log text."""
+    return _interval_duration_mentions_stand(text) or \
+        re.search(r"BANKED[^\n]*\d", text) is not None
+
+
 def _derive_t2(captured, universe, t1):
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
@@ -512,8 +539,7 @@ def _derive_t2(captured, universe, t1):
     if t1.verdict == "missing" and t1.code_token == "date-only-form":
         has_duration = False
         if ledger is not None and ledger.text is not None:
-            has_duration = re.search(r"interval duration|BANKED[^\n]*\d",
-                                     ledger.text) is not None
+            has_duration = _t2_duration_stands(ledger.text)
         if not has_duration:
             return DerivationResult(
                 "T-2", "missing", "no interval figure", denom, pointer,
@@ -545,8 +571,7 @@ def _derive_t2(captured, universe, t1):
     if t1.verdict == "missing":
         has_duration = False
         if ledger is not None and ledger.text is not None:
-            has_duration = re.search(r"interval duration|BANKED[^\n]*\d",
-                                     ledger.text) is not None
+            has_duration = _t2_duration_stands(ledger.text)
         if has_duration:
             shows = ("the elapsed row is missing, and an interval "
                      "duration stands in the transition log, but no "
@@ -597,6 +622,21 @@ def _derive_t4(captured, universe):
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
     denom = "denominator decision items and banked states in the tree"
+    if ledger is not None and ledger.text is None:
+        code = {"malformed": "malformed-piece",
+                "over limit": "over-limit-piece"}.get(
+                    ledger.quality_state or "", "unreadable-piece")
+        return DerivationResult(
+            "T-4", "present but not derivable", "no figure stands",
+            denom, pointer,
+            shows="a path ledger piece is present but not read in "
+                  "full in the capture, so no banked state can be "
+                  "read to form a wait figure",
+            code_token=code,
+            follows=code + " the piece is marked not read in full in "
+                    "the inventory and no figure is read from it, so "
+                    "no wait figure stands",
+            rule_name="T-4 not read in full rule")
     banked = False
     durations = False
     if ledger is not None and ledger.text is not None:
@@ -1797,11 +1837,23 @@ def _derive_f2(captured, universe):
             first = ranked[0][3]
             if first.text:
                 closure = _recorded_closure(first.text)
+            if first.record_class == CLS_GATE_ADJUDICATION:
+                adjudication_only.append(s)
+            # The recycled note scan rests on the same base gate
+            # record and gate ruling pieces as the conflict guard
+            # above, so the note can never name a closure the
+            # counting does not rest on. A first ruling standing
+            # outside that pair counts in the non regate form.
             for item in ranked:
-                if item[3].record_class == CLS_REGATE_RECORD:
+                piece = item[3]
+                base_name = piece.paths[0].rsplit("/", 1)[-1]
+                if piece.record_class not in (CLS_GATE_RECORD,
+                                              CLS_GATE_RULING) \
+                        or "round" in base_name \
+                        or "reaudit" in base_name:
                     continue
-                if item[3].text:
-                    earlier = _recorded_closure(item[3].text)
+                if piece.text:
+                    earlier = _recorded_closure(piece.text)
                     if earlier in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
                         recycled_notes.append(
                             "Step %d ran as two instances with the first "
@@ -3462,7 +3514,7 @@ def _t2_interval_duration_stands(captured):
     ledger = _ledger_piece(captured)
     if ledger is None or ledger.text is None:
         return False
-    return re.search(r"interval duration", ledger.text, re.I) is not None
+    return _interval_duration_mentions_stand(ledger.text)
 
 
 def _apply_version_refusal(captured, results):
