@@ -126,6 +126,25 @@ INVENTORY = {
             "tests.test_ab_step15_round7_duration.TestStep15Round7Duration.test_f15_54_wrong_interval_duration_taken_out",
         ],
     },
+    "test_ac_step15_r11_figures": {
+        "count": 14,
+        "cases": [
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_control_settled_scale_forms_hold",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_different_figure_denial_before_stands",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_different_figure_denial_stands",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_direct_billion_and_trillion_ladder",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_direct_hyphenated_scale_forms",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_direct_million_forms",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_90_same_figure_denial_taken_out",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_91_different_figure_denial_stands",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_91_direct_grouped_mixed_forms",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_91_same_figure_denial_taken_out",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_92_control_settled_point_forms_hold",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_92_different_figure_denial_stands",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_92_direct_point_two_digit_tails",
+            "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_92_same_figure_denial_taken_out",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -890,4 +909,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 669
+TOTAL_CASES = 683

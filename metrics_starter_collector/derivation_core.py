@@ -1099,14 +1099,36 @@ _FIGURE_THOUSAND = (
     r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
     r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
     r"|\d{1,3}))?")
-_FIGURE_INT = (r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED +
-               r"|" + _FIGURE_SMALL + r")")
+_FIGURE_MILLION = (
+    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    + _FIGURE_SEP + r"million"
+    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
+    r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
+    _FIGURE_SMALL + r"|\d{1,3}))?")
+_FIGURE_BILLION = (
+    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    + _FIGURE_SEP + r"billion"
+    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
+    r"(?:" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND + r"|" +
+    _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d{1,3}))?")
+_FIGURE_TRILLION = (
+    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    + _FIGURE_SEP + r"trillion"
+    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
+    r"(?:" + _FIGURE_BILLION + r"|" + _FIGURE_MILLION + r"|" +
+    _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
+    _FIGURE_SMALL + r"|\d{1,3}))?")
+_FIGURE_INT = (r"(?:" + _FIGURE_TRILLION + r"|" + _FIGURE_BILLION +
+               r"|" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND +
+               r"|" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r")")
 _FIGURE_DIGITS = (r"(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)")
-_FIGURE_MIXED_DIGIT = (r"\d+00\s+and\s+" + _FIGURE_SMALL)
+_FIGURE_MIXED_DIGIT = (
+    r"(?:\d+00|\d{1,3}(?:,\d{3})*,\d00)\s+and\s+" + _FIGURE_SMALL)
 _FIGURE_POINT_DIGIT = (r"(?:one|two|three|four|five|six|seven|eight|"
                        r"nine|oh|zero)")
-_FIGURE_POINT_TAIL = (_FIGURE_POINT_DIGIT + r"(?:\s+" +
-                      _FIGURE_POINT_DIGIT + r")*")
+_FIGURE_POINT_ITEM = (r"(?:" + _FIGURE_SMALL + r"|oh|zero)")
+_FIGURE_POINT_TAIL = (_FIGURE_POINT_ITEM + r"(?:\s+" +
+                      _FIGURE_POINT_ITEM + r")*")
 _FIGURE_RE = re.compile(
     r"((?:" + _FIGURE_DIGITS + r"|" + _FIGURE_INT + r")\s+point\s+"
     + _FIGURE_POINT_TAIL
@@ -1117,12 +1139,20 @@ _FIGURE_RE = re.compile(
     r"\s*hours?\b", re.I)
 
 
+_SCALE_WORD_VALUES = {"thousand": 1000, "million": 1000000,
+                      "billion": 1000000000,
+                      "trillion": 1000000000000}
+_TENS_WORD_VALUES = {name: value for name, value in
+                     _NUMBER_WORD_VALUES.items()
+                     if value >= 20 and value % 10 == 0}
+
+
 def _integer_word_value(words):
     total = 0
     current = 0
     for part in words:
-        if part == "thousand":
-            total += (current or 1) * 1000
+        if part in _SCALE_WORD_VALUES:
+            total += (current or 1) * _SCALE_WORD_VALUES[part]
             current = 0
         elif part == "hundred":
             current = (current or 1) * 100
@@ -1144,11 +1174,25 @@ def _figure_value(token):
         idx = words.index("point")
         whole = _integer_word_value(words[:idx]) if idx else 0
         digits = ""
-        for part in words[idx + 1:]:
+        tail = words[idx + 1:]
+        pos = 0
+        while pos < len(tail):
+            part = tail[pos]
             if part.isdigit():
                 digits += part
-            else:
+                pos += 1
+            elif part in _TENS_WORD_VALUES and pos + 1 < len(tail) \
+                    and tail[pos + 1] in _POINT_DIGIT_VALUES \
+                    and _POINT_DIGIT_VALUES[tail[pos + 1]] != 0:
+                digits += str(_TENS_WORD_VALUES[part] +
+                              _POINT_DIGIT_VALUES[tail[pos + 1]])
+                pos += 2
+            elif part in _POINT_DIGIT_VALUES:
                 digits += str(_POINT_DIGIT_VALUES[part])
+                pos += 1
+            else:
+                digits += str(_NUMBER_WORD_VALUES[part])
+                pos += 1
         if not digits:
             return float(whole)
         return float("%d.%s" % (whole, digits))
@@ -1197,6 +1241,21 @@ def _clause_subject(text):
     (5 point five, read as 5.5), and a point form with no
     integer part reads as its fraction (point five, read
     as 0.5).
+    The scale ladder continues by the same rule above
+    thousand: each higher scale word (million, billion,
+    trillion) multiplies the group before it by a thousand
+    over the rung below, takes the sub scale compound as
+    its multiplier (two hundred and fifty million, read as
+    250000000), and takes the compound of the rungs below
+    it as its tail (one million and five, read as 1000005;
+    one billion five hundred million, read as 1500000000).
+    A comma grouped round digit form takes a word tail as
+    the plain round form does (1,000 and five, read as
+    1005). A point tail item may name a two digit value, in
+    one word or in a tens and unit pair, and that value's
+    digits stand in the tail (five point fifteen, read as
+    5.15; five point twenty five, read as 5.25; point
+    twenty five, read as 0.25).
     """
     step = re.search(r"Step (\d+)\b", text)
     figure = _FIGURE_RE.search(text)
