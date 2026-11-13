@@ -640,6 +640,32 @@ INVENTORY = {
             "tests.test_v_step15_round5_duration.TestStep15Round5Duration.test_f15_37_retracted_in_following_sentence_taken_out",
         ],
     },
+    "test_v_step15_r10_boundary_closure": {
+        "count": 21,
+        "cases": [
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_70_class_rule_direct",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_70_closure_digit_opener_counts_own",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_70_closure_single_letter_openers_count_own",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_70_duration_digit_opener_denial_scopes",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_70_duration_single_letter_openers_denial_scopes",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_71_class_rule_direct",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_71_control_own_closure_beside_vs_counts",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_71_vs_cf_before_denial_reaches_duration",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_71_vs_cf_closure_foreign",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_after_further_conjunction_neighbours",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_after_joins_foreign_does_not_poison",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_after_unspaced_dash_foreign_does_not_poison",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_before_joins_step_after_token_does_not_leak",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_before_unspaced_dash_does_not_leak",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_72_control_single_statement_comma_stays_foreign",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_after_parenthesised_foreign_does_not_poison",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_after_quoted_foreign_does_not_poison",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_before_parenthesised_step_naming_does_not_leak",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_before_quoted_step_naming_does_not_leak",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_control_own_quoted_closure_counts",
+            "tests.test_v_step15_r10_boundary_closure.TestStep15R10BoundaryClosure.test_f15_73_control_quoted_foreign_single_statement_foreign",
+        ],
+    },
     "test_w_step15_round6_f2": {
         "count": 7,
         "cases": [
@@ -748,4 +774,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 557
+TOTAL_CASES = 578

@@ -1098,6 +1098,9 @@ _TITLE_ABBREVIATION_WORDS = frozenset({
 _INTRODUCING_ABBREVIATION_WORDS = frozenset({"e.g", "i.e"})
 
 
+_JOINING_ABBREVIATION_WORDS = frozenset({"cf", "vs"})
+
+
 _DEGREE_ABBREVIATION_WORDS = frozenset({
     "ph.d", "m.d", "ed.d", "ll.d", "d.phil"})
 
@@ -1124,11 +1127,24 @@ def _dot_ends_sentence(text, pos):
     they stand with (Dr. He and Dr. An are name continuations,
     not false ends); an introducing abbreviation (e.g., i.e.)
     does not end a sentence before a following token in mid
-    passage, because it introduces what follows; and any
-    other abbreviation (U.S., p.m. and their class) ends a
-    sentence before any capitalised token, whatever word
+    passage, because it introduces what follows; a joining
+    abbreviation (cf. and vs., in
+    _JOINING_ABBREVIATION_WORDS) does not end a sentence
+    before a following token either, because each stands
+    between the names it joins and the token after its stop
+    is the name it governs, as a title governs its name; and
+    any other abbreviation (U.S., p.m. and their class) ends
+    a sentence before any capitalised token, whatever word
     opens the next sentence, and does not end one before a
-    lowercase token. An abbreviation stop standing last in
+    lowercase token. A capitalised single letter token that
+    is followed by a space and a word (the sentence openers
+    A and I) is a sentence opener of that class, not an
+    initial: an initial is followed by its own stop, so a
+    single letter token followed by a stop still holds its
+    sentence together, and the name continuation side of
+    the class rule stands as its disclosed sacrifice. A
+    token opening on a figure is a sentence opener of that
+    class too. An abbreviation stop standing last in
     the passage, with nothing but closing quotes or a closing
     parenthesis after it, still ends its sentence, and a
     quoted sentence end closed by a parenthesis in mid
@@ -1157,16 +1173,21 @@ def _dot_ends_sentence(text, pos):
         break
     if not rest:
         return True
+    if word.lower() in _TITLE_ABBREVIATION_WORDS or \
+            word.lower() in _DEGREE_ABBREVIATION_WORDS or \
+            word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
+            word.lower() in _JOINING_ABBREVIATION_WORDS or \
+            len(word) == 1:
+        return False
+    if rest[0].isdigit():
+        return True
     next_word = re.match(r"([A-Za-z]+)", rest)
     if next_word is None:
         return False
     if len(next_word.group(1)) == 1:
-        return False
-    if word.lower() in _TITLE_ABBREVIATION_WORDS or \
-            word.lower() in _DEGREE_ABBREVIATION_WORDS or \
-            word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
-            len(word) == 1:
-        return False
+        if not next_word.group(1)[0].isupper():
+            return False
+        return rest[next_word.end():next_word.end() + 1] != "."
     return next_word.group(1)[0].isupper()
 
 
@@ -2799,14 +2820,97 @@ def _closure_match_spans(text):
 
 
 _CLOSURE_JOIN_RE = re.compile(
-    r",|;|:|\s+(?:and|or|but|while)\s+|\s+[-—–]\s+", re.I)
+    r",|;|:|\s+(?:and|or|but|while|yet|nor|so|as|whereas|"
+    r"although|though)\s+|\s+[-—–]\s+|\s*[—–]\s*", re.I)
 
 
-def _first_closure_join(text, lo, hi):
-    """The first closure statement join in text[lo:hi], or None."""
+def _first_closure_join(text, lo, hi, before_side=False,
+                        other_pos=None):
+    """The first closure statement bound in text[lo:hi], or None.
+
+    The bound is returned as a (start, end) pair. Beside the
+    joins in _CLOSURE_JOIN_RE (the punctuation joins, the
+    conjunction joins and the dash joins, an em or en dash
+    bounding at any spacing and a hyphen dash bounding
+    spaced, as before), a quoted or parenthesised statement
+    is a bound in either direction. After a match, an
+    opening quote or parenthesis bounds the fragment where
+    the quoted or parenthesised matter begins, where that
+    matter holds the neighbouring match (other_pos stands
+    inside it, or it never closes before it); quoted or
+    parenthesised matter that closes before the neighbouring
+    match is a completion of the match own statement, not a
+    bound, and a step named inside it stays in the fragment.
+    A closing quote or parenthesis bounds the fragment where
+    matter the match stands inside ends. Before a match, a
+    closing quote or
+    parenthesis bounds the fragment after it, and a quoted
+    or parenthesised completion of the earlier statement
+    bounds the fragment after its closing mark, so a step
+    named inside that completion stays with the earlier
+    statement; an opening mark whose matter does not close
+    before the match bounds nothing on the before side, the
+    match standing inside that matter itself. The word for
+    is no conjunction join: for Step N is a statement
+    completion, not a join, and a bound at it would cut that
+    completion from the statement it completes. Single
+    quotes bound nothing: an apostrophe inside a word is
+    indistinguishable from one in these records.
+    """
     if hi <= lo:
         return None
-    return _CLOSURE_JOIN_RE.search(text, lo, hi)
+    in_quote = text[:lo].count("\"") % 2 == 1
+    depth = text[:lo].count("(") - text[:lo].count(")")
+    pos = lo
+    while pos < hi:
+        char = text[pos]
+        if in_quote or depth > 0:
+            if char == "\"" and in_quote:
+                return (pos, pos + 1)
+            if char == ")" and depth > 0:
+                return (pos, pos + 1)
+            if char == "\"":
+                in_quote = True
+            elif char == "(":
+                depth += 1
+            pos += 1
+            continue
+        if char == "\"" or char == "(":
+            if char == "\"":
+                found = text.find("\"", pos + 1, hi)
+                scan = found + 1 if found >= 0 else None
+            else:
+                level = 1
+                scan = pos + 1
+                while scan < hi and level:
+                    if text[scan] == "(":
+                        level += 1
+                    elif text[scan] == ")":
+                        level -= 1
+                    scan += 1
+                if level:
+                    scan = None
+            if not before_side:
+                if scan is None or other_pos is None or \
+                        other_pos < scan - 1:
+                    return (pos, pos + 1)
+                pos = scan
+                continue
+            if scan is not None:
+                return (pos, scan)
+            if char == "\"":
+                in_quote = True
+            else:
+                depth = 1
+            pos += 1
+            continue
+        if char == ")":
+            return (pos, pos + 1)
+        join = _CLOSURE_JOIN_RE.match(text, pos, hi)
+        if join is not None:
+            return (join.start(), join.end())
+        pos += 1
+    return None
 
 
 def _closure_names_foreign_step(text, match, step):
@@ -2822,8 +2926,12 @@ def _closure_names_foreign_step(text, match, step):
     closure sentence stays inside the fragment where no second
     closure statement stands in the sentence. The fragment is
     also bounded by the neighbouring closure statements in the
-    same sentence, at the full join set: a comma, a semicolon,
-    and, or, but, while, a colon, or a dash. A join counts as a
+    same sentence, at the full bound set stated at
+    _first_closure_join: a comma, a semicolon, a colon, a dash
+    (an em or en dash at any spacing), the conjunction joins
+    and, or, but, while, yet, nor, so, as, whereas, although
+    and though, and a quoted or parenthesised statement bound.
+    A join counts as a
     bound only where it joins two closure statements, that is,
     where a second closure match stands on its other side in
     the same sentence. After the match, the fragment ends at
@@ -2863,14 +2971,16 @@ def _closure_names_foreign_step(text, match, step):
                if span_end <= match.start() and span_end > start]
     if earlier:
         earlier_end = max(earlier)
-        join = _first_closure_join(text, earlier_end, match.start())
-        start = join.end() if join is not None else earlier_end
+        join = _first_closure_join(text, earlier_end, match.start(),
+                                   before_side=True)
+        start = join[1] if join is not None else earlier_end
     later = [span_start for span_start, span_end in spans
              if span_start >= match.end()]
     if later:
-        join = _first_closure_join(text, match.end(), min(later))
-        if join is not None and join.start() < end:
-            end = join.start()
+        join = _first_closure_join(text, match.end(), min(later),
+                                   other_pos=min(later))
+        if join is not None and join[0] < end:
+            end = join[0]
     fragment = text[start:end]
     for found in re.finditer(r"Step (\d+)\b", fragment):
         if int(found.group(1)) != step:
