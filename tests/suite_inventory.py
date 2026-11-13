@@ -31,6 +31,26 @@ INVENTORY = {
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_two_part_reason_form_no_code_fits_case",
         ],
     },
+    "test_aa_step15_round7_t4": {
+        "count": 15,
+        "cases": [
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_colon_part_step_attributes",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_control_fallback_line_first_token_outside_sentence",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_control_own_clause_naming_step1",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_control_two_mentions_each_own_step",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_own_part_governs_over_adjacent_parts",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_semicolon_subordinate_step_attributes",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_step_after_figure_attributes",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_48_step_after_figure_governs_over_before_part",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_control_full_item_row_canonical_counts_stand",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_control_full_item_row_duplicate_counts_stand",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_only_beside_banked_state_weaker_form",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_only_canonical_weaker_form",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_only_duplicate_weaker_form",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_plus_short_row_canonical_weaker_form",
+            "tests.test_aa_step15_round7_t4.TestStep15Round7T4.test_f15_52_header_plus_short_row_duplicate_weaker_form",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -525,4 +545,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 379
+TOTAL_CASES = 394

@@ -881,10 +881,16 @@ def _t4_banked_durations(captured):
     A BANKED mention denied in its own clause feeds no duration,
     under the same negation handling the T-2 BANKED alternative
     takes in _banked_duration_stands. Each figure is attributed
-    to the step its own clause names, under the clause scope the
-    duration helpers already use: the step named inside the
-    mention's own clause part governs, never a step named in
-    another clause of the same line. A figure whose own clause
+    to the step its own clause neighbourhood names, under the
+    clause scope the duration helpers already use: the before
+    and after fragments _clause_fragments computes for the
+    mention. Precedence inside that neighbourhood: the step
+    named inside the mention's own clause part governs first;
+    where the own part names no step, a step named in an after
+    part governs, nearest part first, because a part after the
+    figure states what the figure was recorded for; where no
+    after part names a step, a step named in a before part
+    governs, nearest part first. A figure whose neighbourhood
     names no step keeps the line's first Step token, the standing
     attribution, because that token is the only step the line
     names for it.
@@ -914,6 +920,20 @@ def _t4_banked_durations(captured):
             before, after, match.group(0))
         if step is not None:
             return step
+        # The own part names no step: widen to the adjacent parts
+        # of the same sentence scope, the parts of the before and
+        # after fragments beyond the own part. After parts govern
+        # before before parts, nearest part first on each side.
+        after_parts = re.split(r"[,:;]", after)
+        for part in after_parts[1:]:
+            step, _figure = _clause_subject(part)
+            if step is not None:
+                return step
+        before_parts = re.split(r"[,:;]", before)
+        for part in reversed(before_parts[:-1]):
+            step, _figure = _clause_subject(part)
+            if step is not None:
+                return step
         return line_step
 
     for line in ledger.text.splitlines():
@@ -983,15 +1003,16 @@ def _derive_t4(captured, universe):
     # Banked item counts stand only where a queue piece carries
     # readable decision items, on the same completeness ground
     # the D-1 queue selection applies: a piece whose text parses
-    # to a decision item table, from the canonical piece or from
-    # a readable duplicate. A queue piece standing in any other
-    # state (a directory, malformed, dangling, empty, or a
-    # disagreement piece carrying no text) carries no readable
-    # items, so its mere presence states no item count.
+    # to a non empty decision item list, from the canonical piece
+    # or from a readable duplicate. A table holding a header and
+    # no item rows parses to an empty list and carries no items,
+    # as a queue piece standing in any other state (a directory,
+    # malformed, dangling, empty, or a disagreement piece carrying
+    # no text) carries none, so neither states an item count.
     queue_counts_stand = False
     for piece in queue:
         if piece.text is not None and \
-                _decision_items(piece.text) is not None:
+                _decision_items(piece.text):
             queue_counts_stand = True
             break
     if queue_counts_stand:
