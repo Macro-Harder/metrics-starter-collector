@@ -202,6 +202,73 @@ def d1_cross_check_statement(feeder_result, table_items,
             % (name, _fmt_num(table_median), _fmt_num(feeder_median)))
 
 
+def cost_cross_check_statements(captured, e3_tokens, e4_money,
+                                b2_money_spent, b2_token_spent):
+    """Return record disagrees statements for the Slice 6 cost rows.
+
+    A statement is returned per row code only where the metrics
+    record states a figure for the row and the feeder records
+    support a different figure for the same item. Where the feeder
+    records support no figure for the item, no marking is made: the
+    row stands on its own feeder ground and the record figure is
+    never entered on the row. e3_tokens and e4_money map a step to
+    its feeder figure, and the B-2 values are the feeder totals, or
+    None where the feeder records support no total.
+    """
+    text = captured.assembled_metrics or ""
+    if not text:
+        return {}
+    import re
+    from metrics_starter_collector.derivation_core import _fmt_num
+    name = _metrics_name(captured)
+    statements = {}
+    for m in re.finditer(r"E-3 tokens for Step (\d+) as "
+                         r"(\d+(?:\.\d+)?)", text):
+        step = int(m.group(1))
+        stated = float(m.group(2))
+        if step in e3_tokens and e3_tokens[step] != stated:
+            statements.setdefault("E-3", []).append(
+                "record disagrees: %s states E-3 tokens for Step %d "
+                "as %s while the feeder records support tokens %s; "
+                "the row follows the feeder records."
+                % (name, step, _fmt_num(stated),
+                   _fmt_num(e3_tokens[step])))
+    for m in re.finditer(r"E-4 money for Step (\d+) as "
+                         r"(\d+(?:\.\d+)?)", text):
+        step = int(m.group(1))
+        stated = float(m.group(2))
+        if step in e4_money and e4_money[step] != stated:
+            statements.setdefault("E-4", []).append(
+                "record disagrees: %s states E-4 money for Step %d "
+                "as %s while the feeder records support money %s; "
+                "the row follows the feeder records."
+                % (name, step, _fmt_num(stated),
+                   _fmt_num(e4_money[step])))
+    for m in re.finditer(r"B-2 money spent as (\d+(?:\.\d+)?)", text):
+        stated = float(m.group(1))
+        if b2_money_spent is not None and b2_money_spent != stated:
+            statements.setdefault("B-2", []).append(
+                "record disagrees: %s states B-2 money spent as %s "
+                "while the feeder records support money spent %s; "
+                "the row follows the feeder records."
+                % (name, _fmt_num(stated), _fmt_num(b2_money_spent)))
+    for pattern, label in ((r"B-2 token total as (\d+(?:\.\d+)?)",
+                            "token total"),
+                           (r"B-2 token spent as (\d+(?:\.\d+)?)",
+                            "token spent"),
+                           (r"B-2 tokens as (\d+(?:\.\d+)?)", "tokens")):
+        for m in re.finditer(pattern, text):
+            stated = float(m.group(1))
+            if b2_token_spent is not None and b2_token_spent != stated:
+                statements.setdefault("B-2", []).append(
+                    "record disagrees: %s states B-2 %s as %s while "
+                    "the feeder records support %s %s; the row "
+                    "follows the feeder records."
+                    % (name, label, _fmt_num(stated), label,
+                       _fmt_num(b2_token_spent)))
+    return statements
+
+
 def t4_cross_check_statement(feeder_durations, metrics_text,
                              metrics_name=None):
     """Return a record disagrees statement for the T-4 row, or None.
