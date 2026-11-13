@@ -168,7 +168,10 @@ def _evidenced_rounds(pieces, step):
                 verdict = int(m.group(1))
                 break
     if verdict is None and gate_pieces:
-        verdict = len(gate_pieces)
+        # The count states records, not pieces: partitioned copies
+        # of one record are copies at one identity and count once,
+        # as in the core verdict record count.
+        verdict = len({p.identity for p in gate_pieces})
     if verdict is not None:
         candidates.append(verdict)
     return max(candidates) if candidates else 0
@@ -422,10 +425,17 @@ def capture_read(root):
         # a disagreement requires two substantive differing texts,
         # and an entry with no content has no content to disagree
         # with. Where no substantive entry stands at the identity,
-        # the empty entries are not partitioned at all and keep the
-        # standing treatment exactly: identical empty entries still
-        # merge into one piece, and a lone empty entry stands as it
-        # stands today.
+        # the empty entries still never merge as a content
+        # disagreement, because neither carries content that could
+        # disagree: entries holding the identical empty form merge
+        # into one piece as today, and entries holding a different
+        # empty form stand grouped by their form, each piece
+        # carrying its true measured size, so no path is listed at
+        # a size it does not hold. Together the pieces at the
+        # identity hold nothing, are read in full, and carry no
+        # quality fault and no not read in full reason. A lone empty
+        # entry is the one form case of the same grouping and stands
+        # as it stands today.
         if any(x[4].strip() for x in rest):
             empties = [x for x in rest if not x[4].strip()]
             standing = [x for x in rest if x[4].strip()]
@@ -433,6 +443,19 @@ def capture_read(root):
                 pieces.append(Piece(ident, x[7], x[1], x[2], x[3],
                                     x[4], x[6], x[5],
                                     form_state=form))
+        elif rest:
+            forms = []
+            for x in rest:
+                if x[4] not in forms:
+                    forms.append(x[4])
+            for empty_text in forms:
+                same = [x for x in rest if x[4] == empty_text]
+                paths = tuple(sorted({p for x in same for p in x[7]}))
+                first = same[0]
+                pieces.append(Piece(ident, paths, first[1], first[2],
+                                    first[3], first[4], None, first[5],
+                                    form_state=form))
+            standing = []
         else:
             standing = rest
         if not standing:

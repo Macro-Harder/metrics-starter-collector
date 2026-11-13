@@ -380,6 +380,22 @@ INVENTORY = {
             "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_38_control_contested_counted_step_claimed",
         ],
     },
+    "test_t_step15_round5_counting": {
+        "count": 11,
+        "cases": [
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_31_control_distinct_gate_records_count_twice",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_31_control_intact_loop_step_counts_one_round",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_31_directory_gate_duplicate_counts_one_record",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_31_zero_byte_gate_duplicate_counts_one_record",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_31_zero_byte_gate_duplicate_pass_count_reconciles",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_control_differing_substantive_duplicates_merge",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_control_empty_beside_substantive_stands_alone",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_control_identical_newline_duplicates_still_merge",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_control_identical_zero_duplicates_still_merge",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_two_empty_ledger_forms_rows_missing",
+            "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_two_empty_step_record_forms_no_disagreement",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -389,4 +405,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 278
+TOTAL_CASES = 289

@@ -902,7 +902,11 @@ def _t7_verdict_count(captured, step):
     closed verdict record set, the gate alias set plus
     adjudications. Board rulings held inside step records are never
     verdict records. An explicit verdict record count statement in a
-    verdict record stands as the count it states.
+    verdict record stands as the count it states. The count states
+    records, not pieces: partitioned copies of one record, standing
+    as their own pieces under the duplicate partition, are copies at
+    one identity and count once, so the number of distinct
+    identities among the step gate pieces is the record count.
     """
     pieces = captured.step_pieces(step, *GATE_CLASSES)
     for p in pieces:
@@ -911,7 +915,7 @@ def _t7_verdict_count(captured, step):
                           p.text)
             if m:
                 return int(m.group(1))
-    return len(pieces)
+    return len({p.identity for p in pieces})
 
 
 def _derive_t7(captured, universe):
