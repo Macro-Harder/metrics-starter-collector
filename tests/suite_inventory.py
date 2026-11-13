@@ -145,6 +145,26 @@ INVENTORY = {
             "tests.test_ac_step15_r11_figures.TestStep15Round11Figures.test_f15_92_same_figure_denial_taken_out",
         ],
     },
+    "test_ad_step15_r11_attribution": {
+        "count": 15,
+        "cases": [
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_controls_and_but_or_while_still_govern",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_denial_round10_conjunctions_genuine_governs",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_denial_since_because_genuine_governs",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_em_dash_join_genuine_governs",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_fallback_yet_skips_scoped_step",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_93_falsity_yet_genuine_governs",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_94_control_subject_carrying_part_not_completed",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_94_inert_leads_complete_bare_recorded_for",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_94_inert_tail_then_genuine_governs",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_94_inert_tails_complete_bare_recorded_for",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_control_claim_wrong_before_unvalued_takes_out",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_control_duration_denial_still_takes_out",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_control_is_false_twin_stepless",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_standalone_wrong_carrier_figure_stands_stepless",
+            "tests.test_ad_step15_r11_attribution.TestStep15Round11Attribution.test_f15_95_standalone_wrong_then_genuine_governs",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -909,4 +929,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 683
+TOTAL_CASES = 698

@@ -1359,6 +1359,8 @@ def _before_negated_in_scope(before, after, mention):
             continue
         if idx == len(parts) - 1:
             return True
+        if _standalone_falsity_completed_by_next_part(parts, idx):
+            continue
         if not _subclause_scoped_elsewhere(part, step, figure):
             return True
     return False
@@ -1383,6 +1385,8 @@ def _after_negated_in_scope(after, before, mention):
             continue
         if idx == 0:
             return True
+        if _standalone_falsity_completed_by_next_part(parts, idx):
+            continue
         if not _subclause_scoped_elsewhere(part, step, figure):
             return True
     return False
@@ -1692,7 +1696,7 @@ _FALSITY_RE = re.compile(
     r"\bincorrectly\b|\bmistakenly\b|\berroneously\b|"
     r"\bfalsely\b|\bwrongly\b", re.I)
 _SEGMENT_CONJUNCTION_RE = re.compile(
-    r"\s+(?:and|but|or|while)\s+", re.I)
+    r"\s+(?:and|but|or|while|since|because)\s+", re.I)
 
 
 def _segment_bounds(text):
@@ -1706,19 +1710,30 @@ def _segment_bounds(text):
     person's initials, or an abbreviation the rule holds is no
     end (Dr., Prof., e.g.) does not cut a segment, so a falsity
     predicate standing after such a stop in the same clause
-    stands in the wording's own segment. A conjunction joining
-    two statements is a bound, in the join set the closure
-    fragment reading takes: and, but, or and while.
+    stands in the wording's own segment. The conjunction and
+    dash bounds are the closure fragment reading's own join
+    set, read from _CLOSURE_JOIN_RE itself so the built form
+    and the stated form cannot drift apart: the conjunctions
+    and, or, but, while, yet, nor, so, as, whereas, although
+    and though, and a dash (an em or en dash at any spacing, a
+    hyphen dash spaced), beside the punctuation joins that set
+    also carries. Two further subordinating joins stand in
+    _SEGMENT_CONJUNCTION_RE: since and because, the joins
+    C10-2 names in this reading, which the closure reading
+    takes up on its own side in the same round. A denial and
+    a genuine recorded for joined by any of these bounds
+    therefore stand in two segments.
     """
-    bounds = []
+    bounds = set()
     for pos, char in enumerate(text):
         if char in ",:;!?" or \
                 (char == "." and _dot_ends_sentence(text, pos)):
-            bounds.append((pos, pos + 1))
+            bounds.add((pos, pos + 1))
     for match in _SEGMENT_CONJUNCTION_RE.finditer(text):
-        bounds.append((match.start(), match.end()))
-    bounds.sort()
-    return bounds
+        bounds.add((match.start(), match.end()))
+    for match in _CLOSURE_JOIN_RE.finditer(text):
+        bounds.add((match.start(), match.end()))
+    return sorted(bounds)
 
 
 def _segment_of(text, pos):
@@ -1800,16 +1815,31 @@ def _falsity_scoped_recorded_for(part):
 
 
 _BARE_RECORDED_FOR_RE = re.compile(
-    r"recorded\s+for\s+Step\s+\d+\.?$", re.I)
+    r"(?:(?:then|also)\s+)*"
+    r"recorded\s+for\s+Step\s+\d+"
+    r"(?:\s+(?:"
+    r"(?:by|in|on|at)\s+(?:the\s+|a\s+|an\s+)?"
+    r"[A-Za-z][\w.'-]*(?:\s+[A-Za-z][\w.'-]*){0,3}"
+    r"|[a-z][\w'-]*))?"
+    r"\.?$", re.I)
 
 
 def _bare_recorded_for_part(part):
     """Whether a part is a bare recorded for wording alone.
 
     The part, stripped of its surrounding space, is the
-    recorded for wording and nothing else, so the part states
-    no subject of its own: what governs such a part stands in
-    the part before it.
+    recorded for wording with at most inert additions that
+    state no subject of their own: a leading discourse adverb
+    (then, also), a trailing prepositional phrase naming an
+    agent or a place (by Lane, in the log), or a trailing
+    lone adverb (yesterday). Any addition carrying a subject
+    or a predication of its own takes the part out of the
+    bare form: a part carrying its own subject before the
+    wording (the figure recorded for Step 1), a second step
+    naming, or a verb phrase after the wording states
+    something of its own and is governed by its own segment
+    alone, as before. What governs a bare part stands in the
+    part before it.
     """
     return _BARE_RECORDED_FOR_RE.match(part.strip()) is not None
 
@@ -1829,6 +1859,30 @@ def _standalone_falsity_part(part):
     return _FALSITY_RE.search(cleaned) is not None and \
         _RECORDED_FOR_STEP_RE.search(part) is None and \
         re.search(r"Step\s+\d+\b", part) is None
+
+
+def _standalone_falsity_completed_by_next_part(parts, idx):
+    """Whether a falsity part is completed by the next part.
+
+    A standalone falsity part (at _standalone_falsity_part)
+    standing immediately before a part carrying a recorded
+    for wording is scoped to that wording's recording, on the
+    same completion the adjacent part limb states for the
+    attribution reading: the claim states that recording
+    false, so a listed word inside it (the claim was wrong)
+    denies that recording's attribution, not a figure standing
+    in another part. Where no recorded for wording stands in
+    the part immediately after it, the falsity part keeps its
+    standing denial reach (the claim was wrong, an interval
+    duration is noted for this step still takes the unvalued
+    mention out). The denial scope tests at
+    _before_negated_in_scope and _after_negated_in_scope read
+    this beside _subclause_scoped_elsewhere.
+    """
+    if idx + 1 >= len(parts):
+        return False
+    return _standalone_falsity_part(parts[idx]) and \
+        _RECORDED_FOR_STEP_RE.search(parts[idx + 1]) is not None
 
 
 def _genuine_recorded_for_step(part):
@@ -1923,7 +1977,8 @@ def _attribution_candidate(part, previous_part=None):
 
     One further scope stands on the previous part, where the
     caller supplies it: a bare recorded for part, a part that
-    is the wording alone with no subject of its own, standing
+    is the wording with at most inert additions and no
+    subject of its own (at _bare_recorded_for_part), standing
     immediately after a standalone falsity part (at
     _standalone_falsity_part: a falsity claim naming no wording
     and no step, as in the recording is in error, recorded for
