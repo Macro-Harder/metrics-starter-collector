@@ -1252,7 +1252,8 @@ def _after_negated_in_scope(after, before, mention):
 
 
 _ABBREVIATION_WORDS = frozenset({
-    "e.g", "i.e", "etc", "cf", "vs", "dr", "mr", "mrs", "ms",
+    "e.g", "i.e", "etc", "cf", "vs", "viz", "a.k.a", "dr",
+    "mr", "mrs", "ms",
     "prof", "capt", "lt", "col", "gen", "sen", "rep", "gov",
     "st", "approx", "fig", "dept", "est", "inc", "ltd", "jr",
     "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
@@ -1266,7 +1267,7 @@ _TITLE_ABBREVIATION_WORDS = frozenset({
 _INTRODUCING_ABBREVIATION_WORDS = frozenset({"e.g", "i.e"})
 
 
-_JOINING_ABBREVIATION_WORDS = frozenset({"cf", "vs"})
+_JOINING_ABBREVIATION_WORDS = frozenset({"cf", "vs", "viz", "a.k.a"})
 
 
 _DEGREE_ABBREVIATION_WORDS = frozenset({
@@ -1296,8 +1297,10 @@ def _dot_ends_sentence(text, pos):
     not false ends); an introducing abbreviation (e.g., i.e.)
     does not end a sentence before a following token in mid
     passage, because it introduces what follows; a joining
-    abbreviation (cf. and vs., in
-    _JOINING_ABBREVIATION_WORDS) does not end a sentence
+    abbreviation (cf., vs., viz. and a.k.a., in
+    _JOINING_ABBREVIATION_WORDS, and the two word form et al.,
+    whose closing word al is read as a joining form only
+    where the word before it is et) does not end a sentence
     before a following token either, because each stands
     between the names it joins and the token after its stop
     is the name it governs, as a title governs its name; and
@@ -1329,7 +1332,9 @@ def _dot_ends_sentence(text, pos):
     if token is None:
         return True
     word = token.group(1)
-    if word.lower() not in _ABBREVIATION_WORDS and \
+    et_al = word.lower() == "al" and re.search(
+        r"\bet\s+$", text[:pos - len(word)], re.I) is not None
+    if not et_al and word.lower() not in _ABBREVIATION_WORDS and \
             "." not in word and len(word) != 1:
         return True
     rest = text[pos + 1:]
@@ -1345,6 +1350,7 @@ def _dot_ends_sentence(text, pos):
             word.lower() in _DEGREE_ABBREVIATION_WORDS or \
             word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
             word.lower() in _JOINING_ABBREVIATION_WORDS or \
+            et_al or \
             len(word) == 1:
         return False
     if rest[0].isdigit():
@@ -3099,7 +3105,14 @@ _CLOSURE_TOKENS = ("CLOSED-PASS", "CLOSED-QUALIFIED", "CLOSED-FAIL",
                    "RECYCLED")
 
 
-_CLOSURE_EXACT = r"(?![-A-Za-z0-9])"
+# A closure token ends where it is not continued as a token:
+# an alphanumeric continuation, or a hyphen carrying an
+# uppercase or digit continuation (CLOSED-PASS-EXTRA), is
+# part of a longer token and no closure stands. A hyphen
+# carrying a lowercase word or a space is a dash standing
+# after the token, the unspaced hyphen join, and the token
+# ends before it as it ends before an em dash.
+_CLOSURE_EXACT = r"(?![A-Za-z0-9]|-(?=[A-Z0-9]))"
 _CLOSURE_PATTERNS = (
     (r"(?:Step closure state|Closure state):\s*"
      r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
@@ -3126,7 +3139,97 @@ def _closure_match_spans(text):
 
 _CLOSURE_JOIN_RE = re.compile(
     r",|;|:|\s+(?:and|or|but|while|yet|nor|so|as|whereas|"
-    r"although|though)\s+|\s+[-—–]\s+|\s*[—–]\s*", re.I)
+    r"although|though|since|because|unless|when|if|until|"
+    r"once|whenever|before|after|lest|till|wherever|whilst)"
+    r"\s+|\s+[-—–]\s+|\s*[—–]\s*", re.I)
+
+
+def _positional_closure_join(text, lo, hi):
+    """A closure join read by position, or None.
+
+    The segment between two closure matches opens with the
+    earlier match's own completion, where it carries one (a
+    for Step N completion, or a quoted, parenthesised or
+    bracketed completion standing at the segment's head), and
+    the word standing in the joiner position, at the head of
+    the segment or immediately after that completion, is a
+    join whatever word it is: that position is where a clause
+    joining word stands between two closure statements, so
+    the subordinating side of the join set is completed by
+    position rather than by vocabulary, and a multi word
+    joiner (in case, even though) is bound at its first word.
+    The reading is bounded in four stated places. The word
+    for opens a completion, not a join, where it does not
+    carry the for Step N form; an article (the, a, an) opens
+    a noun phrase, not a join; a word governing a Step naming
+    directly after it (in Step 3, by Step 3) is a preposition
+    inside the earlier statement, not a join; and where the
+    rest of the segment carries a punctuation, dash, quote,
+    parenthesis or bracket bound, that bound is the segment's
+    separator and is left to the scan at _first_closure_join,
+    so a phrase standing before such a bound (by Lane for
+    Step 3, before a comma) is never misread as a joiner.
+    A capitalised word is a name or a sentence subject onset,
+    not a joiner, and a joiner word is followed by a space,
+    as the listed joins are.
+    """
+    if text[:lo].count("\"") % 2 == 1:
+        return None
+    if text[:lo].count("(") - text[:lo].count(")") > 0:
+        return None
+    if text[:lo].count("[") - text[:lo].count("]") > 0:
+        return None
+    pos = lo
+    while pos < hi and text[pos] == " ":
+        pos += 1
+    if pos >= hi:
+        return None
+    cand = pos
+    if text[pos] in "\"([":
+        closing = {"\"": "\"", "(": ")", "[": "]"}[text[pos]]
+        if text[pos] == "\"":
+            found = text.find("\"", pos + 1, hi)
+            if found < 0:
+                return None
+            cand = found + 1
+        else:
+            level = 1
+            scan = pos + 1
+            while scan < hi and level:
+                if text[scan] == text[pos]:
+                    level += 1
+                elif text[scan] == closing:
+                    level -= 1
+                scan += 1
+            if level:
+                return None
+            cand = scan
+        while cand < hi and text[cand] == " ":
+            cand += 1
+    else:
+        completion = re.match(r"for\s+Step\s+\d+\b", text[pos:hi])
+        if completion is not None:
+            cand = pos + completion.end()
+            while cand < hi and text[cand] == " ":
+                cand += 1
+    if cand >= hi:
+        return None
+    match = re.match(r"([A-Za-z]+)", text[cand:hi])
+    if match is None:
+        return None
+    word = match.group(1)
+    if not word.islower() or word in ("for", "the", "a", "an"):
+        return None
+    end = cand + match.end()
+    if end < hi and text[end] != " ":
+        return None
+    rest = text[end:hi]
+    if re.search(r"[,;:\"()\[\]{}—–-]", rest) is not None:
+        return None
+    following = re.match(r"\s*([A-Za-z]+)", rest)
+    if following is not None and following.group(1) == "Step":
+        return None
+    return (cand, end)
 
 
 def _first_closure_join(text, lo, hi, before_side=False,
@@ -3137,20 +3240,27 @@ def _first_closure_join(text, lo, hi, before_side=False,
     joins in _CLOSURE_JOIN_RE (the punctuation joins, the
     conjunction joins and the dash joins, an em or en dash
     bounding at any spacing and a hyphen dash bounding
-    spaced, as before), a quoted or parenthesised statement
+    spaced, as before), a word in the joiner position bounds
+    under the positional rule at _positional_closure_join,
+    and a hyphen standing in a join position, at the head of
+    the segment (immediately after a closure match) or
+    immediately after a Step N completion inside the segment,
+    bounds at any spacing, as its em dash twin does: a hyphen
+    inside a word elsewhere in the segment (well-known) is no
+    join. A quoted, parenthesised or bracketed statement
     is a bound in either direction. After a match, an
-    opening quote or parenthesis bounds the fragment where
-    the quoted or parenthesised matter begins, where that
+    opening quote, parenthesis or bracket bounds the fragment
+    where the set off matter begins, where that
     matter holds the neighbouring match (other_pos stands
-    inside it, or it never closes before it); quoted or
-    parenthesised matter that closes before the neighbouring
+    inside it, or it never closes before it); set off
+    matter that closes before the neighbouring
     match is a completion of the match own statement, not a
     bound, and a step named inside it stays in the fragment.
-    A closing quote or parenthesis bounds the fragment where
-    matter the match stands inside ends. Before a match, a
-    closing quote or
-    parenthesis bounds the fragment after it, and a quoted
-    or parenthesised completion of the earlier statement
+    A closing quote, parenthesis or bracket bounds the
+    fragment where matter the match stands inside ends.
+    Before a match, a closing mark
+    bounds the fragment after it, and a set off
+    completion of the earlier statement
     bounds the fragment after its closing mark, so a step
     named inside that completion stays with the earlier
     statement; an opening mark whose matter does not close
@@ -3164,33 +3274,42 @@ def _first_closure_join(text, lo, hi, before_side=False,
     """
     if hi <= lo:
         return None
+    positional = _positional_closure_join(text, lo, hi)
+    if positional is not None:
+        return positional
     in_quote = text[:lo].count("\"") % 2 == 1
     depth = text[:lo].count("(") - text[:lo].count(")")
+    bracket_depth = text[:lo].count("[") - text[:lo].count("]")
     pos = lo
     while pos < hi:
         char = text[pos]
-        if in_quote or depth > 0:
+        if in_quote or depth > 0 or bracket_depth > 0:
             if char == "\"" and in_quote:
                 return (pos, pos + 1)
             if char == ")" and depth > 0:
+                return (pos, pos + 1)
+            if char == "]" and bracket_depth > 0:
                 return (pos, pos + 1)
             if char == "\"":
                 in_quote = True
             elif char == "(":
                 depth += 1
+            elif char == "[":
+                bracket_depth += 1
             pos += 1
             continue
-        if char == "\"" or char == "(":
+        if char == "\"" or char == "(" or char == "[":
             if char == "\"":
                 found = text.find("\"", pos + 1, hi)
                 scan = found + 1 if found >= 0 else None
             else:
+                closing = ")" if char == "(" else "]"
                 level = 1
                 scan = pos + 1
                 while scan < hi and level:
-                    if text[scan] == "(":
+                    if text[scan] == char:
                         level += 1
-                    elif text[scan] == ")":
+                    elif text[scan] == closing:
                         level -= 1
                     scan += 1
                 if level:
@@ -3205,12 +3324,18 @@ def _first_closure_join(text, lo, hi, before_side=False,
                 return (pos, scan)
             if char == "\"":
                 in_quote = True
-            else:
+            elif char == "(":
                 depth = 1
+            else:
+                bracket_depth = 1
             pos += 1
             continue
-        if char == ")":
+        if char == ")" or char == "]":
             return (pos, pos + 1)
+        if char == "-":
+            head = text[lo:pos].rstrip()
+            if not head or re.search(r"Step \d+$", head):
+                return (pos, pos + 1)
         join = _CLOSURE_JOIN_RE.match(text, pos, hi)
         if join is not None:
             return (join.start(), join.end())
@@ -3233,9 +3358,13 @@ def _closure_names_foreign_step(text, match, step):
     also bounded by the neighbouring closure statements in the
     same sentence, at the full bound set stated at
     _first_closure_join: a comma, a semicolon, a colon, a dash
-    (an em or en dash at any spacing), the conjunction joins
-    and, or, but, while, yet, nor, so, as, whereas, although
-    and though, and a quoted or parenthesised statement bound.
+    (an em or en dash at any spacing, a hyphen spaced or in
+    join position), the conjunction joins
+    and, or, but, while, yet, nor, so, as, whereas, although,
+    though, since, because, unless, when, if, until, once,
+    whenever, before, after, lest, till, wherever and whilst,
+    a word in the joiner position under the positional rule,
+    and a quoted, parenthesised or bracketed statement bound.
     A join counts as a
     bound only where it joins two closure statements, that is,
     where a second closure match stands on its other side in

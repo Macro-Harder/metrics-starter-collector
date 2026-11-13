@@ -31,6 +31,30 @@ INVENTORY = {
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_two_part_reason_form_no_code_fits_case",
         ],
     },
+    "test_aa_step15_r11_boundary_closure": {
+        "count": 19,
+        "cases": [
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_after_completed_list_neighbours",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_after_subordinating_joins_foreign_not_poison",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_before_completed_list_neighbours",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_before_subordinating_joins_do_not_leak",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_control_joins_and_completions_hold",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_positional_joiner_after_unlisted_words",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_82_positional_joiner_before_unlisted_words",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_83_class_rule_direct",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_83_control_own_closure_beside_joining_counts",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_83_joining_abbreviations_closure_foreign",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_83_joining_abbreviations_denial_reaches_duration",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_84_after_unspaced_hyphen_foreign_not_poison",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_84_before_unspaced_hyphen_does_not_leak",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_84_control_spaced_hyphen_and_comma_hold",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_84_unspaced_hyphen_positional_neighbours",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_85_after_bracketed_foreign_does_not_poison",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_85_before_bracketed_step_naming_does_not_leak",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_85_bracket_neighbours",
+            "tests.test_aa_step15_r11_boundary_closure.TestStep15R11BoundaryClosure.test_f15_85_control_bracketed_forms_hold",
+        ],
+    },
     "test_aa_step15_round7_t4": {
         "count": 15,
         "cases": [
@@ -845,4 +869,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 634
+TOTAL_CASES = 653
