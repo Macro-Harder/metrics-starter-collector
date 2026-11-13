@@ -718,6 +718,27 @@ INVENTORY = {
             "tests.test_z_step15_round7_f2.TestStep15Round7F2.test_f15_47_foreign_then_own_closure_in_one_piece_counts_own",
         ],
     },
+    "test_u_step15_r9_figures_attribution": {
+        "count": 16,
+        "cases": [
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_control_existing_figure_forms_hold",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_hundred_and_tail_different_figure_stands",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_hundred_and_tail_same_figure_taken_out",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_point_multi_tail_different_figure_stands",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_point_multi_tail_same_figure_taken_out",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_thousand_compound_figures_read_whole",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_thousand_different_figure_stands",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_68_thousand_same_figure_taken_out",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_controls_recorded_for_precedence_hold",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_fallback_skips_denial_only_step",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_false_claim_nearer_genuine_recorded_for_governs",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_falsity_on_before_side_genuine_governs",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_falsity_predicates_never_attribute",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_in_error_part_never_attributes",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_shared_part_denial_and_genuine_recorded_for",
+            "tests.test_u_step15_r9_figures_attribution.TestStep15Round9FiguresAttribution.test_f15_69_shared_part_falsity_and_genuine_recorded_for",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -727,4 +748,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 541
+TOTAL_CASES = 557

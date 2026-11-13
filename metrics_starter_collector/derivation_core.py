@@ -899,25 +899,38 @@ _NUMBER_WORD_VALUES = {
     "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
     "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
     "eighty": 80, "ninety": 90}
+_FIGURE_UNIT = r"(?:one|two|three|four|five|six|seven|eight|nine)"
+_FIGURE_TEEN = (r"(?:ten|eleven|twelve|thirteen|fourteen|fifteen|"
+                r"sixteen|seventeen|eighteen|nineteen)")
+_FIGURE_TENS = (r"(?:twenty|thirty|forty|fifty|sixty|seventy|"
+                r"eighty|ninety)")
+_FIGURE_SMALL = (r"(?:" + _FIGURE_TENS + r"(?:[ -]" + _FIGURE_UNIT +
+                 r")?|" + _FIGURE_TEEN + r"|" + _FIGURE_UNIT + r")")
+_FIGURE_HUNDRED = (_FIGURE_UNIT + r"\s+hundred(?:\s+(?:and\s+)?" +
+                   _FIGURE_SMALL + r")?")
+_FIGURE_THOUSAND = (_FIGURE_SMALL + r"\s+thousand(?:\s+(?:and\s+)?" +
+                    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
+                    r"))?")
+_FIGURE_INT = (r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED +
+               r"|" + _FIGURE_SMALL + r")")
 _FIGURE_RE = re.compile(
-    r"(\d+(?:\.\d+)?|"
-    r"(?:one|two|three|four|five|six|seven|eight|nine)\s+hundred"
-    r"(?:\s+(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|"
-    r"ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|"
-    r"nine))?|one|two|three|four|five|six|seven|eight|nine|ten|"
-    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
-    r"seventeen|eighteen|nineteen))?|"
-    r"(?:(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|"
-    r"ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|"
-    r"nine))?|one|two|three|four|five|six|seven|eight|nine|ten|"
-    r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|"
-    r"seventeen|eighteen|nineteen|twenty)\s+point\s+"
-    r"(?:one|two|three|four|five|six|seven|eight|nine)|"
-    r"(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)"
-    r"(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|"
-    r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|"
-    r"twelve|thirteen|fourteen|fifteen|sixteen|seventeen|"
-    r"eighteen|nineteen|twenty)\s*hours?\b", re.I)
+    r"(\d+(?:\.\d+)?|" + _FIGURE_INT + r"\s+point\s+" + _FIGURE_UNIT +
+    r"(?:\s+" + _FIGURE_UNIT + r")*|" + _FIGURE_INT + r")"
+    r"\s*hours?\b", re.I)
+
+
+def _integer_word_value(words):
+    total = 0
+    current = 0
+    for part in words:
+        if part == "thousand":
+            total += (current or 1) * 1000
+            current = 0
+        elif part == "hundred":
+            current = (current or 1) * 100
+        else:
+            current += _NUMBER_WORD_VALUES[part]
+    return total + current
 
 
 def _figure_value(token):
@@ -927,15 +940,13 @@ def _figure_value(token):
              if part and part != "and"]
     if "point" in words:
         idx = words.index("point")
-        whole = sum(_NUMBER_WORD_VALUES[part] for part in words[:idx])
-        frac = sum(_NUMBER_WORD_VALUES[part] for part in words[idx + 1:])
-        return whole + frac / 10.0
-    if "hundred" in words:
-        idx = words.index("hundred")
-        base = _NUMBER_WORD_VALUES[words[idx - 1]] if idx else 1
-        rest = sum(_NUMBER_WORD_VALUES[part] for part in words[idx + 1:])
-        return float(base * 100 + rest)
-    return float(sum(_NUMBER_WORD_VALUES[part] for part in words))
+        whole = _integer_word_value(words[:idx])
+        digits = "".join(
+            str(_NUMBER_WORD_VALUES[part]) for part in words[idx + 1:])
+        if not digits:
+            return float(whole)
+        return float("%d.%s" % (whole, digits))
+    return float(_integer_word_value(words))
 
 
 def _clause_subject(text):
@@ -944,8 +955,12 @@ def _clause_subject(text):
     The figure is read in digits or in number words: the common
     forms one through twenty, the tens, and a tens form with a
     unit, each standing before an hour or hours word, and beside
-    them the hundred forms (one hundred, two hundred) and the
-    point forms (five point five, read as 5.5).
+    them the hundred forms read in full (one hundred, one
+    hundred and five, two hundred and thirty five), the thousand
+    forms and their compounds (one thousand, one thousand five
+    hundred, one thousand and five), and the point forms with
+    single or multi part tails (five point five, read as 5.5;
+    five point five five, read as 5.55).
     """
     step = re.search(r"Step (\d+)\b", text)
     figure = _FIGURE_RE.search(text)
@@ -1338,35 +1353,139 @@ def _derive_t2(captured, universe, t1):
 _RECORDED_FOR_STEP_RE = re.compile(
     r"\brecorded\s+for\s+Step\s+(\d+)\b", re.I)
 _APPENDIX_PART_RE = re.compile(r"\bappendix\b", re.I)
+_FALSITY_RE = re.compile(
+    r"\bin\s+error\b|\bfalse\b|\bincorrect\b|\bmistaken\b|"
+    r"\berroneous\b|\bincorrectly\b|\bmistakenly\b", re.I)
+_SEGMENT_SPLIT_RE = re.compile(
+    r"[,:;.!?]|\s+(?:and|but)\s+", re.I)
+
+
+def _segment_of(text, pos):
+    """The segment of a text around a position, and its offset.
+
+    A segment is the run between two segment bounds: a comma,
+    colon, semicolon or sentence stop, or a conjunction joining
+    two statements (and, but). A recorded for wording and the
+    words that govern it stand in one segment; a denial and a
+    genuine recorded for joined by a conjunction stand in two.
+    """
+    start = 0
+    for match in _SEGMENT_SPLIT_RE.finditer(text):
+        if match.start() >= pos:
+            break
+        start = match.end()
+    end = len(text)
+    for match in _SEGMENT_SPLIT_RE.finditer(text, start):
+        if match.start() >= pos:
+            end = match.start()
+            break
+    return text[start:end], pos - start
+
+
+def _recorded_for_scoped(part, match):
+    """Whether one recorded for wording is denial scoped.
+
+    The wording is read inside its own segment of the part. It
+    is denial scoped where its segment carries a falsity
+    predicate (in error, false, incorrect, mistaken, erroneous
+    and their adverb forms), a listed word in a denial
+    construction, or a negation marker standing before the
+    wording (no interval duration was recorded for, it was not
+    recorded for). A falsity predicate is a denial predicate
+    beyond the marker sets: a recording stated to be in error
+    or false is denied, not offered, whatever step it names.
+    """
+    segment, _offset = _segment_of(part, match.start())
+    cleaned = _clean_affirming_frame(segment)
+    if _FALSITY_RE.search(cleaned) is not None or \
+            _listed_word_denies(cleaned):
+        return True
+    cleaned_match = _RECORDED_FOR_STEP_RE.search(cleaned)
+    offset = cleaned_match.start() if cleaned_match is not None \
+        else _offset
+    for pattern in (_BEFORE_NEGATION_RE, _AFTER_NEGATION_RE):
+        for negation in pattern.finditer(cleaned):
+            if negation.start() < offset:
+                return True
+    return False
+
+
+def _genuine_recorded_for_step(part):
+    """The step a part's genuine recorded for wording names.
+
+    Each recorded for wording in the part is tested on its own
+    segment: the first wording that is not denial scoped under
+    _recorded_for_scoped governs, so a genuine recorded for
+    sharing one comma part with a denial (no interval duration
+    was recorded for Step 2 and the figure recorded for Step 1)
+    still offers its step, while a wording carrying a falsity
+    predicate offers nothing.
+    """
+    for match in _RECORDED_FOR_STEP_RE.finditer(part):
+        if not _recorded_for_scoped(part, match):
+            return int(match.group(1))
+    return None
+
+
+def _fallback_step(line):
+    """The attribution fallback for a line naming no step in scope.
+
+    The standing fallback is the line's first Step token, with
+    one bound: a token named only inside denial scope never
+    governs. Tokens are read in line order; a token whose own
+    segment carries a negation marker, a falsity predicate, or
+    a listed word in a denial construction is passed over, and
+    the first token standing outside denial scope governs.
+    Where every token stands inside denial scope, and where the
+    line names no step at all, the figure keeps no step.
+    """
+    for match in re.finditer(r"Step (\d+)\b", line):
+        segment, _offset = _segment_of(line, match.start())
+        cleaned = _clean_affirming_frame(segment)
+        if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
+                _AFTER_NEGATION_RE.search(cleaned) is not None or \
+                _FALSITY_RE.search(cleaned) is not None or \
+                _listed_word_denies(cleaned):
+            continue
+        return int(match.group(1))
+    return None
 
 
 def _attribution_candidate(part):
     """The attribution a clause part offers, as (tier, step).
 
-    A part carrying a denial marker, under the standing before
-    and after negation sets or a listed word in a denial
-    construction, is denial scoped: it offers no attribution at
-    all, whatever step it names, a recorded for wording inside
-    such a part included, because the part states a non recording
-    or a denial about its own subject, not what this figure was
-    recorded for. The affirming not only form carries no denial,
+    A part stating what the figure was recorded for, in a
+    recorded for wording that is not denial scoped, offers the
+    step that wording names at tier 0, ahead of the denial test
+    on the part as a whole: a genuine recorded for sharing one
+    comma part with a denial still governs, because the denial
+    scopes its own wording, not the genuine one. A recorded for
+    wording carrying a falsity predicate (in error, is false,
+    wrong, incorrect, mistaken and their kin, under
+    _recorded_for_scoped) is denial scoped and never
+    attributes. A part carrying a denial marker, under the
+    standing before and after negation sets, a falsity
+    predicate, or a listed word in a denial construction, is
+    denial scoped: it offers no attribution at all, whatever
+    step it names, because the part states a non recording or a
+    denial about its own subject, not what this figure was
+    recorded for. The affirming frame family carries no denial,
     as on the after side negation test. Any other part naming a
-    step offers that step in one of three tiers: tier 0, a part
-    stating what the figure was recorded for, which offers the
-    step its recorded for wording names; tier 1, a part merely
-    naming a step; tier 2, a part naming a step only inside an
-    appendix clause, which names the step as the subject of its
-    appendix and not as the figure's step. A part naming no step
-    offers nothing.
+    step offers that step in one of three tiers: tier 0 as
+    above; tier 1, a part merely naming a step; tier 2, a part
+    naming a step only inside an appendix clause, which names
+    the step as the subject of its appendix and not as the
+    figure's step. A part naming no step offers nothing.
     """
-    cleaned = re.sub(r"\bnot\s+only\b", "", part, flags=re.I)
+    genuine = _genuine_recorded_for_step(part)
+    if genuine is not None:
+        return (0, genuine)
+    cleaned = _clean_affirming_frame(part)
     if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
             _AFTER_NEGATION_RE.search(cleaned) is not None or \
+            _FALSITY_RE.search(cleaned) is not None or \
             _listed_word_denies(cleaned):
         return None
-    recorded = _RECORDED_FOR_STEP_RE.search(part)
-    if recorded is not None:
-        return (0, int(recorded.group(1)))
     step, _figure = _clause_subject(part)
     if step is None:
         return None
@@ -1399,7 +1518,10 @@ def _t4_banked_durations(captured):
     any tier, under the test at _attribution_candidate. A figure
     whose sentence scope names no step keeps the line's first
     Step token, the standing attribution, because that token is
-    the only step the line names for it.
+    the only step the line names for it, with the one bound at
+    _fallback_step: a token named only inside denial scope,
+    a falsity carrying recorded for wording included, never
+    governs as the fallback.
     """
     found = []
     ledger = _ledger_piece(captured)
@@ -1425,6 +1547,26 @@ def _t4_banked_durations(captured):
         step, _figure = _mention_subject(
             before, after, match.group(0))
         if step is not None:
+            # A step the own part names only through a denial
+            # scoped recorded for wording (a falsity carrying or
+            # negated wording inside the own part's own segment)
+            # does not govern: the own part is reread with those
+            # wordings blanked, and what remains decides.
+            before_parts = re.split(r"[,:]", before)
+            after_parts = re.split(r"[,:]", after)
+            own = (before_parts[-1] if before_parts else "") + \
+                " " + match.group(0) + " " + \
+                (after_parts[0] if after_parts else "")
+            scoped = [m for m in
+                      _RECORDED_FOR_STEP_RE.finditer(own)
+                      if _recorded_for_scoped(own, m)]
+            if scoped:
+                blanked = own
+                for scoped_match in reversed(scoped):
+                    blanked = blanked[:scoped_match.start()] + \
+                        blanked[scoped_match.end():]
+                step, _figure = _clause_subject(blanked)
+        if step is not None:
             return step
         # The own part names no step: widen to the parts of the
         # mention's whole sentence scope beyond the own part, the
@@ -1446,7 +1588,7 @@ def _t4_banked_durations(captured):
             for candidate in candidates:
                 if candidate is not None and candidate[0] == tier:
                     return candidate[1]
-        return line_step
+        return _fallback_step(line)
 
     for line in ledger.text.splitlines():
         step_match = re.search(r"Step (\d+)\b", line)
