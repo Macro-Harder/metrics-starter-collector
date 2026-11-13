@@ -565,7 +565,10 @@ def _derive_t1(captured, universe):
 # Figures in the scope comparison are read in digits or in
 # number words, the hundred forms and the point forms among
 # them, so a figure stated in words compares the same
-# way a digit figure compares. A comma or a colon opens a new
+# way a digit figure compares. The compounds and mixed forms
+# of the figure grammar at _clause_subject compare the same
+# way, and a grouping comma inside a figure opens no part.
+# A comma or a colon opens a new
 # clause part: a marker in another part takes
 # the mention out only where that part is about the mention's own
 # subject. A part naming a different step or a different figure is
@@ -996,6 +999,10 @@ _NUMBER_WORD_VALUES = {
     "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
     "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
     "eighty": 80, "ninety": 90}
+_POINT_DIGIT_VALUES = {"oh": 0, "zero": 0}
+_POINT_DIGIT_VALUES.update(
+    {name: value for name, value in _NUMBER_WORD_VALUES.items()
+     if value < 10})
 _FIGURE_UNIT = r"(?:one|two|three|four|five|six|seven|eight|nine)"
 _FIGURE_TEEN = (r"(?:ten|eleven|twelve|thirteen|fourteen|fifteen|"
                 r"sixteen|seventeen|eighteen|nineteen)")
@@ -1003,16 +1010,32 @@ _FIGURE_TENS = (r"(?:twenty|thirty|forty|fifty|sixty|seventy|"
                 r"eighty|ninety)")
 _FIGURE_SMALL = (r"(?:" + _FIGURE_TENS + r"(?:[ -]" + _FIGURE_UNIT +
                  r")?|" + _FIGURE_TEEN + r"|" + _FIGURE_UNIT + r")")
-_FIGURE_HUNDRED = (_FIGURE_UNIT + r"\s+hundred(?:\s+(?:and\s+)?" +
-                   _FIGURE_SMALL + r")?")
-_FIGURE_THOUSAND = (_FIGURE_SMALL + r"\s+thousand(?:\s+(?:and\s+)?" +
-                    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
-                    r"))?")
+_FIGURE_SEP = r"[\s-]+"
+_FIGURE_HUNDRED = (
+    r"(?:" + _FIGURE_SMALL + r"|\d+)" + _FIGURE_SEP + r"hundred"
+    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
+    r"(?:" + _FIGURE_SMALL + r"|\d{1,2}))?")
+_FIGURE_THOUSAND = (
+    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    + _FIGURE_SEP + r"thousand"
+    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
+    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
+    r"|\d{1,3}))?")
 _FIGURE_INT = (r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED +
                r"|" + _FIGURE_SMALL + r")")
+_FIGURE_DIGITS = (r"(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)")
+_FIGURE_MIXED_DIGIT = (r"\d+00\s+and\s+" + _FIGURE_SMALL)
+_FIGURE_POINT_DIGIT = (r"(?:one|two|three|four|five|six|seven|eight|"
+                       r"nine|oh|zero)")
+_FIGURE_POINT_TAIL = (_FIGURE_POINT_DIGIT + r"(?:\s+" +
+                      _FIGURE_POINT_DIGIT + r")*")
 _FIGURE_RE = re.compile(
-    r"(\d+(?:\.\d+)?|" + _FIGURE_INT + r"\s+point\s+" + _FIGURE_UNIT +
-    r"(?:\s+" + _FIGURE_UNIT + r")*|" + _FIGURE_INT + r")"
+    r"((?:" + _FIGURE_DIGITS + r"|" + _FIGURE_INT + r")\s+point\s+"
+    + _FIGURE_POINT_TAIL
+    + r"|point\s+" + _FIGURE_POINT_TAIL
+    + r"|" + _FIGURE_MIXED_DIGIT
+    + r"|" + _FIGURE_DIGITS
+    + r"|" + _FIGURE_INT + r")"
     r"\s*hours?\b", re.I)
 
 
@@ -1025,25 +1048,47 @@ def _integer_word_value(words):
             current = 0
         elif part == "hundred":
             current = (current or 1) * 100
+        elif part.isdigit():
+            current += int(part)
         else:
             current += _NUMBER_WORD_VALUES[part]
     return total + current
 
 
 def _figure_value(token):
-    if token[0].isdigit():
-        return float(token)
-    words = [part for part in re.split(r"[\s-]+", token.lower())
+    if re.search(r"[A-Za-z]", token) is None:
+        return float(token.replace(",", ""))
+    words = [part for part in
+             (piece.replace(",", "") for piece in
+              re.split(r"[\s-]+", token.lower()))
              if part and part != "and"]
     if "point" in words:
         idx = words.index("point")
-        whole = _integer_word_value(words[:idx])
-        digits = "".join(
-            str(_NUMBER_WORD_VALUES[part]) for part in words[idx + 1:])
+        whole = _integer_word_value(words[:idx]) if idx else 0
+        digits = ""
+        for part in words[idx + 1:]:
+            if part.isdigit():
+                digits += part
+            else:
+                digits += str(_POINT_DIGIT_VALUES[part])
         if not digits:
             return float(whole)
         return float("%d.%s" % (whole, digits))
     return float(_integer_word_value(words))
+
+
+_CLAUSE_PART_SPLIT_RE = re.compile(r",(?!\d)|(?<!\d),|:")
+
+
+def _split_clause_parts(text):
+    """The comma or colon clause parts of a fragment.
+
+    A comma standing between two digits is a grouping comma
+    inside a figure (1,000), not a clause break, so the parts
+    are split at every comma except a grouping comma, and at
+    every colon as before.
+    """
+    return _CLAUSE_PART_SPLIT_RE.split(text)
 
 
 def _clause_subject(text):
@@ -1057,7 +1102,23 @@ def _clause_subject(text):
     forms and their compounds (one thousand, one thousand five
     hundred, one thousand and five), and the point forms with
     single or multi part tails (five point five, read as 5.5;
-    five point five five, read as 5.55).
+    five point five five, read as 5.55). The scale compounds
+    read in full at their own edges: a small form stands before
+    hundred (eleven hundred, read as 1100), a hundred form
+    stands before thousand (one hundred thousand, read as
+    100000), and the hundred and thousand joins take a hyphen
+    as they take a space (one-hundred-and-five, read as 105).
+    Digit and word forms mix inside one figure: comma grouped
+    digits read as their whole value (1,000, read as 1000), a
+    round digit form takes a word tail (100 and five, read as
+    105), a word scale form takes a digit tail (one hundred
+    and 5, read as 105), and a digit form stands before a word
+    scale word (5 hundred and five, read as 505). Point tails
+    take oh and zero as the zero digit (five point oh five,
+    read as 5.05), a digit integer takes a word point tail
+    (5 point five, read as 5.5), and a point form with no
+    integer part reads as its fraction (point five, read
+    as 0.5).
     """
     step = re.search(r"Step (\d+)\b", text)
     figure = _FIGURE_RE.search(text)
@@ -1114,10 +1175,11 @@ def _mention_subject(before, after, mention):
 
     The clause is the part after the last comma or colon before
     the mention, the mention itself, and the part before the
-    first comma or colon after it.
+    first comma or colon after it. A grouping comma inside a
+    figure is no clause break, as _split_clause_parts states.
     """
-    before_parts = re.split(r"[,:]", before)
-    after_parts = re.split(r"[,:]", after)
+    before_parts = _split_clause_parts(before)
+    after_parts = _split_clause_parts(after)
     own = (before_parts[-1] if before_parts else "") + " " + \
         mention + " " + (after_parts[0] if after_parts else "")
     return _clause_subject(own)
@@ -1137,7 +1199,7 @@ def _before_negated_in_scope(before, after, mention):
     rejoined before the parts are read.
     """
     parts = _merge_parenthetical_parts(
-        _join_split_frame_parts(re.split(r"[,:]", before)),
+        _join_split_frame_parts(_split_clause_parts(before)),
         after_side=False)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
@@ -1167,7 +1229,7 @@ def _after_negated_in_scope(after, before, mention):
     form.
     """
     parts = _merge_parenthetical_parts(
-        _join_split_frame_parts(re.split(r"[,:]", after)),
+        _join_split_frame_parts(_split_clause_parts(after)),
         after_side=True)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):

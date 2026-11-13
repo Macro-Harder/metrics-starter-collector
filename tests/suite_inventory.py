@@ -704,6 +704,28 @@ INVENTORY = {
             "tests.test_w_step15_r10_denial.TestStep15Round10Denial.test_f15_77_doubled_frame_widened_neighbours_stand",
         ],
     },
+    "test_x_step15_r10_figures": {
+        "count": 17,
+        "cases": [
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_control_settled_compounds_hold",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_different_figure_denial_stands",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_direct_hundred_thousand_forms",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_direct_hundred_with_teen_multiplier",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_direct_hyphenated_hundred_compounds",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_78_same_figure_denial_taken_out",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_comma_grouped_denial_before_stands",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_comma_grouped_different_figure_stands",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_comma_grouped_same_figure_taken_out",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_control_settled_figure_forms_hold",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_direct_comma_grouped_digits",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_direct_mixed_digit_and_word_forms",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_direct_point_edge_forms",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_mixed_different_figure_stands",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_mixed_same_figure_taken_out",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_point_edge_different_figure_stands",
+            "tests.test_x_step15_r10_figures.TestStep15Round10Figures.test_f15_79_point_edge_same_figure_taken_out",
+        ],
+    },
     "test_x_step15_round6_t4": {
         "count": 14,
         "cases": [
@@ -800,4 +822,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 599
+TOTAL_CASES = 616
