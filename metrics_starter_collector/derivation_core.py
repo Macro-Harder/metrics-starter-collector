@@ -817,7 +817,14 @@ def _t4_banked_durations(captured):
 
     A BANKED mention denied in its own clause feeds no duration,
     under the same negation handling the T-2 BANKED alternative
-    takes in _banked_duration_stands.
+    takes in _banked_duration_stands. Each figure is attributed
+    to the step its own clause names, under the clause scope the
+    duration helpers already use: the step named inside the
+    mention's own clause part governs, never a step named in
+    another clause of the same line. A figure whose own clause
+    names no step keeps the line's first Step token, the standing
+    attribution, because that token is the only step the line
+    names for it.
     """
     found = []
     ledger = _ledger_piece(captured)
@@ -837,22 +844,33 @@ def _t4_banked_durations(captured):
             _retracted_in_following_sentence(
                 line, start + len("BANKED"))
 
+    def _mention_step(line, match, line_step):
+        before, after = _clause_fragments(
+            line, match.start(), match.end())
+        step, _figure = _mention_subject(
+            before, after, match.group(0))
+        if step is not None:
+            return step
+        return line_step
+
     for line in ledger.text.splitlines():
         step_match = re.search(r"Step (\d+)\b", line)
-        step = int(step_match.group(1)) if step_match else None
+        line_step = int(step_match.group(1)) if step_match else None
         for m in re.finditer(
                 r"BANKED interval duration\s+(\d+(?:\.\d+)?)\s*hours",
                 line):
             if _banked_mention_denied(line, m.start()):
                 continue
-            found.append((step, float(m.group(1)), True))
+            found.append((_mention_step(line, m, line_step),
+                          float(m.group(1)), True))
         if "interval duration" in line:
             continue
         for m in re.finditer(r"BANKED[^\n]*?(\d+(?:\.\d+)?)\s*hours",
                              line):
             if _banked_mention_denied(line, m.start()):
                 continue
-            found.append((step, float(m.group(1)), False))
+            found.append((_mention_step(line, m, line_step),
+                          float(m.group(1)), False))
     return found
 
 
@@ -899,7 +917,21 @@ def _derive_t4(captured, universe):
                 if re.search(r"\d+(?:\.\d+)?\s*hours", after):
                     durations = True
     queue = captured.pieces_of(CLS_DECISION_QUEUE)
-    if queue:
+    # Banked item counts stand only where a queue piece carries
+    # readable decision items, on the same completeness ground
+    # the D-1 queue selection applies: a piece whose text parses
+    # to a decision item table, from the canonical piece or from
+    # a readable duplicate. A queue piece standing in any other
+    # state (a directory, malformed, dangling, empty, or a
+    # disagreement piece carrying no text) carries no readable
+    # items, so its mere presence states no item count.
+    queue_counts_stand = False
+    for piece in queue:
+        if piece.text is not None and \
+                _decision_items(piece.text) is not None:
+            queue_counts_stand = True
+            break
+    if queue_counts_stand:
         banked = True
     if not banked and not queue:
         return DerivationResult(
@@ -911,6 +943,21 @@ def _derive_t4(captured, universe):
                     "so the row is missing",
             rule_name="T-4 feeder standing rule")
     parsed = _t4_banked_durations(captured)
+    if not banked and not queue_counts_stand and not parsed and \
+            _decision_items(captured.assembled_metrics) is None:
+        return DerivationResult(
+            "T-4", "present but not derivable", "no figure stands",
+            denom, pointer,
+            shows="a decision queue piece stands in the capture, "
+                  "but no queue piece carries readable decision "
+                  "items, so no banked item count stands in the "
+                  "feeder records, and the path ledger holds no "
+                  "banked state",
+            code_token="missing-field",
+            follows="missing-field no complete decision queue "
+                    "stands, so no banked item count can form and "
+                    "no wait figure stands",
+            rule_name="T-4 queue completeness rule")
     interval_durations = [(s, v) for s, v, is_interval in parsed
                           if is_interval]
     table_items = _decision_items(captured.assembled_metrics)
@@ -933,21 +980,32 @@ def _derive_t4(captured, universe):
                       "cross check absent.",
             rule_name="T-4 degraded form rule")
     if not durations:
-        figures = "banked item counts stand and no duration figure stands"
-        shows = ("banked states and item counts stand in the feeder "
-                 "records and every duration is absent")
-        if table_items:
-            open_items = [i for i in table_items if not i["ruled"]]
-            if open_items:
-                first_origin = open_items[0]["origin"]
-                same_origin = [i for i in open_items
-                               if i["origin"] == first_origin]
-                figures = ("banked item counts stand, for example "
-                           "Step %s: %d banked questions open; no "
-                           "duration figure"
-                           % (first_origin, len(same_origin)))
-                shows += (", and the decision table rows %s stand open"
-                          % _join_names([i["item"] for i in open_items]))
+        if queue_counts_stand or table_items:
+            figures = ("banked item counts stand and no duration "
+                       "figure stands")
+            shows = ("banked states and item counts stand in the feeder "
+                     "records and every duration is absent")
+            if table_items:
+                open_items = [i for i in table_items if not i["ruled"]]
+                if open_items:
+                    first_origin = open_items[0]["origin"]
+                    same_origin = [i for i in open_items
+                                   if i["origin"] == first_origin]
+                    figures = ("banked item counts stand, for example "
+                               "Step %s: %d banked questions open; no "
+                               "duration figure"
+                               % (first_origin, len(same_origin)))
+                    shows += (", and the decision table rows %s stand open"
+                              % _join_names([i["item"] for i in open_items]))
+        else:
+            figures = ("banked states stand and no duration figure "
+                       "stands")
+            shows = ("banked states stand in the feeder records and "
+                     "every duration is absent")
+            if queue:
+                shows += (", and no banked item count stands because "
+                          "no queue piece carries readable decision "
+                          "items")
         return DerivationResult(
             "T-4", "present but not derivable", figures, denom, pointer,
             shows=shows,

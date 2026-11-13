@@ -450,6 +450,25 @@ INVENTORY = {
             "tests.test_w_step15_round6_f2.TestStep15Round6F2.test_f15_39_twin_no_gate_record_no_closure_ruling_not_derivable",
         ],
     },
+    "test_x_step15_round6_t4": {
+        "count": 14,
+        "cases": [
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_control_clause_naming_no_step_keeps_line_step",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_control_reversed_word_order_step1",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_control_single_mention_line_step1",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_denial_step2_colon_banked_step1_second",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_denial_step2_first_banked_step1_second",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_40_two_mentions_each_attributed_to_own_clause",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_banked_state_without_queue_counts_do_not_stand",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_control_duplicate_queue_counts_stand",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_control_sound_queue_counts_stand",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_dangling_queue_weaker_form",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_directory_queue_weaker_form",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_disagreement_queue_weaker_form",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_empty_queue_weaker_form",
+            "tests.test_x_step15_round6_t4.TestStep15Round6T4.test_f15_45_malformed_queue_weaker_form",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -459,4 +478,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 328
+TOTAL_CASES = 342
