@@ -408,7 +408,7 @@ def _derive_t1(captured, universe):
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    if ledger is None or ledger.text is None:
+    if ledger is None:
         return DerivationResult(
             "T-1", "missing", "no interval figure", denom, pointer,
             shows="no path ledger piece stands in the capture, so no "
@@ -417,6 +417,21 @@ def _derive_t1(captured, universe):
             follows="no feeder record for the metric exists in the tree, "
                     "so the row is missing",
             rule_name="T-1 feeder standing rule")
+    if ledger.text is None:
+        code = {"malformed": "malformed-piece",
+                "over limit": "over-limit-piece"}.get(
+                    ledger.quality_state or "", "unreadable-piece")
+        return DerivationResult(
+            "T-1", "present but not derivable", "no interval figure",
+            denom, pointer,
+            shows="a path ledger piece is present but not read in "
+                  "full in the capture, so no transition log can be "
+                  "read to form an interval",
+            code_token=code,
+            follows=code + " the piece is marked not read in full in "
+                    "the inventory and no figure is read from it, so "
+                    "no interval figure stands",
+            rule_name="T-1 not read in full rule")
     intervals = _step_intervals(captured)
     if not _ledger_has_full_ts(captured):
         if _ledger_has_dates(captured):
@@ -481,6 +496,19 @@ def _derive_t2(captured, universe, t1):
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
     denom = "denominator step universe %d steps" % len(universe.evidenced)
+    if ledger is not None and ledger.text is None:
+        code = t1.code_token or "unreadable-piece"
+        return DerivationResult(
+            "T-2", "present but not derivable", "no interval figure",
+            denom, pointer,
+            shows="a path ledger piece is present but not read in "
+                  "full in the capture, so no transition log can be "
+                  "read to carry an active figure",
+            code_token=code,
+            follows=code + " the piece is marked not read in full in "
+                    "the inventory and no figure is read from it, so "
+                    "no active figure stands",
+            rule_name="T-2 not read in full rule")
     if t1.verdict == "missing" and t1.code_token == "date-only-form":
         has_duration = False
         if ledger is not None and ledger.text is not None:
@@ -515,10 +543,22 @@ def _derive_t2(captured, universe, t1):
                     "no active figure stands",
             rule_name="T-2 mixed series rule")
     if t1.verdict == "missing":
+        has_duration = False
+        if ledger is not None and ledger.text is not None:
+            has_duration = re.search(r"interval duration|BANKED[^\n]*\d",
+                                     ledger.text) is not None
+        if has_duration:
+            shows = ("the elapsed row is missing, and an interval "
+                     "duration stands in the transition log, but no "
+                     "active figure can carry from a missing elapsed "
+                     "row")
+        else:
+            shows = ("the elapsed row is missing, and no interval "
+                     "duration stands in the transition log to carry "
+                     "an active figure")
         return DerivationResult(
             "T-2", "missing", "no interval figure", denom, pointer,
-            shows="the elapsed row is missing, and no interval duration "
-                  "stands in the transition log to carry an active figure",
+            shows=shows,
             code_token="no-feeder-record",
             follows="no feeder record yields an active figure, so the "
                     "row is missing",
@@ -1741,6 +1781,19 @@ def _derive_f2(captured, universe):
                    if item[3].record_class == CLS_REGATE_RECORD]
         closure = None
         if regates:
+            base_closures = set()
+            for item in ranked:
+                piece = item[3]
+                base_name = piece.paths[0].rsplit("/", 1)[-1]
+                if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
+                        and "round" not in base_name \
+                        and "reaudit" not in base_name and piece.text:
+                    found = _recorded_closure(piece.text)
+                    if found:
+                        base_closures.add(found)
+            if len(base_closures) > 1:
+                not_derivable.append(s)
+                continue
             first = ranked[0][3]
             if first.text:
                 closure = _recorded_closure(first.text)

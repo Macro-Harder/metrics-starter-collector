@@ -239,6 +239,19 @@ INVENTORY = {
             "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_corrected_total_reconciles_step_out_of_remainder",
         ],
     },
+    "test_l_step15_round2_core": {
+        "count": 8,
+        "cases": [
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_14_control_without_regate_conflict_not_derivable",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_14_recycled_step_still_counted_once_by_first_ruling",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_14_regate_conflicting_base_closures_not_derivable",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_15_absent_path_ledger_wording_unchanged",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_15_dangling_path_ledger_t1_and_t2_named_not_read",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_15_fifo_path_ledger_t1_and_t2_named_not_read",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_16_control_no_duration_fallthrough_statement_stands",
+            "tests.test_l_step15_round2_core.TestStep15Round2Core.test_f15_16_date_only_banked_duration_t2_statement_true",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -248,4 +261,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 177
+TOTAL_CASES = 185
