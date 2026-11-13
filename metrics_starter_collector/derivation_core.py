@@ -1894,6 +1894,57 @@ def _f2_ranked_pieces(captured, step):
     return ranked
 
 
+def _f2_base_closures(ranked):
+    """The closures standing in a step base gate record and ruling.
+
+    Only the base forms count, the pieces whose file name carries
+    no round or re-audit naming, as the F15-14 conflict guard has
+    always read them.
+    """
+    closures = set()
+    for item in ranked:
+        piece = item[3]
+        base_name = piece.paths[0].rsplit("/", 1)[-1]
+        if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
+                and "round" not in base_name \
+                and "reaudit" not in base_name and piece.text:
+            found = _recorded_closure(piece.text)
+            if found:
+                closures.add(found)
+    return closures
+
+
+def _f2_first_closure(ranked):
+    """The piece carrying a step first ruling, and its closure.
+
+    Where the head piece in ranked order carries substantive text,
+    the first ruling rests on that piece alone, as it always has:
+    a substantive head carrying no closure in the settled forms
+    leaves the step not derivable, whatever stands behind it.
+    Where the head piece carries no content at all, its text not
+    read in full or empty, it carries no closure either, and it
+    does not erase a sound ruling at another alias form of the
+    same step: the first ruling then rests on the first piece in
+    ranked order across the step whole gate group that carries a
+    closure in the settled forms. Where no piece in the group
+    carries a settled closure, the head piece stands with a
+    closure of None, so the standing not derivable forms hold
+    unchanged.
+    """
+    if not ranked:
+        return None, None
+    head = ranked[0][3]
+    if head.text is not None and head.text.strip():
+        return head, _recorded_closure(head.text)
+    for item in ranked:
+        piece = item[3]
+        if piece.text:
+            found = _recorded_closure(piece.text)
+            if found:
+                return piece, found
+    return head, None
+
+
 def _derive_f2(captured, universe):
     gates = captured.pieces_of(*GATE_CLASSES)
     pointer = None
@@ -1945,23 +1996,12 @@ def _derive_f2(captured, universe):
                    if item[3].record_class == CLS_REGATE_RECORD]
         closure = None
         if regates:
-            base_closures = set()
-            for item in ranked:
-                piece = item[3]
-                base_name = piece.paths[0].rsplit("/", 1)[-1]
-                if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
-                        and "round" not in base_name \
-                        and "reaudit" not in base_name and piece.text:
-                    found = _recorded_closure(piece.text)
-                    if found:
-                        base_closures.add(found)
-            if len(base_closures) > 1:
+            if len(_f2_base_closures(ranked)) > 1:
                 not_derivable.append(s)
                 continue
-            first = ranked[0][3]
-            if first.text:
-                closure = _recorded_closure(first.text)
-            if first.record_class == CLS_GATE_ADJUDICATION:
+            first, closure = _f2_first_closure(ranked)
+            if first is not None and \
+                    first.record_class == CLS_GATE_ADJUDICATION:
                 adjudication_only.append(s)
             # The recycled note scan rests on the same base gate
             # record and gate ruling pieces as the conflict guard
@@ -1985,23 +2025,12 @@ def _derive_f2(captured, universe):
                         not_approved.append(s)
                         break
         else:
-            base_closures = set()
-            for item in ranked:
-                piece = item[3]
-                base_name = piece.paths[0].rsplit("/", 1)[-1]
-                if piece.record_class in (CLS_GATE_RECORD, CLS_GATE_RULING) \
-                        and "round" not in base_name \
-                        and "reaudit" not in base_name and piece.text:
-                    found = _recorded_closure(piece.text)
-                    if found:
-                        base_closures.add(found)
-            if len(base_closures) > 1:
+            if len(_f2_base_closures(ranked)) > 1:
                 not_derivable.append(s)
                 continue
-            first = ranked[0][3]
-            if first.text:
-                closure = _recorded_closure(first.text)
-            if first.record_class == CLS_GATE_ADJUDICATION:
+            first, closure = _f2_first_closure(ranked)
+            if first is not None and \
+                    first.record_class == CLS_GATE_ADJUDICATION:
                 adjudication_only.append(s)
         if closure is None:
             not_derivable.append(s)
@@ -3798,8 +3827,15 @@ def derive_report(captured):
     f2_counted = set()
     for s in universe.evidenced:
         ranked = _f2_ranked_pieces(captured, s)
-        if ranked and ranked[0][3].text and \
-                _recorded_closure(ranked[0][3].text):
+        if not ranked:
+            continue
+        # The counted test is the F-2 counting test itself, the
+        # F15-14 base closure conflict guard included, so the cross
+        # check statement claims only steps the counting counted.
+        if len(_f2_base_closures(ranked)) > 1:
+            continue
+        _, counted_closure = _f2_first_closure(ranked)
+        if counted_closure:
             f2_counted.add(s)
     for code, texts in staffing_cross_check_statements(
             captured, universe, covered_map, totals_map,

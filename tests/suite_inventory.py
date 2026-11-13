@@ -363,6 +363,23 @@ INVENTORY = {
             "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_refusal_negated_mention_t2_missing_no_feeder",
         ],
     },
+    "test_s_step15_round5_f2": {
+        "count": 12,
+        "cases": [
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_control_conflict_with_regate_not_derivable",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_control_conflicting_base_pair_not_derivable",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_control_no_closure_anywhere_not_derivable",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_control_substantive_head_no_closure_not_derivable",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_directory_gate_record_sound_ruling_counts",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_directory_gate_record_sound_ruling_fail_counts",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_malformed_gate_record_sound_ruling_counts",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_malformed_ruling_sound_adjudication_counts",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_30_zero_byte_gate_record_sound_ruling_counts",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_38_conflicted_contested_with_regate_not_claimed",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_38_conflicted_contested_without_regate_not_claimed",
+            "tests.test_s_step15_round5_f2.TestStep15Round5F2.test_f15_38_control_contested_counted_step_claimed",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -372,4 +389,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 266
+TOTAL_CASES = 278
