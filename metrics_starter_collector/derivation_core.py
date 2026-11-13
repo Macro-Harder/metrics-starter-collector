@@ -113,6 +113,8 @@ class CapturedRead:
     tree_last_visited: object = None
     tree_byte_limit: int = 25000000
     tree_file_limit: int = 2000
+    record_change_force: dict = field(default_factory=dict)
+    size_unknown_paths: tuple = ()
 
     def pieces_of(self, *classes):
         return [p for p in self.pieces if p.record_class in classes]
@@ -1085,9 +1087,30 @@ def _derive_e1(captured, universe):
     figures = "; ".join(figure_parts)
     remainder = [s for s in universe.evidenced if s not in covered]
     if remainder:
-        denom = (denom_base + "; covered " + _step_list_text(sorted(covered)) +
-                 "; remainder " + _step_list_text(remainder) +
-                 " named, no base stated")
+        # A remainder step whose feeder record stands in the tree but
+        # was not read in full is named on that ground, never as a
+        # step stating no base: the base was not found absent, the
+        # record was not read.
+        unreadable_remainder = [
+            s for s in remainder
+            if any(p.text is None for p in captured.step_pieces(
+                s, CLS_STEP_RECORD, CLS_ROSTER, CLS_SNAPSHOT,
+                CLS_OPENING_RECORD, CLS_STEP_COMPANION))]
+        plain_remainder = [s for s in remainder
+                           if s not in unreadable_remainder]
+        clauses = []
+        if plain_remainder:
+            clauses.append("remainder " +
+                           _step_list_text(plain_remainder) +
+                           " named, no base stated")
+        if unreadable_remainder:
+            clauses.append("remainder " +
+                           _step_list_text(unreadable_remainder) +
+                           " named, feeder record present but not "
+                           "read in full")
+        denom = (denom_base + "; covered " +
+                 _step_list_text(sorted(covered)) +
+                 "; " + "; ".join(clauses))
         statement = ("Present under the present with coverage form: the "
                      "covered part yields E-1 in its defined form and "
                      "the uncovered remainder is named.")
@@ -1206,10 +1229,27 @@ def _derive_e2(captured, universe):
                      "labelled")
     no_base = [s for s in universe.evidenced if _parse_base(captured, s) is None]
     if no_base:
-        denom = (denom_base + "; " + _step_list_text(no_base) +
-                 " named against additions over base only with code "
-                 "missing-field for the absent stated base, total spins "
-                 "still reported")
+        # A step whose feeder record stands in the tree but was not
+        # read in full is named on that ground, never under the
+        # missing field code for an absent stated base: the base was
+        # not found absent, the record was not read.
+        unreadable_no_base = [
+            s for s in no_base
+            if any(p.text is None for p in captured.step_pieces(
+                s, CLS_STEP_RECORD, CLS_ROSTER, CLS_SNAPSHOT))]
+        plain_no_base = [s for s in no_base
+                         if s not in unreadable_no_base]
+        clauses = []
+        if plain_no_base:
+            clauses.append(_step_list_text(plain_no_base) +
+                           " named against additions over base only "
+                           "with code missing-field for the absent "
+                           "stated base, total spins still reported")
+        if unreadable_no_base:
+            clauses.append(_step_list_text(unreadable_no_base) +
+                           " named against additions over base only, "
+                           "feeder record present but not read in full")
+        denom = denom_base + "; " + "; ".join(clauses)
         statement = ("Present under the G-03 coverage form in its own "
                      "terms: the covered steps yield both labelled "
                      "quantities in their defined form and the steps "
@@ -1701,9 +1741,9 @@ def _derive_f2(captured, universe):
                    if item[3].record_class == CLS_REGATE_RECORD]
         closure = None
         if regates:
-            first_regate = regates[0][3]
-            if first_regate.text:
-                closure = _recorded_closure(first_regate.text)
+            first = ranked[0][3]
+            if first.text:
+                closure = _recorded_closure(first.text)
             for item in ranked:
                 if item[3].record_class == CLS_REGATE_RECORD:
                     continue
@@ -2490,11 +2530,62 @@ def _trace_candidates(captured, step):
     return found, totals, recount
 
 
+_Q4_CORRECTED_FIGURE_RES = (
+    re.compile(r"corrected figure(?:\s+is)?\s*:?\s*(\d+)\s+of\s+(\d+)",
+               re.I),
+    re.compile(r"corrected total\s*:\s*(\d+)\s+of\s+(\d+)", re.I),
+)
+_Q4_CORRECTED_TOTAL_RES = (
+    re.compile(r"corrected total[^.\n]{0,60}?\bis\s+(\d+)\b", re.I),
+    re.compile(r"corrected total\s*:\s*(\d+)\b", re.I),
+)
+
+
+def _q4_correction(captured, trace_piece):
+    """Correcting record for one first trace, under D-19 and WV-10.
+
+    A correcting record is recognised where a piece other than the
+    trace itself and other than the metrics record names the trace
+    it corrects, by its path or by its file name, and states the
+    corrected figure or the corrected total for that trace on the
+    same line as the naming, in the forms the Q-1 and Q-3 limbs
+    recognise: a corrected figure stated directly after the words
+    corrected figure, a corrected total in colon form, or a
+    corrected total stated with the word is close after the words
+    corrected total. The scan follows the Q-3 correcting record
+    scan: any piece in the tree can carry the correction, in the
+    register form or in the audit paper form. Returns a triple
+    (piece, landed, total) where landed is None where the record
+    states a corrected total only, or None where no correcting
+    record stands for the trace.
+    """
+    names = (trace_piece.paths[0],
+             trace_piece.paths[0].rsplit("/", 1)[-1])
+    for p in captured.pieces:
+        if p is trace_piece or p.text is None:
+            continue
+        if p.record_class in (CLS_METRICS_SINGLE, CLS_METRICS_PAGE):
+            continue
+        for line in p.text.splitlines():
+            if not any(name in line for name in names):
+                continue
+            for pattern in _Q4_CORRECTED_FIGURE_RES:
+                m = pattern.search(line)
+                if m:
+                    return p, int(m.group(1)), int(m.group(2))
+            for pattern in _Q4_CORRECTED_TOTAL_RES:
+                m = pattern.search(line)
+                if m:
+                    return p, None, int(m.group(1))
+    return None
+
+
 def _derive_q4(captured, universe):
     from metrics_starter_collector.cross_check import \
         q4_cross_check_statement
     denom_base = "denominator steps with a first trace in the step universe"
     covered = {}
+    corrections = {}
     unreconciled = {}
     zero_total = []
     analogue = []
@@ -2516,6 +2607,18 @@ def _derive_q4(captured, universe):
         if not found:
             continue
         trace_pieces[s] = found[0][2]
+        correction = _q4_correction(captured, found[0][2])
+        if correction is not None:
+            corr_piece, corr_landed, corr_total = correction
+            landed = corr_landed if corr_landed is not None \
+                else found[0][0]
+            corrections[s] = (corr_piece, landed, corr_total,
+                              corr_landed is not None)
+            if corr_total == 0:
+                zero_total.append(s)
+                continue
+            covered[s] = (landed, corr_total)
+            continue
         if len(totals) > 1:
             unreconciled[s] = (found[0][0], sorted(totals), recount,
                                found[0][2])
@@ -2622,6 +2725,25 @@ def _derive_q4(captured, universe):
     if cross is not None:
         statement = (statement + " " + cross) if statement_bits \
             else cross
+    citations = []
+    for s in sorted(corrections):
+        corr_piece, landed, total, stated_figure = corrections[s]
+        if stated_figure:
+            citations.append(
+                "source citation: %s, the correcting record that "
+                "names the trace %s and states the corrected figure "
+                "%d of %d LANDED."
+                % (corr_piece.paths[0], trace_pieces[s].paths[0],
+                   landed, total))
+        else:
+            citations.append(
+                "source citation: %s, the correcting record that "
+                "names the trace %s and states the corrected total %d."
+                % (corr_piece.paths[0], trace_pieces[s].paths[0],
+                   total))
+    if citations:
+        statement = (statement + " " + " ".join(citations)) \
+            if statement else " ".join(citations)
     return DerivationResult("Q-4", "present", "; ".join(figures_bits),
                             denom, pointer,
                             statement=statement,
@@ -3567,7 +3689,6 @@ def derive_report(captured):
     if build_state != "closed":
         header.append("Captured read statement: the verdicts in this "
                       "report are verdicts on the captured read.")
-    header.append(coverage)
     for cls in sorted(captured.inventory_totals):
         totals = captured.inventory_totals[cls]
         header.append(
@@ -3578,6 +3699,7 @@ def derive_report(captured):
         header.append(
             "Class %s: not yet recordable %d"
             % (cls, totals["not_yet_recordable"]))
+    header.append(coverage)
 
     inventory_lines = ["## Piece inventory"]
     if captured.tree_cut_paths:
@@ -3624,6 +3746,15 @@ def derive_report(captured):
                 "and derivations that need it follow the not read in "
                 "full rule." % (name, p.paths[0], p.paths[0],
                                 p.quality_state or "unreadable", code))
+    for path in captured.size_unknown_paths:
+        name = path.split("/")[-1]
+        data_quality.append(
+            "Piece %s (%s): What the record shows: the piece at %s "
+            "could not be measured when the tree was read, so its "
+            "size stands unknown in the capture. What follows: "
+            "unreadable-piece the piece is carried in the inventory "
+            "with its size unknown, and no tree total rests on a "
+            "measured size for it." % (name, path, path))
     for p in captured.pieces:
         if _repair_cited(p):
             name = p.paths[0].split("/")[-1]

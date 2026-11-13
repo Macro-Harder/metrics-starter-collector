@@ -159,8 +159,11 @@ class TestSlice3Staffing(FixtureTestCase):
         root = build_tree(table)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertIn("first-time approval rate 0 percent", block)
         self.assertIn("not approved", block.lower())
-        self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"plain[^\d]*0(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"qualified[^\d]*0(?!\d)(?!\.\d)")
         self.assertRegex(block, r"(denominator[^\d]*1(?!\d)(?!\.\d)|"
                                 r"of 1(?!\d)(?!\.\d)|(?<!\d)1 step ruled\b)")
 

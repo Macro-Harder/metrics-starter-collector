@@ -13,10 +13,12 @@ from pathlib import Path
 
 from metrics_starter_collector import inventory
 from metrics_starter_collector.derivation_core import (
-    CLS_DECISION_QUEUE, CLS_GATE_ADJUDICATION, CLS_GATE_RECORD,
-    CLS_GATE_RULING, CLS_METRICS_PAGE, CLS_METRICS_SINGLE, CLS_PATH_LEDGER,
-    CLS_REGATE_RECORD, CLS_STEP_RECORD, CLS_TIER_RECORD, CapturedRead,
-    Piece)
+    CLS_ADJUDICATION, CLS_AUDIT_PAPER, CLS_BOARD_MEMBER,
+    CLS_DECISION_QUEUE, CLS_DEFECT_REGISTER, CLS_FIX_REGISTER,
+    CLS_GATE_ADJUDICATION, CLS_GATE_RECORD, CLS_GATE_RULING,
+    CLS_METRICS_PAGE, CLS_METRICS_SINGLE, CLS_OTHER_REGISTER,
+    CLS_PATH_LEDGER, CLS_REGATE_RECORD, CLS_STEP_RECORD, CLS_TIER_RECORD,
+    CLS_TRACE, GATE_CLASSES, CapturedRead, Piece)
 
 FILE_LIMIT = 1000000
 TREE_BYTE_LIMIT = 25000000
@@ -125,6 +127,53 @@ def _build_identity(pieces, assembled):
     return None
 
 
+def _evidenced_rounds(pieces, step):
+    """Rounds or passes evidenced for one step, in the CA-5 forms.
+
+    The forms mirror the round evidence the core reads for T-7: a
+    pass count or rounds statement in the step own record, the
+    re-audit round headings of a loop record, an explicit verdict
+    record count in a verdict record, or the count of gate pieces
+    standing for the step. The largest evidenced count governs.
+    Returns 0 where no round is evidenced for the step.
+    """
+    candidates = []
+    texts = [p.text for p in pieces
+             if p.step == step and p.record_class == CLS_STEP_RECORD
+             and p.text]
+    joined = "\n".join(texts)
+    if joined:
+        m = re.search(r"Pass count in this record:\s*(\d+)\s*passes",
+                      joined)
+        if m:
+            candidates.append(int(m.group(1)))
+        m = re.search(r"states\s+(\d+)\s+rounds for this step", joined)
+        if m:
+            candidates.append(int(m.group(1)))
+        head_rounds = [int(x) for x in re.findall(
+            r"^## Re-audit[^\n]*\(round (\d+)", joined, re.M)]
+        reaudit_heads = re.findall(r"^## Re-audit", joined, re.M)
+        if head_rounds and min(head_rounds) == 1:
+            candidates.append(max(head_rounds))
+        elif reaudit_heads:
+            candidates.append(1 + len(reaudit_heads))
+    gate_pieces = [p for p in pieces
+                   if p.step == step and p.record_class in GATE_CLASSES]
+    verdict = None
+    for p in gate_pieces:
+        if p.text:
+            m = re.search(r"Verdict record count for this step:\s*(\d+)",
+                          p.text)
+            if m:
+                verdict = int(m.group(1))
+                break
+    if verdict is None and gate_pieces:
+        verdict = len(gate_pieces)
+    if verdict is not None:
+        candidates.append(verdict)
+    return max(candidates) if candidates else 0
+
+
 def capture_read(root):
     """Walk the root once and build the one CapturedRead for the run."""
     root_path = Path(root)
@@ -134,6 +183,7 @@ def capture_read(root):
             % (root,))
     root_resolved = root_path.resolve()
     entries = []
+    damaged = {}
     walk_note = None
     count = 0
     for dirpath, dirnames, filenames in os.walk(str(root_path)):
@@ -150,26 +200,73 @@ def capture_read(root):
             if full.is_symlink():
                 try:
                     target = full.resolve()
-                except OSError:
+                except (OSError, RuntimeError) as exc:
+                    # A link loop or an unresolvable link target. The
+                    # entry is damage inside a readable tree, never a
+                    # run failure: where the name is a recognised
+                    # record name the entry stands as a damaged piece.
+                    if inventory.classify(rel) is not None:
+                        entries.append(rel)
+                        damaged[rel] = (
+                            "unreadable-piece: unreadable: symlink "
+                            "loop or unresolvable link target: %s" % exc)
                     continue
                 if target != root_resolved and \
                         root_resolved not in target.parents:
+                    # A link whose target sits outside the root is not
+                    # followed. Where the name is a recognised record
+                    # name the entry still stands as a damaged piece,
+                    # so the refusal is never silent.
+                    if inventory.classify(rel) is not None:
+                        entries.append(rel)
+                        if target.exists():
+                            damaged[rel] = (
+                                "unreadable-piece: unreadable: link "
+                                "target outside the tree, not followed")
+                        else:
+                            damaged[rel] = (
+                                "unreadable-piece: unreadable: dangling "
+                                "link, the link target does not stand")
                     continue
+                if full.is_file():
+                    entries.append(rel)
+                elif full.is_dir() and \
+                        inventory.classify(rel) is not None:
+                    entries.append(rel)
+                elif inventory.classify(rel) is not None:
+                    entries.append(rel)
+                    damaged[rel] = (
+                        "unreadable-piece: unreadable: dangling link, "
+                        "the link target does not stand")
+                continue
             if full.is_file():
                 entries.append(rel)
             elif full.is_dir() and \
                     inventory.classify(rel) is not None:
                 entries.append(rel)
+            elif inventory.classify(rel) is not None:
+                # A non regular file (a FIFO, a socket, a device) at a
+                # recognised record name. It is never opened, because
+                # opening such a file can block, and it stands as a
+                # damaged piece instead of vanishing.
+                entries.append(rel)
+                damaged[rel] = (
+                    "unreadable-piece: unreadable: not a regular file")
         if walk_note:
             break
     entries.sort()
     alias_map = {}
     by_target = {}
     for rel in entries:
-        try:
-            key = str((root_path / rel).resolve())
-        except OSError:
-            key = rel
+        if rel in damaged:
+            # A damaged entry is never merged with another path by
+            # link target: its own path is the piece that stands.
+            key = "damaged:" + rel
+        else:
+            try:
+                key = str((root_path / rel).resolve())
+            except (OSError, RuntimeError):
+                key = rel
         by_target.setdefault(key, []).append(rel)
     canonical_entries = []
     for key in by_target:
@@ -190,6 +287,8 @@ def capture_read(root):
             note = inventory.near_match_note(rel)
         classified.append((rel, found, note))
 
+    size_unknown = []
+
     def stat_size(rel):
         full = root_path / rel
         try:
@@ -197,6 +296,11 @@ def capture_read(root):
                 return 0
             return full.stat().st_size
         except OSError:
+            # A failed stat never stands silent: the path is carried
+            # on the CapturedRead and marked size unknown in the data
+            # quality section of the report.
+            if rel not in size_unknown:
+                size_unknown.append(rel)
             return 0
 
     tree_bytes = 0
@@ -235,7 +339,12 @@ def capture_read(root):
                 near.append((rel, note))
             continue
         cls, step = found
-        if rel in cut_set:
+        if rel in damaged:
+            size = stat_size(rel)
+            text = None
+            quality = "unreadable"
+            reason = damaged[rel]
+        elif rel in cut_set:
             size = stat_size(rel)
             text = None
             quality = "over limit"
@@ -289,24 +398,94 @@ def capture_read(root):
                                            CLS_GATE_RULING,
                                            CLS_REGATE_RECORD,
                                            CLS_GATE_ADJUDICATION)})
+    # M-2: the Form A record change statement is parsed from the
+    # assembled metrics record text, through the Inventory, during
+    # this single walk, and the per change force state is recorded
+    # on the CapturedRead below.
+    force = inventory.record_change_force(assembled)
     totals = {}
-    per_step = (CLS_STEP_RECORD, CLS_GATE_RECORD, CLS_GATE_RULING,
-                CLS_REGATE_RECORD, CLS_GATE_ADJUDICATION)
     per_build = (CLS_PATH_LEDGER, CLS_TIER_RECORD, CLS_METRICS_SINGLE,
                  CLS_DECISION_QUEUE)
+    per_round = (CLS_AUDIT_PAPER, CLS_BOARD_MEMBER, CLS_FIX_REGISTER,
+                 CLS_DEFECT_REGISTER, CLS_ADJUDICATION, CLS_TRACE,
+                 CLS_OTHER_REGISTER)
     for p in pieces:
         entry = totals.setdefault(p.record_class,
                                   {"expected": 0, "found": 0,
                                    "not_found": 0, "not_yet_recordable": 0})
         entry["found"] += 1
+
+    def ensure(cls):
+        return totals.setdefault(cls, {"expected": 0, "found": 0,
+                                       "not_found": 0,
+                                       "not_yet_recordable": 0})
+
+    assigned = set()
+    if evidenced:
+        # Per step class: one step record per step instance.
+        entry = ensure(CLS_STEP_RECORD)
+        entry["expected"] = len(evidenced)
+        assigned.add(CLS_STEP_RECORD)
+        # Gate alias classes share the one CA-5 expectation of one
+        # first gate piece per step instance in any alias form. Each
+        # alias class states its own found count, and the count of
+        # steps holding no gate piece in any alias form stands once,
+        # on the gate record class line, never once per alias.
+        steps_with_gate = {p.step for p in pieces
+                           if p.record_class in GATE_CLASSES
+                           and p.step is not None}
+        gate_missing = len([s for s in evidenced
+                            if s not in steps_with_gate])
+        for cls in GATE_CLASSES:
+            entry = ensure(cls)
+            entry["expected"] = entry["found"]
+            assigned.add(cls)
+        carrier = ensure(CLS_GATE_RECORD)
+        carrier["expected"] = carrier["found"] + gate_missing
+    # Per build classes: one per build. The metrics record counts as
+    # one in either physical form, so where split pages stand and no
+    # single page stands, the single page class carries no separate
+    # expectation and the pages are listed as found.
+    metrics_forms_stand = bool(
+        [p for p in pieces if p.record_class == CLS_METRICS_PAGE]) and \
+        not [p for p in pieces if p.record_class == CLS_METRICS_SINGLE]
+    for cls in per_build:
+        if cls == CLS_METRICS_SINGLE and metrics_forms_stand:
+            continue
+        entry = ensure(cls)
+        entry["expected"] = 1
+        assigned.add(cls)
+    # Per round classes: the expectation is the number of rounds or
+    # passes evidenced for the steps, in the step own records or in
+    # verdict records. Where no round is evidenced at all, found
+    # pieces alone are listed for these classes, by the fallback
+    # below, and not found is 0 by that rule.
+    total_rounds = sum(_evidenced_rounds(pieces, s) for s in evidenced)
+    if total_rounds:
+        for cls in per_round:
+            entry = ensure(cls)
+            entry["expected"] = total_rounds
+            assigned.add(cls)
     for cls, entry in totals.items():
-        if cls in per_step:
-            entry["expected"] = len(evidenced)
-        elif cls in per_build:
-            entry["expected"] = 1
-        else:
+        if cls not in assigned:
             entry["expected"] = entry["found"]
         entry["not_found"] = max(0, entry["expected"] - entry["found"])
+    # M-2 force application: a class whose creating record change
+    # stands NOT IN FORCE carries its expected count under not yet
+    # recordable and under no other state. Under the settled mapping
+    # in the Inventory every one of the five changes maps to no
+    # record class, so this passage moves no count; the force state
+    # above is parsed and recorded, not defaulted.
+    for number, state in sorted(force.items()):
+        if state != "NOT IN FORCE":
+            continue
+        for cls in inventory.RECORD_CHANGE_CLASSES.get(number, ()):
+            entry = totals.get(cls)
+            if entry is None:
+                continue
+            entry["not_yet_recordable"] += entry["expected"]
+            entry["not_found"] = 0
+            entry["expected"] = 0
     return CapturedRead(root=str(root), pieces=pieces,
                         inventory_totals=totals, latest_timestamp=latest,
                         definitions_version=version,
@@ -319,7 +498,9 @@ def capture_read(root):
                         tree_cut_kind=cut_kind,
                         tree_last_visited=last_visited,
                         tree_byte_limit=TREE_BYTE_LIMIT,
-                        tree_file_limit=TREE_FILE_LIMIT)
+                        tree_file_limit=TREE_FILE_LIMIT,
+                        record_change_force=force,
+                        size_unknown_paths=tuple(sorted(size_unknown)))
 
 
 def deliver_report(text, root, report_path):
@@ -338,11 +519,24 @@ def deliver_report(text, root, report_path):
     root_resolved = Path(root).resolve()
     try:
         dest_resolved = destination.resolve()
-    except OSError as exc:
+    except (OSError, RuntimeError) as exc:
         raise UsageError("deliver the report: destination %s: %s"
                          % (report_path, exc))
-    if dest_resolved == root_resolved or \
-            root_resolved in dest_resolved.parents:
+    # The resolved path governs, and the named path is checked with
+    # it: a destination is refused where either its resolved path or
+    # its named path lies inside the tree read. A link standing
+    # inside the tree and pointing outside it is therefore refused
+    # in this same form, because the destination as named lies
+    # inside the tree and the write would land outside it through
+    # the link, which the read only rule bars.
+    dest_named = Path(os.path.abspath(str(destination)))
+    root_named = Path(os.path.abspath(str(root)))
+    inside = False
+    for base in (root_resolved, root_named):
+        for candidate in (dest_resolved, dest_named):
+            if candidate == base or base in candidate.parents:
+                inside = True
+    if inside:
         raise UsageError(
             "deliver the report: destination %s: the destination lies "
             "inside the tree read, which is refused" % (report_path,))

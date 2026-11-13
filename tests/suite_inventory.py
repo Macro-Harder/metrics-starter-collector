@@ -209,6 +209,36 @@ INVENTORY = {
             "tests.test_i_live_line.TestLiveLine.test_live_line_on_golden_tree_names_latest_timestamp",
         ],
     },
+    "test_j_step15_shell_header": {
+        "count": 15,
+        "cases": [
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_a1_gate_aliases_share_one_first_gate_expectation",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_a1_step_without_any_gate_piece_counts_one_not_found",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_a2_class_with_no_found_piece_prints_its_header_lines",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_a3_per_round_expected_from_rounds_evidenced",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_a4_class_states_print_before_coverage_statement",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b1_mutual_symlink_loop_marked_and_report_issues",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b1_self_symlink_loop_marked_and_report_issues",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b2_dangling_gate_record_f2_not_printed_as_full_rate",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b2_dangling_step_record_surfaced_and_rows_honest",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b3_fifo_at_record_name_surfaced",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b4_failed_stat_marks_size_unknown",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_b5_destination_link_inside_tree_pointing_outside_refused",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_m2_form_a_all_in_force_recorded_counts_stay_zero",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_m2_form_a_change4_not_in_force_recorded_counts_stay_zero",
+            "tests.test_j_step15_shell_header.TestStep15ShellHeader.test_m2_form_b_only_statement_creates_no_force_state",
+        ],
+    },
+    "test_k_step15_q4_correction": {
+        "count": 5,
+        "cases": [
+            "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_control_uncorrected_figure_stands_without_citation",
+            "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_control_unreconciled_step_stands_in_remainder",
+            "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_corrected_figure_audit_paper_form_used_and_cited",
+            "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_corrected_figure_register_form_used_and_cited",
+            "tests.test_k_step15_q4_correction.TestStep15Q4Correction.test_m3_corrected_total_reconciles_step_out_of_remainder",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -218,4 +248,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 157
+TOTAL_CASES = 177

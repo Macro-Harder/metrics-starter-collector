@@ -216,12 +216,30 @@ class TestSlice7Report(FixtureTestCase):
                         "live line does not stand before the first row")
 
     def test_header_not_yet_recordable_kept_apart_from_not_found(self):
+        # Settled M-2 form (Step 15): the metrics record states the
+        # record changes in Form A, a numbered list with the force
+        # words immediately after each change name, and change 4
+        # stands NOT IN FORCE. Under the settled mapping each of the
+        # five changes maps to no record class, so every class not
+        # yet recordable count is 0 by rule, and the cost ledger
+        # class in particular is not moved into not found or not yet
+        # recordable on that ground.
         table = base_case()
-        table["registers/changes.md"] = (
-            "# Record changes\n\nThe origin step field record change is "
-            "not in force for this build.\n")
+        table["wiki/wiki/synthesis/build-metrics-record.md"] = \
+            metrics_record(body=(
+                "## Record-change statement\n\n"
+                "1. Timestamped state transitions in the path "
+                "record: IN FORCE.\n"
+                "2. Decision queue timestamps and origin: IN FORCE.\n"
+                "3. Origin step on findings: IN FORCE.\n"
+                "4. Agent-turn and per-agent engagement telemetry: "
+                "NOT IN FORCE.\n"
+                "5. Explicit loop round markers: IN FORCE.\n"))
+        table["registers/cost-ledger.md"] = \
+            "# Cost ledger\n\nTokens: 10. Money: 0.\n"
         root = build_tree(table)
         result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
         head = header_region(result.stdout)
         nyr = [ln for ln in head.splitlines()
                if "not yet recordable" in ln.lower()]
@@ -230,9 +248,11 @@ class TestSlice7Report(FixtureTestCase):
               and "not yet recordable" not in ln.lower()]
         self.assertTrue(nyr, head[:600])
         self.assertTrue(nf, head[:600])
-        self.assertTrue(any(re.search(r"\d+", ln) for ln in nyr), nyr)
-        self.assertTrue(any(re.search(r"\d+", ln) for ln in nf), nf)
-        self.assertNotEqual(nyr[0], nf[0])
+        for ln in nyr:
+            self.assertTrue(ln.rstrip().endswith(" 0"), ln)
+        self.assertIn("Class cost ledger: expected 1, found 1", head)
+        self.assertIn("Class cost ledger: not found 0", head)
+        self.assertIn("Class cost ledger: not yet recordable 0", head)
 
     def test_header_near_matches_never_counted_as_found(self):
         table = base_case()

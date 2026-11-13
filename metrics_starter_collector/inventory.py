@@ -129,3 +129,40 @@ def identity_for(record_class, step, rel_path):
     if step is not None:
         return "%s:%d:%s" % (record_class, step, base)
     return "%s:%s" % (record_class, base)
+
+
+_FORM_A_ITEM = re.compile(
+    r"^\s*(\d+)\.\s+[^:\n]+:\s*(NOT IN FORCE|IN FORCE)\b")
+
+
+def record_change_force(assembled_text):
+    """Parse the Form A record change statement from a metrics record.
+
+    A force statement in Form A is a numbered list in the assembled
+    metrics record text, each item naming one record change and
+    stating IN FORCE or NOT IN FORCE immediately after the name.
+    Returns a dict from change number to its force words. Prose
+    restatements (Form B) are not parsed here: a restatement by
+    number creates no force state on its own. Where a number stands
+    twice, the first statement in the list governs, because the
+    brief states no precedence for conflicting statements.
+    """
+    states = {}
+    if not assembled_text:
+        return states
+    for line in assembled_text.splitlines():
+        m = _FORM_A_ITEM.match(line)
+        if m:
+            number = int(m.group(1))
+            if number not in states:
+                states[number] = m.group(2)
+    return states
+
+
+# The settled mapping from record changes to record classes, Step 15.
+# Each of the five E-03 changes creates a field, a timestamping
+# practice, a marker or an export inside a record kind the taxonomy
+# classes independently of the change, and none creates a record
+# class, so each change maps to no class and no header count moves
+# on force grounds under this mapping.
+RECORD_CHANGE_CLASSES = {1: (), 2: (), 3: (), 4: (), 5: ()}
