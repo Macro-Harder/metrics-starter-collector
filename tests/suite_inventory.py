@@ -278,6 +278,19 @@ INVENTORY = {
             "tests.test_n_step15_round2_parser.TestStep15Round2Parser.test_f15_21_refusal_control_interval_words_t2_not_derivable_unknown_version",
         ],
     },
+    "test_o_step15_round3_shell": {
+        "count": 8,
+        "cases": [
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_control_differing_readable_duplicates_still_merge",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_control_identical_readable_duplicates_still_merge",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_directory_at_canonical_sound_duplicate_reads",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_directory_duplicate_gate_record_f2_stands",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_directory_duplicate_sound_record_reads",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_link_to_directory_duplicate_sound_record_reads",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_malformed_duplicate_sound_record_reads",
+            "tests.test_o_step15_round3_shell.TestStep15Round3Shell.test_f15_22_over_limit_duplicate_sound_record_reads",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -287,4 +300,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 201
+TOTAL_CASES = 209

@@ -393,15 +393,21 @@ def capture_read(root):
             form = "single page form"
         elif cls == CLS_METRICS_PAGE:
             form = "split page form"
-        # A damaged entry never merges with another entry at the
-        # same identity and never displaces a sound one: there is no
-        # second content for it to disagree with, because the damaged
-        # path has no content at all. Each damaged entry stands as
-        # its own piece, marked with its true damage, and the sound
+        # An entry that yields no readable content never merges with
+        # another entry at the same identity and never displaces a
+        # sound one: there is no second content for it to disagree
+        # with, because the entry has no readable content at all.
+        # The partition rests on the read outcome, not on the walk
+        # damaged map alone, so it covers every no content form in
+        # the same way: the walk damaged forms (dangling links, FIFOs
+        # and loop links) and the read forms (a directory, a link to
+        # a directory, a malformed file, an over limit file and a
+        # piece past the tree limit). Each such entry stands as its
+        # own piece, marked with its true state, and the sound
         # entries at the identity merge and read exactly as they do
-        # where no damaged entry stands.
-        broken = [x for x in group if x[0] in damaged]
-        standing = [x for x in group if x[0] not in damaged]
+        # where no such entry stands.
+        broken = [x for x in group if x[4] is None]
+        standing = [x for x in group if x[4] is not None]
         for x in broken:
             pieces.append(Piece(ident, x[7], x[1], x[2], x[3], None,
                                 x[6], x[5], form_state=form))
