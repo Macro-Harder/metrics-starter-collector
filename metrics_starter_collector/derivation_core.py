@@ -532,8 +532,23 @@ def _derive_t1(captured, universe):
 # counts where an adverb or a short phrase stands between the
 # copula and the listed word, and the carrying verbs take in
 # the stance verbs beside the copulas (became, appears, looks
-# and their common kin). The affirming not only form is no
-# denial on either side of a mention. As a bare
+# and their common kin). The intervening run takes its
+# natural forms: stacked adverbs joined by and, degree
+# adverbs such as very, the parenthetical phrases in fact,
+# in effect and for all purposes, and the progressive
+# participle becoming; a parenthetical clause set off by
+# commas between the copula and the listed word (was, Lane
+# noted, withdrawn) is rejoined by the scope tests before
+# the parts are read. After a conjunction in the mention's
+# own after part, a new subject is read with an article, as
+# a bare name, or as a pronoun, the pronoun it still naming
+# the mention itself. The affirming frame family is no
+# denial on either side of a mention: not only and not just
+# in their contiguous forms, the comma split frame (not,
+# only,), and the doubled frame whose complement negates a
+# listed word (not only was it not withdrawn), while a
+# genuine denial standing beside a frame, outside its
+# scope, still denies. As a bare
 # attributive modifier of another noun (an absent minded note,
 # a retracted note that still records, a withdrawn draft, a
 # wrong date) such a word denies nothing and takes nothing out.
@@ -577,9 +592,12 @@ _LISTED_WORD_RE = re.compile(
     r"\b(absent|withdrawn|retracted|wrong)\b", re.I)
 _COPULA_RE = re.compile(
     r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|appear|"
-    r"appears|appeared|look|looks|looked|stay|stays|stayed)"
-    r"(?:\s+(?:\w+ly|hereby|fully|also|now|then|"
+    r"seemed|remains|remained|become|becomes|became|becoming|"
+    r"appear|appears|appeared|look|looks|looked|stay|stays|"
+    r"stayed)"
+    r"(?:\s+(?:\w+ly|hereby|fully|also|now|then|and|very|quite|"
+    r"rather|so|too|becoming|in\s+fact|in\s+effect|"
+    r"for\s+all\s+purposes|"
     r"noted\s+as|recorded\s+as|marked\s+as|listed\s+as|"
     r"shown\s+as|described\s+as|reported\s+as|said\s+to\s+be))*"
     r"\s+(?:the\s+)?$", re.I)
@@ -669,17 +687,32 @@ def _predicative_subject_denies(prefix, own_after):
 
     In the mention's own after part the subject is the mention
     itself, unless the part joins a new subject clause with a
-    conjunction, in which case that subject decides. In any
-    other part the subject stands in the text before the copula:
-    it denies where it names the duration, one of its anaphoric
-    carriers, or a bare anaphoric pronoun, and it does not deny
-    where it names another subject, as a wrong date does not.
+    conjunction, in which case that subject decides. A joined
+    new subject is read in each of its forms: with an article
+    (and the draft became withdrawn), as a bare name (and Lane
+    became withdrawn, and May became withdrawn), or as a
+    pronoun (and she became withdrawn); the pronoun it names
+    the mention itself, as an article subject naming the
+    duration or one of its carriers does, and still denies. In
+    any other part the subject stands in the text before the
+    copula: it denies where it names the duration, one of its
+    anaphoric carriers, or a bare anaphoric pronoun, and it
+    does not deny where it names another subject, as a wrong
+    date does not.
     """
     if own_after:
         joined = re.search(
             r"\b(?:and|but|although|though|while)\s+"
-            r"(?:the|that|this|a|an)\s+", prefix, re.I)
+            r"(?:(?:the|that|this|a|an)\s+|"
+            r"(he|she|it|they|we)\b)", prefix, re.I)
+        pronoun = joined.group(1) if joined is not None else None
+        if joined is None:
+            joined = re.search(
+                r"\b(?:and|but|although|though|while)\s+"
+                r"[A-Z][a-z]+\s+", prefix)
         if joined is not None:
+            if pronoun is not None and pronoun.lower() == "it":
+                return True
             return _ANAPHORIC_SUBJECT_RE.search(
                 prefix[joined.start():]) is not None
         return True
@@ -705,7 +738,17 @@ def _listed_word_denies(part, own_after=False):
     predicative construction still counts where an adverb or a
     short phrase stands between the copula and the listed word
     (was flatly withdrawn, is hereby withdrawn, was noted as
-    withdrawn), and the carrying verb set takes in the stance
+    withdrawn), where that intervening run is widened in its
+    natural forms: stacked adverbs joined by and (was flatly
+    and completely withdrawn), degree adverbs (was very flatly
+    withdrawn), the parenthetical phrases in fact, in effect
+    and for all purposes, and the progressive participle (is
+    becoming withdrawn, the copula carrying becoming in its
+    run, and becoming standing in the verb set itself). A
+    parenthetical clause set off by commas between the copula
+    and the word is rejoined by the scope tests before this
+    test reads the part, as _merge_parenthetical_parts states.
+    The carrying verb set takes in the stance
     verbs beside the copulas (became, appears, looks and their
     common kin). The anaphoric wrong one counts in its
     hyphenated form the wrong-one standing on the duration
@@ -747,9 +790,103 @@ _LISTED_SUFFIX_RE = re.compile(
     r"\b(?:absent|withdrawn|retracted|wrong)(?:\s+banked)?\s*$",
     re.I)
 
+_FRAME_RE = re.compile(r"\bnot\s+(?:only|just)\b", re.I)
+_NEGATED_LISTED_RE = re.compile(
+    r"\b(?:not|never)\s+(?:(?:\w+ly|very|quite|rather|so|too|"
+    r"and)\s+)*(?:absent|withdrawn|retracted|wrong)\b", re.I)
+
+
+def _clean_affirming_frame(part):
+    """A clause part with its affirming frame forms removed.
+
+    The affirming frame family is not only and not just, in
+    their contiguous forms. A part carrying a frame states the
+    frame's complement as one affirmed thing among others, so
+    the frame words themselves carry no denial. Where the
+    complement itself negates a listed word (the doubled
+    frame: not only was it not withdrawn), that negated listed
+    construction is the complement's whole denial content and
+    is removed with the frame: the part affirms that the
+    duration was not withdrawn. A denial that does not negate
+    a listed word stands in the cleaned part exactly as it
+    stood (not only was no BANKED interval duration recorded
+    keeps its no, and a frame part carrying a was not recorded
+    denial keeps that denial), and a part with no frame stands
+    unchanged.
+    """
+    if _FRAME_RE.search(part) is None:
+        return part
+    cleaned = _FRAME_RE.sub("", part)
+    return _NEGATED_LISTED_RE.sub("", cleaned)
+
+
+def _join_split_frame_parts(parts):
+    """The parts with a comma split affirming frame rejoined.
+
+    The split frame (not, only, and its not, just, twin) puts
+    the frame's two words in neighbouring comma parts, the
+    first part ending in not and the next opening on only or
+    just. Neither word then stands in the part the standing
+    per part cleaning reads. The two frame words are blanked
+    in place, the part slots and their order kept, so the own
+    part on either side keeps its standing position and a
+    genuine denial in any other part is untouched.
+    """
+    parts = list(parts)
+    for idx in range(len(parts) - 1):
+        not_match = re.search(r"\bnot\s*$", parts[idx], re.I)
+        only_match = re.match(r"\s*(?:only|just)\b",
+                              parts[idx + 1], re.I)
+        if not_match is not None and only_match is not None:
+            parts[idx] = parts[idx][:not_match.start()]
+            parts[idx + 1] = parts[idx + 1][only_match.end():]
+    return parts
+
+
+_PARENTHETICAL_PART_RE = re.compile(
+    r"^\s*(?:in\s+fact|in\s+effect|for\s+all\s+purposes|"
+    r"(?:as\s+)?(?:[A-Za-z][\w']*\s+){0,4}"
+    r"(?:noted|said|observed|remarked|reported|recorded|added|"
+    r"wrote|commented))\s*$", re.I)
+
+
+def _merge_parenthetical_parts(parts, after_side):
+    """The parts with a comma parenthetical predicative rejoined.
+
+    A parenthetical clause set off by commas between a copula
+    and a listed word (was, Lane noted, withdrawn, and its as
+    form) splits the predicative construction across three
+    comma parts, none of which denies on its own. Where the
+    middle part is a parenthetical (a short reporting clause
+    such as Lane noted or as Lane noted, or one of the
+    parenthetical phrases in fact, in effect, for all
+    purposes), the first part ends on a copula or its
+    intervening run, and the three parts rejoined read as a
+    denial construction under _listed_word_denies, the three
+    are merged into the one part they state. The merge keeps
+    the merged part at the first part's position, so the own
+    part on either side keeps its standing position, and a
+    rejoined part whose subject is another subject (the draft
+    was, Lane noted, withdrawn) denies nothing under the same
+    subject test and is left split and standing.
+    """
+    parts = list(parts)
+    idx = 0
+    while idx < len(parts) - 2:
+        first, middle, last = parts[idx:idx + 3]
+        merged = first.rstrip() + " " + last.lstrip()
+        if _PARENTHETICAL_PART_RE.match(middle) is not None and \
+                _COPULA_RE.search(first.rstrip() + " ") is not None and \
+                _listed_word_denies(
+                    merged, own_after=after_side and idx == 0):
+            parts[idx:idx + 3] = [merged]
+        else:
+            idx += 1
+    return parts
+
 
 def _after_is_negated(after, own=False):
-    cleaned = re.sub(r"\bnot\s+only\b", "", after, flags=re.I)
+    cleaned = _clean_affirming_frame(after)
     return _AFTER_NEGATION_RE.search(cleaned) is not None or \
         _listed_word_denies(cleaned, own_after=own)
 
@@ -879,14 +1016,20 @@ def _before_negated_in_scope(before, after, mention):
 
     A marker in the mention's own clause part counts. A marker in
     an earlier comma or colon part counts only where that part is
-    not scoped to another subject. The affirming not only form
-    is stripped before matching, as on the after side, so a not
-    only construction in the before fragment is no denial.
+    not scoped to another subject. The affirming frame family
+    (not only, not just, the comma split frame, and the doubled
+    frame whose complement negates a listed word) is cleaned
+    before matching, as on the after side, so a frame
+    construction in the before fragment is no denial, and a
+    parenthetical clause between a copula and a listed word is
+    rejoined before the parts are read.
     """
-    parts = re.split(r"[,:]", before)
+    parts = _merge_parenthetical_parts(
+        _join_split_frame_parts(re.split(r"[,:]", before)),
+        after_side=False)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
-        cleaned = re.sub(r"\bnot\s+only\b", "", part, flags=re.I)
+        cleaned = _clean_affirming_frame(part)
         denied = _BEFORE_NEGATION_RE.search(cleaned) is not None or \
             _listed_word_denies(cleaned)
         if idx == len(parts) - 1 and \
@@ -906,9 +1049,14 @@ def _after_negated_in_scope(after, before, mention):
 
     A marker in the mention's own clause part counts. A marker in
     a later comma or colon part counts only where that part is
-    not scoped to another subject.
+    not scoped to another subject. The affirming frame cleaning,
+    the comma split frame rejoining, and the parenthetical
+    clause rejoining of the before side stand here in the same
+    form.
     """
-    parts = re.split(r"[,:]", after)
+    parts = _merge_parenthetical_parts(
+        _join_split_frame_parts(re.split(r"[,:]", after)),
+        after_side=True)
     step, figure = _mention_subject(before, after, mention)
     for idx, part in enumerate(parts):
         if not _after_is_negated(part, own=idx == 0):

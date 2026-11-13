@@ -556,6 +556,32 @@ INVENTORY = {
             "tests.test_s_step15_r9_closure.TestStep15Round9Closure.test_f15_64_step_after_earlier_token_other_joins_do_not_leak",
         ],
     },
+    "test_t_step15_r9_denial": {
+        "count": 21,
+        "cases": [
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_control_other_subject_and_attributive_stand",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_degree_adverb_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_parenthetical_clause_after_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_parenthetical_clause_before_and_interval_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_parenthetical_phrases_after_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_parenthetical_phrases_before_and_interval_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_progressive_stance_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_stacked_adverbs_and_after_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_65_stacked_adverbs_and_before_and_interval_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_66_bare_name_subject_after_conjunction_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_66_control_comma_part_name_subject_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_66_control_figure_itself_after_conjunction_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_66_name_and_pronoun_interval_path_stand",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_66_pronoun_subject_after_conjunction_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_comma_split_frame_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_control_genuine_denial_beside_frame_taken_out",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_control_plain_not_only_frames_still_stand",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_doubled_frame_after_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_doubled_frame_before_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_doubled_frame_interval_path_stands",
+            "tests.test_t_step15_r9_denial.TestStep15Round9Denial.test_f15_67_not_just_frame_stands",
+        ],
+    },
     "test_t_step15_round5_counting": {
         "count": 11,
         "cases": [
@@ -701,4 +727,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 520
+TOTAL_CASES = 541
