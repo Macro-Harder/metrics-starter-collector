@@ -493,6 +493,35 @@ INVENTORY = {
             "tests.test_r_step15_round4_core.TestStep15Round4Core.test_f15_29_refusal_negated_mention_t2_missing_no_feeder",
         ],
     },
+    "test_r_step15_r9_boundary": {
+        "count": 24,
+        "cases": [
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_class_rule_direct",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_control_own_closure_after_title_counts",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_control_passage_end_abbreviation_taken_out",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_control_quoted_paren_retraction_taken_out",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_control_title_before_name_retraction_taken_out",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_dotted_multi_letter_closure_foreign",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_dotted_multi_letter_duration_denial_reaches",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_dotted_multi_letter_with_fail_adjudication",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_introducing_abbrev_before_capital_closure_foreign",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_introducing_abbrev_duration_before_denial_reaches",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_other_abbrev_pm_unlisted_opener_closure_counts_own",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_other_abbrev_unlisted_opener_duration_denial_scopes",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_other_abbrev_unlisted_opener_duration_draft_stands",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_other_abbrev_unlisted_opener_duration_finally_stands",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_other_abbrev_unlisted_openers_closure_counts_own",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_quoted_paren_end_closure_counts_own",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_quoted_paren_end_duration_denial_scopes",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_62_title_before_starter_surname_closure_foreign",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_control_full_stop_twin_attributes_step2",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_exclamation_previous_sentence_plain_part",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_exclamation_previous_sentence_recorded_for",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_question_break_denial_in_next_sentence_stands",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_question_previous_sentence_plain_part_attributes",
+            "tests.test_r_step15_r9_boundary.TestStep15Round9Boundary.test_f15_63_question_previous_sentence_recorded_for_attributes",
+        ],
+    },
     "test_s_step15_round5_f2": {
         "count": 12,
         "cases": [
@@ -655,4 +684,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 484
+TOTAL_CASES = 508

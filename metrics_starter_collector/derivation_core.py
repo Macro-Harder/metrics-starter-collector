@@ -556,8 +556,8 @@ def _derive_t1(captured, universe):
 # follows the true sentence boundary rule stated at
 # _dot_ends_sentence: a stop inside a decimal, an abbreviation
 # from the completed set, or a person's initials is no sentence
-# end, while an abbreviation stop at a true sentence end, before
-# a capitalised sentence opening word or at the end of the
+# end, while an abbreviation stop at a true sentence end, under
+# the abbreviation class rule stated there or at the end of the
 # passage, still ends the sentence. A
 # neighbouring line that denies any duration stands takes out a
 # mention that carries no value of its own. The marker sets cover
@@ -592,7 +592,7 @@ _RETRACTION_RE = re.compile(
     re.I)
 _RETRACTION_REF_RE = re.compile(
     r"\bthat\s+(?:claim|note|statement|record)\b", re.I)
-_SENTENCE_END_RE = re.compile(r"[.;?!]\"?(?:\s|$)")
+_SENTENCE_END_RE = re.compile(r"[.;?!][\"')\]]*(?:\s|$)")
 _NON_ASSERTIVE_RE = re.compile(
     r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
     r"\bsee\s+above\b", re.I)
@@ -607,7 +607,11 @@ def _clause_fragments(line, start, end):
     The before fragment runs from the last sentence or clause break
     before the mention; the after fragment runs to the end of the
     mention's own sentence. A semicolon is a clause break on both
-    sides. A full stop is a break only where it ends a sentence
+    sides. A question mark and an exclamation mark are sentence
+    breaks on both sides, as they are in the sentence scope
+    fragments, so a step named in a previous sentence ending in
+    one of those marks never enters the mention's own fragment.
+    A full stop is a break only where it ends a sentence
     under the true sentence boundary rule at _dot_ends_sentence:
     a stop inside a decimal, an abbreviation from the completed
     set, or a person's initials does not truncate a fragment, and
@@ -616,14 +620,14 @@ def _clause_fragments(line, start, end):
     before_all = line[:start]
     cut = -1
     for pos, char in enumerate(before_all):
-        if char == ";" or \
+        if char in ";?!" or \
                 (char == "." and _dot_ends_sentence(before_all, pos)):
             cut = pos
     before = before_all[cut + 1:]
     after_all = line[end:]
     after = after_all
     for pos, char in enumerate(after_all):
-        if char == ";" or \
+        if char in ";?!" or \
                 (char == "." and _dot_ends_sentence(after_all, pos)):
             after = after_all[:pos]
             break
@@ -923,11 +927,16 @@ _ABBREVIATION_WORDS = frozenset({
     "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
 
 
-_SENTENCE_STARTERS = frozenset({
-    "a", "an", "and", "at", "but", "by", "closure", "for",
-    "he", "here", "however", "in", "it", "its", "note", "of",
-    "on", "outcome", "she", "step", "that", "the", "then",
-    "there", "these", "they", "this", "those", "verdict", "we"})
+_TITLE_ABBREVIATION_WORDS = frozenset({
+    "dr", "mr", "mrs", "ms", "prof", "capt", "lt", "col",
+    "gen", "sen", "rep", "gov", "st", "jr", "sr"})
+
+
+_INTRODUCING_ABBREVIATION_WORDS = frozenset({"e.g", "i.e"})
+
+
+_DEGREE_ABBREVIATION_WORDS = frozenset({
+    "ph.d", "m.d", "ed.d", "ll.d", "d.phil"})
 
 
 def _dot_ends_sentence(text, pos):
@@ -935,18 +944,37 @@ def _dot_ends_sentence(text, pos):
 
     The true sentence boundary rule, shared by the closure
     fragment test, the clause fragments and the sentence end
-    detection: a stop inside a decimal (a digit on both sides)
-    is not an end; a stop closing an abbreviation from the
-    completed set in _ABBREVIATION_WORDS, a stop closing a dotted
-    form, and a stop after a single letter initial are not ends
-    either, so a person's initials never truncate a sentence.
-    Such a stop still ends the sentence at a true sentence end:
-    where nothing but a closing quote follows it in the passage,
-    or where a capitalised sentence opening word follows it (the
-    words a sentence in these records opens with, held in
-    _SENTENCE_STARTERS), as a title before a person's name does
-    not. Every other full stop ends the sentence.
+    detection. A stop followed immediately by a letter is
+    inside a word or a dotted form and is never an end, and a
+    stop inside a decimal (a digit on both sides) is never an
+    end, so a dotted form with multi letter components
+    (Ph.D., Ed.D., LL.D.) is read whole and is never cut at
+    its first stop. A stop closing an abbreviation from the
+    completed set in _ABBREVIATION_WORDS, a stop closing any
+    other dotted form, and a stop after a single letter
+    initial are ends only by the abbreviation class rule:
+    a title abbreviation (the title class of the completed
+    set, in _TITLE_ABBREVIATION_WORDS), a degree abbreviation
+    (in _DEGREE_ABBREVIATION_WORDS) and a single letter
+    initial never end a sentence before a following token,
+    because what follows them in these records is the name
+    they stand with (Dr. He and Dr. An are name continuations,
+    not false ends); an introducing abbreviation (e.g., i.e.)
+    does not end a sentence before a following token in mid
+    passage, because it introduces what follows; and any
+    other abbreviation (U.S., p.m. and their class) ends a
+    sentence before any capitalised token, whatever word
+    opens the next sentence, and does not end one before a
+    lowercase token. An abbreviation stop standing last in
+    the passage, with nothing but closing quotes or a closing
+    parenthesis after it, still ends its sentence, and a
+    quoted sentence end closed by a parenthesis in mid
+    passage still ends the sentence where the class rule
+    makes the stop an end. Every other full stop ends the
+    sentence.
     """
+    if pos + 1 < len(text) and text[pos + 1].isalpha():
+        return False
     if 0 < pos and pos + 1 < len(text) and \
             text[pos - 1].isdigit() and text[pos + 1].isdigit():
         return False
@@ -957,19 +985,26 @@ def _dot_ends_sentence(text, pos):
     if word.lower() not in _ABBREVIATION_WORDS and \
             "." not in word and len(word) != 1:
         return True
-    rest = text[pos + 1:].lstrip()
-    if rest[:1] in ("\"", "'"):
-        rest = rest[1:].lstrip()
+    rest = text[pos + 1:]
+    while True:
+        rest = rest.lstrip()
+        if rest[:1] in ("\"", "'", ")", "]", "}"):
+            rest = rest[1:]
+            continue
+        break
     if not rest:
         return True
     next_word = re.match(r"([A-Za-z]+)", rest)
     if next_word is None:
         return False
-    word = next_word.group(1)
-    if len(word) == 1:
+    if len(next_word.group(1)) == 1:
         return False
-    return word[0].isupper() and \
-        word.lower() in _SENTENCE_STARTERS
+    if word.lower() in _TITLE_ABBREVIATION_WORDS or \
+            word.lower() in _DEGREE_ABBREVIATION_WORDS or \
+            word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
+            len(word) == 1:
+        return False
+    return next_word.group(1)[0].isupper()
 
 
 def _find_sentence_end(text):
