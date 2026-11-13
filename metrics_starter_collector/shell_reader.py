@@ -89,10 +89,21 @@ def _split_page_order(text, rel):
 
 
 def _assemble_metrics(pieces):
-    """Assemble the metrics record in its governing physical form."""
+    """Assemble the metrics record in its governing physical form.
+
+    The single form feeds from the first piece carrying substantive
+    text, as the ledger selection does: an empty piece carries an
+    empty string as its text, so the first piece with any text at
+    all would let an empty canonical piece defeat a sound
+    duplicate. Where no single piece carries substantive text, the
+    standing selection, the first piece with a text, holds.
+    """
     singles = [p for p in pieces if p.record_class == CLS_METRICS_SINGLE
                and p.text is not None]
     if singles:
+        for piece in singles:
+            if piece.text.strip():
+                return piece.text, piece.paths[0]
         return singles[0].text, singles[0].paths[0]
     pages = [p for p in pieces if p.record_class == CLS_METRICS_PAGE
              and p.text is not None]

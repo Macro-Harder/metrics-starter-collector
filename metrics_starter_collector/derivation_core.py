@@ -690,22 +690,41 @@ def _derive_t2(captured, universe, t1):
 
 
 def _t4_banked_durations(captured):
-    """Banked durations in the ledger, as (step, hours, interval form)."""
+    """Banked durations in the ledger, as (step, hours, interval form).
+
+    A BANKED mention denied in its own clause feeds no duration,
+    under the same negation handling the T-2 BANKED alternative
+    takes in _banked_duration_stands.
+    """
     found = []
     ledger = _ledger_piece(captured)
     if ledger is None or ledger.text is None:
         return found
+
+    def _banked_mention_denied(line, start):
+        # The T-2 BANKED alternative's negation handling, shared:
+        # a BANKED mention denied in its own clause, by a marker in
+        # the clause fragment before it or in the fragment after
+        # it, stands as no duration.
+        before, after = _clause_fragments(
+            line, start, start + len("BANKED"))
+        return _BEFORE_NEGATION_RE.search(before) is not None or \
+            _after_is_negated(after)
     for line in ledger.text.splitlines():
         step_match = re.search(r"Step (\d+)\b", line)
         step = int(step_match.group(1)) if step_match else None
         for m in re.finditer(
                 r"BANKED interval duration\s+(\d+(?:\.\d+)?)\s*hours",
                 line):
+            if _banked_mention_denied(line, m.start()):
+                continue
             found.append((step, float(m.group(1)), True))
         if "interval duration" in line:
             continue
         for m in re.finditer(r"BANKED[^\n]*?(\d+(?:\.\d+)?)\s*hours",
                              line):
+            if _banked_mention_denied(line, m.start()):
+                continue
             found.append((step, float(m.group(1)), False))
     return found
 
@@ -734,9 +753,20 @@ def _derive_t4(captured, universe):
     banked = False
     durations = False
     if ledger is not None and ledger.text is not None:
-        banked = "BANKED" in ledger.text or "banked" in ledger.text.lower()
-        durations = re.search(r"banked[^\n]*\d+(?:\.\d+)?\s*hours",
-                              ledger.text, re.I) is not None
+        # A banked mention denied in its own clause stands as no
+        # banked state and no duration, under the same shared
+        # negation handling the T-2 BANKED alternative takes.
+        for line in ledger.text.splitlines():
+            for m in re.finditer(r"banked", line, re.I):
+                before, after = _clause_fragments(
+                    line, m.start(), m.end())
+                if _BEFORE_NEGATION_RE.search(before) is not None:
+                    continue
+                if _after_is_negated(after):
+                    continue
+                banked = True
+                if re.search(r"\d+(?:\.\d+)?\s*hours", after):
+                    durations = True
     queue = captured.pieces_of(CLS_DECISION_QUEUE)
     if queue:
         banked = True
@@ -3153,22 +3183,40 @@ def _derive_d1(captured, universe):
     from metrics_starter_collector.cross_check import d1_cross_check_statement
     metrics_path = captured.metrics_single_path or \
         "wiki/wiki/synthesis/build-metrics-record.md"
-    queue_pieces = [p for p in captured.pieces_of(CLS_DECISION_QUEUE)
+    all_queue_pieces = captured.pieces_of(CLS_DECISION_QUEUE)
+    queue_pieces = [p for p in all_queue_pieces
                     if p.paths[0] == "DECISION-QUEUE.md"]
     queue_items = None
     queue_unusable = False
+    queue_pointer = "DECISION-QUEUE.md"
     if queue_pieces:
         piece = queue_pieces[0]
         if piece.text is not None:
             queue_items = _decision_items(piece.text)
         if queue_items is None:
             queue_unusable = True
+    if queue_items is None:
+        # A readable duplicate queue feeds the row where the
+        # canonical queue piece carries no readable decision table,
+        # as the ledger and metrics selections feed from a readable
+        # piece where one stands.
+        for piece in all_queue_pieces:
+            if piece.paths[0] == "DECISION-QUEUE.md":
+                continue
+            if piece.text is None:
+                continue
+            items = _decision_items(piece.text)
+            if items is not None:
+                queue_items = items
+                queue_pointer = piece.paths[0]
+                queue_unusable = False
+                break
     table_items = _decision_items(captured.assembled_metrics)
     if queue_items is not None:
-        statement = ("the in tree DECISION-QUEUE.md in "
+        statement = ("the in tree %s in "
                      "the named form supplied the row, as the foundation "
-                     "statement for this row.")
-        result = _d1_from_items(queue_items, "DECISION-QUEUE.md", statement)
+                     "statement for this row." % queue_pointer)
+        result = _d1_from_items(queue_items, queue_pointer, statement)
         extra = d1_cross_check_statement(
             result, table_items, feeder_items=queue_items,
             metrics_name=metrics_path.rsplit("/", 1)[-1])

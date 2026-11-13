@@ -396,6 +396,25 @@ INVENTORY = {
             "tests.test_t_step15_round5_counting.TestStep15Round5Counting.test_f15_35_two_empty_step_record_forms_no_disagreement",
         ],
     },
+    "test_u_step15_round5_feeders": {
+        "count": 14,
+        "cases": [
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_32_banked_interval_duration_was_not_recorded_t4_missing",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_32_control_genuine_banked_duration_t4_present",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_32_no_banked_interval_duration_t4_missing",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_control_directory_canonical_metrics_duplicate_feeds",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_control_lone_empty_canonical_metrics_standing_form",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_control_sound_canonical_metrics_governs",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_empty_canonical_metrics_force_states_from_duplicate",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_empty_canonical_metrics_sound_duplicate_d1_present",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_33_empty_canonical_metrics_unknown_version_refusal",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_control_no_readable_queue_table_forms_hold",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_control_sound_canonical_queue_governs",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_directory_canonical_queue_sound_duplicate_feeds",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_duplicate_only_queue_feeds",
+            "tests.test_u_step15_round5_feeders.TestStep15Round5Feeders.test_f15_34_empty_canonical_queue_sound_duplicate_feeds",
+        ],
+    },
     "test_z_golden": {
         "count": 2,
         "cases": [
@@ -405,4 +424,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 289
+TOTAL_CASES = 303
