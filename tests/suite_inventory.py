@@ -186,6 +186,37 @@ INVENTORY = {
             "tests.test_ae_step15_r12_boundary_closure.TestStep15R12BoundaryClosure.test_f15_99_two_completions_in_sequence_do_not_leak",
         ],
     },
+    "test_af_step15_r12_denial": {
+        "count": 26,
+        "cases": [
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_101_control_draft_twins_new_prepositions_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_101_control_settled_phrases_still_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_101_new_preposition_phrases_after_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_101_new_preposition_phrases_before_and_interval_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_102_control_same_dash_pairs_taken_out_and_draft_mixed_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_102_mixed_dash_pair_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_103_control_mention_itself_new_joins_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_103_pronoun_one_new_subject_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_103_whenever_join_new_subject_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_104_control_mention_itself_stacked_adverbs_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_104_control_one_adverb_still_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_104_stacked_adverbs_article_subject_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_104_stacked_adverbs_name_subjects_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_105_control_genuine_carrier_subjects_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_105_control_plain_name_and_pronoun_subjects_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_105_hyphenated_carrier_names_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_105_two_word_and_role_subjects_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_106_control_one_particle_and_plain_surnames_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_106_particle_surnames_interval_path_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_106_two_particle_surnames_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_bracketed_parenthetical_split_complement_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_control_comma_and_dash_twins_still_stand",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_control_genuine_denial_beside_frame_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_control_other_subject_quoted_parenthetical_stands",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_quoted_parenthetical_genuine_denial_taken_out",
+            "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_quoted_parenthetical_split_complement_stands",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -950,4 +981,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 714
+TOTAL_CASES = 740

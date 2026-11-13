@@ -630,12 +630,21 @@ _LISTED_WORD_RE = re.compile(
 # noted as, recorded as, said to be and their listed kin), a
 # prepositional phrase carrying an article (in the end, in a
 # sense, on the record, at the time, in the long run, by the
-# book: a preposition, the article, and up to three lowercase
-# words, read as one phrase token by its shape), a quoted
+# book, across the board, within the stated limit, via the
+# log: the preposition read by its position, a lowercase word
+# that is no copula or stance form and no article standing
+# immediately before the article, then the article, and up to
+# three lowercase words, read as one phrase token by its
+# shape, with no preposition vocabulary list; the words
+# after the article are run words in their own right, never
+# a copula or stance form and never a bare article, so the
+# phrase token cannot consume a new clause's verb standing
+# after its article phrase), a quoted
 # group set off inside the run (was "flatly" withdrawn), a
 # parenthesised group set off inside the run (was (Lane
-# noted) withdrawn), or a group set off by a pair of em or en
-# dashes inside the run (was — Lane noted — withdrawn). A run
+# noted) withdrawn), or a group set off by a pair of dash
+# marks inside the run, em or en in either order (was — Lane
+# noted — withdrawn, and its mixed pair twin). A run
 # token is never a copula or stance verb form and never a
 # bare article, so a run cannot cross a new clause's verb or
 # a new subject's article to reach a listed word: an article
@@ -648,14 +657,23 @@ _RUN_TOKEN = (
     r"(?:noted\s+as|recorded\s+as|marked\s+as|listed\s+as|"
     r"shown\s+as|described\s+as|reported\s+as|said\s+to\s+be|"
     r"becoming|getting|"
-    r"(?:in|on|at|by|for|to|of|from|with|under|over|after|"
-    r"before|during|through|against)\s+(?:the|a|an)\s+"
-    r"(?:[a-z][\w'-]*\s+){0,2}[a-z][\w'-]*|"
+    r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
+    r"seemed|remains|remained|become|becomes|became|appear|"
+    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
+    r"the|a|an)\b)[a-z][\w'-]*\s+(?:the|a|an)\s+"
+    r"(?:(?!(?:is|was|are|were|been|being|stands|stood|seems|"
+    r"seemed|remains|remained|become|becomes|became|appear|"
+    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
+    r"the|a|an)\b)[a-z][\w'-]*\s+){0,2}"
+    r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
+    r"seemed|remains|remained|become|becomes|became|appear|"
+    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
+    r"the|a|an)\b)[a-z][\w'-]*|"
     r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
     r"seemed|remains|remained|become|becomes|became|appear|"
     r"appears|appeared|look|looks|looked|stay|stays|stayed|"
     r"the|a|an)\b)[a-z][\w'-]*|\([^)]*\)|\"[^\"]*\"|"
-    r"—[^—]*—|–[^–]*–)")
+    r"—[^—]*—|–[^–]*–|—[^—–]*–|–[^—–]*—)")
 _COPULA_RE = re.compile(
     r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
     r"seemed|remains|remained|become|becomes|became|becoming|"
@@ -744,6 +762,69 @@ def _sentence_scope_fragments(line, start, end):
     return before, after
 
 
+# The clause joining conjunctions of the joined subject test
+# at _predicative_subject_denies, stated once so its two
+# searches cannot drift: the coordinating conjunctions, the
+# reason clause joiners (as, since, because) and the time and
+# condition clause joiners (when, whenever, wherever, whilst,
+# until, once, unless, lest, till, if, before, after, where),
+# a closed class of the grammar completed with whenever and
+# its same class neighbours. The word for stands outside it:
+# it governs a following noun phrase as a preposition in
+# these records, as the closure reading also holds it.
+_JOINED_CONJUNCTIONS = (
+    r"and|but|or|nor|yet|although|though|while|whereas|as|"
+    r"since|because|when|whenever|wherever|whilst|until|"
+    r"once|unless|lest|till|if|before|after|where")
+_JOINED_PRONOUNS = (
+    r"he|she|it|they|we|you|I|one|someone|somebody|anyone|"
+    r"anybody|everyone|everybody|nobody")
+_CARRIER_WORDS = frozenset({
+    "duration", "interval", "banked", "claim", "note",
+    "statement", "log", "record"})
+_SUBJECT_TAIL_PREPOSITIONS = frozenset({
+    "for", "of", "in", "on", "at", "by", "from", "with",
+    "about", "against", "over", "under", "after", "before",
+    "during", "through", "between", "among", "into", "onto",
+    "upon", "per", "via", "across", "behind", "within",
+    "without", "toward", "towards", "concerning", "regarding"})
+
+
+def _joined_determiner_head_denies(rest):
+    """Whether a joined determiner subject's head is a carrier.
+
+    Rest is the subject phrase after its determiner, running
+    to the copula that governs it. The head is the last word
+    of the subject core, the words before any prepositional
+    tail or step naming, with any trailing adverb word (an
+    ly word or itself) set aside, and it denies only where
+    it is a lowercase carrier word standing as the whole
+    head token. A carrier word modifying a later head (the
+    log keeper, whose head is keeper, and the record keeper
+    likewise), a carrier component inside a hyphenated
+    token and a capitalised carrier word therefore do not
+    deny, while the record, the duration, the claim and the
+    log standing as heads still do: the anaphoric reading
+    rests on the subject's head, never on a carrier word
+    standing anywhere in the joined span.
+    """
+    core = []
+    for word in re.findall(r"[A-Za-z][\w'-]*", rest):
+        if word.lower() in _SUBJECT_TAIL_PREPOSITIONS or \
+                word.lower() == "step":
+            break
+        core.append(word)
+    while core and (core[-1].lower() == "itself" or
+                    (core[-1].islower() and
+                     core[-1].lower().endswith("ly") and
+                     len(core) > 1)):
+        core.pop()
+    if not core:
+        return False
+    head = core[-1]
+    return head.islower() and head in _CARRIER_WORDS
+
+
 def _predicative_subject_denies(prefix, own_after):
     """Whether a predicative listed word denies the mention.
 
@@ -755,22 +836,36 @@ def _predicative_subject_denies(prefix, own_after):
     became withdrawn, and May became withdrawn), as an
     initialled name (and J. Lane became withdrawn), or as a
     pronoun (and she became withdrawn, and you became
-    withdrawn); the joining conjunction is any clause joining
-    conjunction (and, but, or, nor, yet, although, though,
-    while, whereas, and the reason clause joiners as, since
-    and because, which join a new clause as the listed
-    conjunctions do), an adverb standing between the
+    withdrawn, and one became withdrawn); the joining
+    conjunction is any clause joining conjunction, the closed
+    class stated at _JOINED_CONJUNCTIONS (the reason clause
+    joiners as, since and because and the time clause joiner
+    whenever among them, which join a new clause as the
+    listed conjunctions do), the words standing between the
     conjunction and the subject (and yet Lane, and also Lane,
-    and then Lane became withdrawn: one lowercase word in
-    adverb position, read by position, where yet alone stood
-    before) is part of the join, not the subject, and a name
-    is read by its surname shape: a hyphenated surname
+    and then Lane, and quite rightly Lane, and very quietly
+    Reyes became withdrawn: lowercase words in adverb
+    position, read by position in any number, where yet alone
+    stood before) are part of the join, not the subject, and
+    a name is read by its surname shape: a hyphenated surname
     (Lane-Smith) and a surname carrying an internal capital
-    (McLane) are name tokens as a plain surname is. The
-    pronoun set is the closed personal pronoun class. The
-    pronoun it names the mention itself, as an article subject
-    naming the duration or one of its carriers does, and
-    still denies. In any other part the subject stands in the
+    (McLane) are name tokens as a plain surname is, and a
+    surname carrying lowercase particles before its
+    capitalised head (de la Cruz, van der Berg, de los
+    Reyes) reads as one name through the same adverb
+    position words, the particles standing in that position
+    in the name's own shape. The pronoun set is the closed
+    pronoun class stated at _JOINED_PRONOUNS, the personal
+    pronouns completed with one and the indefinite person
+    pronouns. The pronoun it names the mention itself, as an
+    article subject whose head names the duration or one of
+    its carriers does, and still denies: the anaphoric
+    reading of a joined article subject rests on its head,
+    at _joined_determiner_head_denies, never on a carrier
+    word standing anywhere in the joined span, so a name or
+    role built on a carrier word (Record-Keeper, Lane
+    Record, the log keeper) is another subject. In any other
+    part the subject stands in the
     text before the copula: it denies where it names the
     duration, one of its anaphoric carriers, or a bare
     anaphoric pronoun, and it does not deny where it names
@@ -778,24 +873,35 @@ def _predicative_subject_denies(prefix, own_after):
     """
     if own_after:
         joined = re.search(
-            r"\b(?:and|but|or|nor|yet|although|though|while|"
-            r"whereas|as|since|because)\s+"
-            r"(?:[a-z][\w'-]*\s+)?"
+            r"\b(?:" + _JOINED_CONJUNCTIONS + r")\s+"
+            r"(?:[a-z][\w'-]*\s+)*"
             r"(?:(?:the|that|this|a|an)\s+|"
-            r"(he|she|it|they|we|you|I)\b)", prefix, re.I)
+            r"(" + _JOINED_PRONOUNS + r")\b)", prefix, re.I)
         pronoun = joined.group(1) if joined is not None else None
+        determiner = joined is not None and pronoun is None
         if joined is None:
             joined = re.search(
-                r"\b(?:and|but|or|nor|yet|although|though|while|"
-                r"whereas|as|since|because)\s+"
-                r"(?:[a-z][\w'-]*\s+)?"
+                r"\b(?:" + _JOINED_CONJUNCTIONS + r")\s+"
+                r"(?:[a-z][\w'-]*\s+)*"
                 r"(?:(?:[A-Z]\.\s+)+[A-Z][A-Za-z'-]*|"
                 r"(?:[A-Z]\.\s+)+|[A-Z][A-Za-z'-]*)\s+", prefix)
         if joined is not None:
-            if pronoun is not None and pronoun.lower() == "it":
-                return True
-            return _ANAPHORIC_SUBJECT_RE.search(
-                prefix[joined.start():]) is not None
+            if pronoun is not None:
+                return pronoun.lower() == "it"
+            if determiner:
+                return _joined_determiner_head_denies(
+                    prefix[joined.end():])
+            # A name subject is another subject and does not
+            # deny, whatever carrier word a component of the
+            # name carries (Record-Keeper, Lane Record); a
+            # lowercase carrier word standing as its own token
+            # in the join before the name (the duration for
+            # Step naming the name search reaches) keeps the
+            # carrier reading it held.
+            span_words = re.findall(
+                r"[A-Za-z][\w'-]*", prefix[joined.start():joined.end()])
+            return any(word.islower() and word in _CARRIER_WORDS
+                       for word in span_words[:-1])
         return True
     stripped = prefix.strip()
     if not stripped:
@@ -981,6 +1087,32 @@ _PARENTHETICAL_PART_RE = re.compile(
     r"(?:[a-z][\w'-]*\s+){0,5}[a-z][\w'-]*|"
     r"(?:as\s+)?(?:[A-Za-z][\w'.]*\s+)*"
     + _REPORTING_VERB + r")\s*$", re.I)
+_PARENTHETICAL_WRAPPERS = (
+    ('"', '"'), ("'", "'"), ("[", "]"), ("(", ")"))
+
+
+def _parenthetical_part_matches(part):
+    """Whether a comma part is a parenthetical, wrapped or bare.
+
+    A parenthetical set off inside its comma part by a pair
+    of setting off marks (a quoted parenthetical, "Lane
+    noted", a bracketed one, [Lane noted], and their single
+    quote and parenthesis twins) is the same parenthetical
+    in a wrapped form: the marks are the setting off, and
+    the unwrapped text must read as a parenthetical under
+    _PARENTHETICAL_PART_RE in its own right, so a wrapped
+    part whose content is no parenthetical matches nothing.
+    """
+    if _PARENTHETICAL_PART_RE.match(part) is not None:
+        return True
+    text = part.strip()
+    for opening, closing in _PARENTHETICAL_WRAPPERS:
+        if len(text) >= 2 and text.startswith(opening) and \
+                text.endswith(closing) and \
+                _PARENTHETICAL_PART_RE.match(text[1:-1]) \
+                is not None:
+            return True
+    return False
 _ADVERB_CONTINUATION_RE = re.compile(
     r"^\s*(?:and\s+)?(?:[a-z][\w'-]*\s+)*?"
     r"(?:absent|withdrawn|retracted|wrong)\b", re.I)
@@ -999,7 +1131,14 @@ def _merge_parenthetical_parts(parts, after_side):
     A parenthetical clause set off by commas between a copula
     and a listed word (was, Lane noted, withdrawn, and its as
     form) splits the predicative construction across three
-    comma parts, none of which denies on its own. Where the
+    comma parts, none of which denies on its own. The middle
+    part may itself be set off by quotes or brackets inside
+    its comma part (was, "Lane noted", withdrawn, and its
+    [Lane noted] twin), a wrapped parenthetical read by the
+    test at _parenthetical_part_matches, so a doubled
+    affirming frame whose split complement carries such a
+    parenthetical rejoins and is removed with its frame as
+    its bare comma twin is. Where the
     middle part is a parenthetical (a reporting clause of any
     length before a reporting verb read by its tense form,
     such as Lane noted, Lane notes, as Lane noted or as the
@@ -1039,7 +1178,7 @@ def _merge_parenthetical_parts(parts, after_side):
         if idx < len(parts) - 2:
             middle, last = parts[idx + 1], parts[idx + 2]
             merged = first.rstrip() + " " + last.lstrip()
-            if _PARENTHETICAL_PART_RE.match(middle) is not None and \
+            if _parenthetical_part_matches(middle) and \
                     _listed_word_denies(
                         merged, own_after=after_side and idx == 0):
                 parts[idx:idx + 3] = [merged]
