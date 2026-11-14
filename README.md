@@ -51,12 +51,6 @@ Write the report for a tree to a file outside that tree:
 
     metrics-starter-collector path/to/design --report path/to/report.txt
 
-## How to run the tests
-
-From the root of this repo, run the single test command:
-
-    python3 -m unittest discover -s tests -v
-
 ## Potential problem causers
 
 This section lists known potential issues for someone installing or running this tool later, in plain language.
