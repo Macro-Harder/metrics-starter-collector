@@ -217,6 +217,19 @@ INVENTORY = {
             "tests.test_af_step15_r12_denial.TestStep15Round12Denial.test_f15_107_quoted_parenthetical_split_complement_stands",
         ],
     },
+    "test_ag_step15_r12_figures": {
+        "count": 8,
+        "cases": [
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_bound_multipliers_stop_below_the_rung",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_control_settled_scale_forms_hold",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_different_figure_denial_stands",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_direct_crossed_multipliers_higher_rungs",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_direct_hyphenated_crossed_forms",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_direct_thousand_multiplier_of_million",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_point_form_with_crossed_multiplier",
+            "tests.test_ag_step15_r12_figures.TestStep15Round12Figures.test_f15_108_same_figure_denial_taken_out",
+        ],
+    },
     "test_b_slice2_capture": {
         "count": 17,
         "cases": [
@@ -981,4 +994,4 @@ INVENTORY = {
     },
 }
 
-TOTAL_CASES = 740
+TOTAL_CASES = 748

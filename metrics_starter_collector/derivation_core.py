@@ -1239,19 +1239,23 @@ _FIGURE_THOUSAND = (
     r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
     r"|\d{1,3}))?")
 _FIGURE_MILLION = (
-    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
+    _FIGURE_SMALL + r"|\d+)"
     + _FIGURE_SEP + r"million"
     r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
     r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
     _FIGURE_SMALL + r"|\d{1,3}))?")
 _FIGURE_BILLION = (
-    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    r"(?:" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND + r"|" +
+    _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
     + _FIGURE_SEP + r"billion"
     r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
     r"(?:" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND + r"|" +
     _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d{1,3}))?")
 _FIGURE_TRILLION = (
-    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
+    r"(?:" + _FIGURE_BILLION + r"|" + _FIGURE_MILLION + r"|" +
+    _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
+    _FIGURE_SMALL + r"|\d+)"
     + _FIGURE_SEP + r"trillion"
     r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
     r"(?:" + _FIGURE_BILLION + r"|" + _FIGURE_MILLION + r"|" +
@@ -1287,19 +1291,43 @@ _TENS_WORD_VALUES = {name: value for name, value in
 
 
 def _integer_word_value(words):
+    # The words read as additive groups of descending scale,
+    # as the ladder states them (one trillion and five
+    # billion and nine). Inside one group the scale words may
+    # instead climb: a scale word above the group's last
+    # scale multiplies everything the group has accumulated
+    # so far, small words and hundred forms included, because
+    # that accumulated value is the higher scale's multiplier
+    # (one thousand and five million: the group before
+    # million is one thousand and five). A scale word at or
+    # below the group's last scale closes the group into the
+    # total and opens the next group on the words before it,
+    # so a crossed multiplier standing in a tail group reads
+    # in its own group (one billion and five thousand
+    # million: the tail group is five thousand million).
     total = 0
+    scaled = 0
     current = 0
+    last_scale = None
     for part in words:
         if part in _SCALE_WORD_VALUES:
-            total += (current or 1) * _SCALE_WORD_VALUES[part]
+            scale = _SCALE_WORD_VALUES[part]
+            if last_scale is not None and scale > last_scale:
+                scaled = (scaled + current or 1) * scale
+            elif last_scale is not None:
+                total += scaled
+                scaled = (current or 1) * scale
+            else:
+                scaled = (current or 1) * scale
             current = 0
+            last_scale = scale
         elif part == "hundred":
             current = (current or 1) * 100
         elif part.isdigit():
             current += int(part)
         else:
             current += _NUMBER_WORD_VALUES[part]
-    return total + current
+    return total + scaled + current
 
 
 def _figure_value(token):
@@ -1388,6 +1416,16 @@ def _clause_subject(text):
     250000000), and takes the compound of the rungs below
     it as its tail (one million and five, read as 1000005;
     one billion five hundred million, read as 1500000000).
+    The multiplier is that same compound of the rungs
+    below, not only its hundred form, so a multiplier may
+    itself carry a scale word and climb the ladder toward
+    the rung it multiplies (one thousand million, read as
+    1000000000; one hundred thousand million, read as
+    100000000000; one thousand billion, read as
+    1000000000000). Every scale word inside a multiplier
+    stands below the rung it multiplies: a multiplier
+    naming the rung itself or a higher rung is no figure,
+    and the ladder still stops at trillion.
     A comma grouped round digit form takes a word tail as
     the plain round form does (1,000 and five, read as
     1005). A point tail item may name a two digit value, in
