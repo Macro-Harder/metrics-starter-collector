@@ -1,16 +1,23 @@
 """Module 3: derivation core.
 
 Pure component. Receives one CapturedRead and returns one ReportModel.
-Never touches the filesystem, never reads a clock, never uses randomness.
-The five core types live here: CapturedRead, Piece, StepUniverse,
-DerivationResult and ReportModel.
+Never touches the filesystem, never reads a clock, never uses
+randomness. The five core types live here: CapturedRead, Piece,
+StepUniverse, DerivationResult and ReportModel.
+
+Slice 1 form: the tracer derivations for E-1, E-2 and Q-4 stand in
+full on the one capture, the T-1 refusal stands in its date only
+form, the D-1 row derives from the assembled metrics record under
+the split form assembly, and every other row stands as a refusal
+under its named rule where its feeder does not carry it further.
 """
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
 STARTER_ORDER = ["T-1", "T-2", "T-4", "T-7", "E-1", "E-2", "E-3", "E-4",
-                 "F-2", "Q-1", "Q-3", "Q-4", "D-1", "B-1", "B-2", "B-3", "B-4"]
+                 "F-2", "Q-1", "Q-3", "Q-4", "D-1", "B-1", "B-2", "B-3",
+                 "B-4"]
 
 REASON_CODES = ["missing-field", "no-feeder-record", "date-only-form",
                 "no-post-triage-breakdown", "no-measurement-basis",
@@ -21,7 +28,6 @@ REASON_CODES = ["missing-field", "no-feeder-record", "date-only-form",
 
 QUALITY_STATES = ("truncated", "malformed", "over limit", "unreadable")
 
-# Record class names, one home. Inventory imports these.
 CLS_PATH_LEDGER = "path ledger"
 CLS_TIER_RECORD = "tier record"
 CLS_DECISION_QUEUE = "decision queue"
@@ -77,6 +83,9 @@ D1_FEEDER_CONDITION = (
     "D-09 as shrunk by proposal WV-12; where such a queue file "
     "stands, the queue file is the feeder and the decision table is "
     "the cross check")
+
+METRICS_CANONICAL_PATH = "wiki/wiki/synthesis/build-metrics-record.md"
+COST_LEDGER_PATH = "registers/cost-ledger.md"
 
 
 @dataclass
@@ -153,15 +162,36 @@ class DerivationResult:
     statement: object = None
     derived_from: object = None
     rule_name: str = ""
+    numerator: object = None
+    coverage: object = None
+    broken_link: object = None
+    form_required: object = None
+    form_held: object = None
+    bound: object = None
 
     def reason_text(self):
+        if self.broken_link is not None or self.form_required is not None \
+                or self.form_held is not None:
+            follows = self.follows or ""
+            token = self.code_token or ""
+            if token and follows.lower().startswith(token.lower()):
+                follows = follows[len(token):].lstrip()
+            second = (token + " " + follows).strip() if token else follows
+            anatomy = ("broken link, %s; form required, %s; form held, %s"
+                       % (self.broken_link or "",
+                          self.form_required or "",
+                          self.form_held or ""))
+            return ("What the record shows: " + anatomy +
+                    " What follows: " + second)
         if self.shows is None:
             return None
-        follows = self.follows
-        if follows.lower().startswith(self.code_token.lower()):
-            follows = follows[len(self.code_token):].lstrip()
+        follows = self.follows or ""
+        token = self.code_token or ""
+        if token and follows.lower().startswith(token.lower()):
+            follows = follows[len(token):].lstrip()
+        second = (token + " " + follows).strip() if token else follows
         return ("What the record shows: " + self.shows +
-                " What follows: " + self.code_token + " " + follows)
+                " What follows: " + second)
 
 
 @dataclass
@@ -174,21 +204,11 @@ class ReportModel:
     no_usable: bool = False
 
 
-# ---------------------------------------------------------------- helpers
+# ------------------------------------------------------------ helpers
 
-FULL_TS_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})")
-DATE_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
-
-
-def _parse_ts(text):
-    m = FULL_TS_RE.search(text)
-    if not m:
-        return None
-    try:
-        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
-                        int(m.group(4)), int(m.group(5)))
-    except ValueError:
-        return None
+_FULL_STAMP = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})")
+_ANY_STAMP = re.compile(r"(\d{4})-(\d{2})-(\d{2})"
+                        r"(?:[ T](\d{2}):(\d{2}))?")
 
 
 def _fmt_num(value):
@@ -197,70 +217,243 @@ def _fmt_num(value):
     return ("%.2f" % value).rstrip("0").rstrip(".")
 
 
-def _step_list_text(steps):
-    steps = sorted(steps)
-    if not steps:
-        return "none"
-    parts = []
-    run = [steps[0]]
-    for s in steps[1:]:
-        if s == run[-1] + 1:
-            run.append(s)
-        else:
-            parts.append(_run_text(run))
-            run = [s]
-    parts.append(_run_text(run))
-    return ", ".join(parts)
+def _median(values):
+    ordered = sorted(values)
+    count = len(ordered)
+    if count == 0:
+        return None
+    mid = count // 2
+    if count % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2.0
 
 
-def _run_text(run):
-    if len(run) == 1:
-        return "Step %d" % run[0]
-    if len(run) == 2:
-        return "Step %d and Step %d" % (run[0], run[1])
-    return "Steps %d to %d" % (run[0], run[-1])
+def _stamp_value(text):
+    """Parse one timestamp cell: datetime, the word date, or None."""
+    text = (text or "").strip()
+    m = _FULL_STAMP.search(text)
+    if m:
+        try:
+            return datetime(int(m.group(1)), int(m.group(2)),
+                            int(m.group(3)), int(m.group(4)),
+                            int(m.group(5)))
+        except ValueError:
+            return None
+    if re.search(r"\d{4}-\d{2}-\d{2}", text):
+        return "date"
+    return None
 
 
-def _named_steps(steps):
-    steps = sorted(steps)
-    if not steps:
-        return "none"
-    if len(steps) == 1:
-        return "Step %d" % steps[0]
-    return "Steps " + ", ".join(str(s) for s in steps)
+def _item_latency_hours(item):
+    if not isinstance(item, dict):
+        return None
+    raised = item.get("raised_dt") or _stamp_value(item.get("raised"))
+    ruled = item.get("ruled_dt") or _stamp_value(item.get("ruled"))
+    if isinstance(raised, datetime) and isinstance(ruled, datetime):
+        return (ruled - raised).total_seconds() / 3600.0
+    return None
 
 
 def _each_step(steps):
-    """Name every step in the Step N form, one name per step."""
     steps = sorted(steps)
     if not steps:
         return "none"
     return ", ".join("Step %d" % s for s in steps)
 
 
-def _join_names(names):
+def _named_steps(steps):
+    return _each_step(steps)
+
+
+def _search_int(pattern, text):
+    m = re.search(pattern, text or "", re.I)
+    return int(m.group(1)) if m else None
+
+
+def _refusal(code, verdict, figures, denominator, pointer, shows,
+             token, follows, rule_name, statement=None, broken=None,
+             required=None, held=None):
+    return DerivationResult(code, verdict, figures, denominator,
+                            pointer, shows=shows, code_token=token,
+                            follows=follows, statement=statement,
+                            rule_name=rule_name, broken_link=broken,
+                            form_required=required, form_held=held)
+
+
+POINTER_PROSE = {
+    "T-1": "the path ledger transition entries",
+    "T-2": "the path ledger transition entries",
+    "T-4": "the path ledger BANKED entries and the decision table "
+           "row for each item counted",
+    "T-7": "the loop round table and the verdict records for each "
+           "loop step",
+    "E-1": "the step record and roster for each step counted",
+    "E-2": "the roster and the step record for each step counted",
+    "E-3": "the place inside the root where a cost ledger would "
+           "stand, stated as looked for and not found",
+    "E-4": "the cost ledger entry or the step record budget position "
+           "for each step counted",
+    "F-2": "the gate record or gate ruling carrying each first "
+           "ruling counted",
+    "Q-1": "the round record, or a record the round record names, "
+           "for each round counted",
+    "Q-3": "the fix and defect register entries",
+    "Q-4": "the first trace record for each step counted",
+    "D-1": "the decision table inside the root, the allowed feeder",
+    "B-1": "the step table rows and the build summary, with the "
+           "closing gate ruling for the last step",
+    "B-2": "the place inside the root where a cost ledger would "
+           "stand, stated as looked for and not found, with step "
+           "records named as context only",
+    "B-3": "the step table rows, stated as looked for and not "
+           "formable, and the build summary",
+    "B-4": "the step table rows, stated as looked for and not "
+           "formable, and the build summary",
+}
+
+Q4_POINTER_PROSE = (
+    "the first trace record for each step counted, in the forms the "
+    "named evidence set states: Step 6 gate record, Step 8 gate "
+    "record, Step 19 Purple paper, Step 20 gate ruling, and the "
+    "Step 13 trace record for the excepted contribution")
+
+
+def _pointer(code, actual, captured=None):
+    """Compose a pointer: the definition prose, then the record path."""
+    prose = POINTER_PROSE.get(code, "")
+    if code == "Q-4" and captured is not None and _q4_named_set(captured):
+        prose = Q4_POINTER_PROSE
+    if not prose:
+        return actual or ""
+    path = actual or ""
+    if path and not path.endswith(".md"):
+        if captured is not None and captured.assembled_metrics:
+            path = METRICS_CANONICAL_PATH
+        else:
+            path = ""
+    if path and path not in prose:
+        return prose + " (" + path + ")"
+    return prose
+
+
+def _steps_phrase(steps):
+    """Golden step list phrase: Steps 6, 8, 19 and 20 form."""
+    steps = sorted(steps)
+    if not steps:
+        return "no steps"
+    if len(steps) == 1:
+        return "Step %d" % steps[0]
+    names = [str(step) for step in steps]
+    return "Steps " + ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _names_phrase(names):
     names = list(names)
-    if not names:
-        return "none"
-    if len(names) == 1:
-        return names[0]
-    if len(names) == 2:
-        return names[0] + " and " + names[1]
+    if len(names) <= 1:
+        return "".join(names)
     return ", ".join(names[:-1]) + " and " + names[-1]
 
 
-def build_step_universe(captured):
-    evidenced = set()
-    for p in captured.pieces:
-        if p.step is not None and p.record_class in (
-                CLS_STEP_RECORD, CLS_GATE_RECORD, CLS_GATE_RULING,
-                CLS_REGATE_RECORD, CLS_GATE_ADJUDICATION):
-            evidenced.add(p.step)
-    ledger_steps = set()
-    for p, text in captured.texts_of(CLS_PATH_LEDGER):
-        m = re.search(r"Steps stated:\s*([0-9, ]+)", text)
+def _held_join(clauses):
+    """Join held clauses in the golden list form: comma joins, with
+    an and before the last clause where more than one stands."""
+    clauses = [clause for clause in clauses if clause]
+    if len(clauses) <= 1:
+        return "".join(clauses)
+    return ", ".join(clauses[:-1]) + ", and " + clauses[-1]
+
+
+def _metrics_step_table(captured):
+    """Step table rows of the assembled metrics record, by step.
+
+    A row stands where a table line opens with a numbered step cell;
+    its cells stand in table order. No row stands on a tree whose
+    metrics record carries no step table in this form.
+    """
+    rows = {}
+    text = captured.assembled_metrics or ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 9:
+            continue
+        m = re.match(r"(\d+)\.", cells[0])
         if m:
-            for tok in m.group(1).split(","):
+            rows[int(m.group(1))] = cells
+    return rows
+
+
+def _metrics_section(text, heading):
+    """Return one headed section of a record text, or an empty text."""
+    if not text:
+        return ""
+    lowered = text.lower()
+    at = lowered.find(heading.lower())
+    if at < 0:
+        return ""
+    tail = text[at:]
+    nxt = tail.find("\n## ", len(heading))
+    if nxt > 0:
+        tail = tail[:nxt]
+    return tail
+
+
+def _quality_code(piece):
+    state = (piece.quality_state or "").lower()
+    if state == "malformed":
+        return "malformed-piece"
+    if state == "over limit":
+        return "over-limit-piece"
+    if state == "unreadable":
+        return "unreadable-piece"
+    if state == "truncated":
+        return "truncated-no-correcting-record"
+    reason = (piece.not_read_reason or "").lower()
+    if "malformed" in reason:
+        return "malformed-piece"
+    if "over limit" in reason or "past the limit" in reason:
+        return "over-limit-piece"
+    if "unreadable" in reason or "not a regular file" in reason:
+        return "unreadable-piece"
+    if "disagreement" in reason:
+        return "record-disagrees"
+    return "unreadable-piece"
+
+
+# ------------------------------------------------------- step universe
+
+# The classes counted as universe evidence: the step record and
+# the gate alias set, gate record, gate ruling, regate record and
+# gate adjudication, the same set the Inventory names as its gate
+# alias classes. The construction classes nothing by name itself:
+# it reads the record class the Inventory assigned at capture, so
+# a Step 22 piece the Inventory classed by content as that step
+# gate record counts here under that same class, and a Step 22
+# piece it classed as a step companion does not.
+_UNIVERSE_CLASSES = (CLS_STEP_RECORD, CLS_GATE_RECORD, CLS_GATE_RULING,
+                     CLS_REGATE_RECORD, CLS_GATE_ADJUDICATION)
+
+
+def build_step_universe(captured):
+    """Build the one StepUniverse from the one CapturedRead."""
+    evidenced = set()
+    for piece in captured.pieces:
+        if piece.step is not None and \
+                piece.record_class in _UNIVERSE_CLASSES:
+            evidenced.add(piece.step)
+    ledger_steps = set()
+    for _piece, text in captured.texts_of(CLS_PATH_LEDGER):
+        m = re.search(r"Steps stated:\s*([0-9,\s]+?)(?:\.|\n|$)", text)
+        if m:
+            body = m.group(1)
+            span = re.search(r"(\d+)\s+to\s+(\d+)", body)
+            if span:
+                for n in range(int(span.group(1)),
+                               int(span.group(2)) + 1):
+                    ledger_steps.add(n)
+            for tok in body.split(","):
                 tok = tok.strip()
                 if tok.isdigit():
                     ledger_steps.add(int(tok))
@@ -268,46 +461,48 @@ def build_step_universe(captured):
             ledger_steps.add(int(m.group(1)))
     metrics_steps = set()
     if captured.assembled_metrics:
-        for m in re.finditer(r"^\|\s*(\d+)\.\s", captured.assembled_metrics,
-                             re.M):
-            metrics_steps.add(int(m.group(1)))
-        for m in re.finditer(r"Step (\d+) closing entry", captured.assembled_metrics):
-            metrics_steps.add(int(m.group(1)))
-    metrics_count_claim = None
+        text = captured.assembled_metrics
+        for pattern in (r"^\|\s*(\d+)\.\s",
+                        r"Step (\d+) closing entry",
+                        r"Step (\d+) row\."):
+            for m in re.finditer(pattern, text, re.M):
+                metrics_steps.add(int(m.group(1)))
+    claim = None
     if captured.assembled_metrics:
         m = re.search(r"step universe as (\d+) steps?",
                       captured.assembled_metrics, re.I)
         if m:
-            metrics_count_claim = int(m.group(1))
+            claim = int(m.group(1))
     disagreements = []
     if ledger_steps and ledger_steps != evidenced:
         disagreements.append(
-            "the path ledger states steps %s while step records and gate "
-            "files evidence steps %s" % (_named_steps(ledger_steps),
-                                         _named_steps(evidenced)))
-    if metrics_steps and not metrics_steps.issubset(evidenced | ledger_steps):
+            "the path ledger states steps %s while step records and "
+            "gate files evidence steps %s"
+            % (_each_step(ledger_steps), _each_step(evidenced)))
+    if metrics_steps and not metrics_steps.issubset(
+            evidenced | ledger_steps):
         disagreements.append(
             "the metrics record states steps %s beyond the evidenced "
-            "universe" % _named_steps(metrics_steps - evidenced - ledger_steps))
-    if metrics_count_claim is not None and \
-            metrics_count_claim != len(evidenced):
-        metrics_name = "build-metrics-record.md"
+            "universe"
+            % _each_step(metrics_steps - evidenced - ledger_steps))
+    if claim is not None and claim != len(evidenced):
+        name = "build-metrics-record.md"
         if captured.metrics_single_path:
-            metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1]
+            name = str(captured.metrics_single_path).rsplit("/", 1)[-1]
         ledger_clause = ""
         if captured.pieces_of(CLS_PATH_LEDGER):
             ledger_clause = " and stated in PATH-LEDGER.md"
         disagreements.append(
-            "the metrics record in %s states the step universe as %d "
-            "steps, which disagrees with the step universe of %d steps "
-            "evidenced by step records and gate files%s; neither count "
-            "is picked as the count, and derivations and denominators "
-            "are computed on the evidenced universe"
-            % (metrics_name, metrics_count_claim, len(evidenced),
-               ledger_clause))
-    return StepUniverse(tuple(sorted(evidenced)), tuple(sorted(ledger_steps)),
-                        tuple(sorted(metrics_steps)), tuple(disagreements),
-                        metrics_count_claim)
+            "the metrics record in %s states the step universe as "
+            "%d steps, which disagrees with the step universe of %d "
+            "steps evidenced by step records and gate files%s; "
+            "neither count is picked as the count, and derivations "
+            "and denominators are computed on the evidenced universe"
+            % (name, claim, len(evidenced), ledger_clause))
+    return StepUniverse(tuple(sorted(evidenced)),
+                        tuple(sorted(ledger_steps)),
+                        tuple(sorted(metrics_steps)),
+                        tuple(disagreements), claim)
 
 
 def _known_version(version):
@@ -318,61 +513,34 @@ def _known_version(version):
 
 
 def _feeder_stands(captured, code):
-    kinds = FEEDER_MAP[code]
-    for kind in kinds:
-        if kind == "path ledger transition log" or kind == "path ledger banked states":
-            if captured.pieces_of(CLS_PATH_LEDGER):
-                return True
-        elif kind == "decision queue file":
-            if captured.pieces_of(CLS_DECISION_QUEUE):
-                return True
-        elif kind == "gate verdict records" or kind == "gate records":
-            if captured.pieces_of(*GATE_CLASSES):
-                return True
-        elif kind == "gate rulings":
-            if captured.pieces_of(CLS_GATE_RULING):
-                return True
-        elif kind == "gate adjudications":
-            if captured.pieces_of(CLS_GATE_ADJUDICATION, CLS_ADJUDICATION):
-                return True
-        elif kind == "step records":
-            if captured.pieces_of(CLS_STEP_RECORD):
-                return True
-        elif kind == "roster artifacts":
-            if captured.pieces_of(CLS_ROSTER):
-                return True
-        elif kind == "cost ledger token figures" or kind == "cost ledger money figures":
-            if captured.pieces_of(CLS_COST_LEDGER):
-                return True
-        elif kind == "audit round records" or kind == "audit records":
-            if captured.pieces_of(CLS_AUDIT_PAPER, CLS_FIX_REGISTER):
-                return True
-        elif kind == "defect registers":
-            if captured.pieces_of(CLS_DEFECT_REGISTER, CLS_FIX_REGISTER):
-                return True
-        elif kind == "first trace records":
-            if captured.pieces_of(CLS_TRACE):
-                return True
-        elif kind == "metrics record":
-            if captured.assembled_metrics is not None:
-                return True
-    return False
+    if code in ("E-1", "E-2"):
+        return bool(captured.pieces_of(CLS_STEP_RECORD, CLS_ROSTER,
+                                       CLS_STEP_COMPANION))
+    if code == "Q-4":
+        found, _sources, _styles = _first_traces(captured)
+        return bool(found)
+    return bool(captured.pieces)
 
 
-# ------------------------------------------------------------- T-1 and T-2
+def _unknown_version_result(captured, code, denominator, pointer):
+    version = captured.definitions_version
+    return _refusal(
+        code, "present but not derivable", "no figure stands",
+        denominator, pointer,
+        shows="the metrics record states definitions version %s, "
+              "which is not a version the settled definitions "
+              "recognise, and feeder records for this metric stand "
+              "in the capture" % version,
+        token="unknown-definitions-version",
+        follows="the derivation is refused on the unknown version "
+                "ground while feeder records stand, so no figure "
+                "stands for this row",
+        rule_name="WV-2 unknown definitions version rule")
+
+
+# ------------------------------------------------------------- ledger
 
 def _ledger_piece(captured):
-    """The single ledger piece the ledger feeders read.
-
-    Selection only: where a ledger piece carrying substantive text
-    stands in the identity group, that piece feeds the derivations,
-    even where a piece with no content at the canonical path sorts
-    ahead of its path, as the step record and metrics record
-    selections already feed from the sound duplicate on the same
-    shapes. Where no piece in the group carries substantive text,
-    the first piece in path order stands, so the standing not read
-    in full and empty forms hold unchanged.
-    """
     found = captured.pieces_of(CLS_PATH_LEDGER)
     for piece in found:
         if piece.text is not None and piece.text.strip():
@@ -380,5873 +548,1820 @@ def _ledger_piece(captured):
     return found[0] if found else None
 
 
-def _step_intervals(captured):
-    """Per step intervals from transition lines carrying two full stamps."""
-    intervals = {}
+def _transition_tokens(captured):
+    """Per step timestamp tokens from ledger transition lines only.
+
+    A token is a datetime where the entry carries a time of day and
+    the word date where it carries a date only. A time of day that
+    stands outside a transition entry counts for nothing here.
+    """
     ledger = _ledger_piece(captured)
+    per_step = {}
     if ledger is None or ledger.text is None:
-        return intervals
+        return per_step, ledger
     for line in ledger.text.splitlines():
         if "Step" not in line:
+            continue
+        lowered = line.lower()
+        if "in progress" not in lowered and "closed" not in lowered:
             continue
         m = re.search(r"Step (\d+)\b", line)
         if not m:
             continue
-        stamps = FULL_TS_RE.findall(line)
-        if len(stamps) >= 2:
-            times = [datetime(int(a), int(b), int(c), int(d), int(e))
-                     for (a, b, c, d, e) in stamps]
-            hours = (times[1] - times[0]).total_seconds() / 3600.0
-            intervals.setdefault(int(m.group(1)), hours)
-    return intervals
+        step = int(m.group(1))
+        tokens = []
+        for hit in _ANY_STAMP.finditer(line):
+            if hit.group(4) is not None:
+                try:
+                    tokens.append(datetime(
+                        int(hit.group(1)), int(hit.group(2)),
+                        int(hit.group(3)), int(hit.group(4)),
+                        int(hit.group(5))))
+                except ValueError:
+                    tokens.append("date")
+            else:
+                tokens.append("date")
+        if tokens:
+            per_step.setdefault(step, []).extend(tokens)
+    return per_step, ledger
 
 
-def _ledger_has_full_ts(captured):
-    ledger = _ledger_piece(captured)
-    if ledger is None or ledger.text is None:
-        return False
-    for line in ledger.text.splitlines():
-        if "Step" in line and FULL_TS_RE.search(line):
-            return True
-    return False
+def _t1_state(captured, universe):
+    """Shared T-1 reading: (kind, complete, incomplete, ledger).
 
-
-def _ledger_has_dates(captured):
-    ledger = _ledger_piece(captured)
-    if ledger is None or ledger.text is None:
-        return False
-    return DATE_RE.search(ledger.text) is not None
+    Kind is one of no-ledger, not-read, no-entries, date-only,
+    partial, or complete.
+    """
+    per_step, ledger = _transition_tokens(captured)
+    if ledger is None:
+        return "no-ledger", {}, [], ledger
+    if ledger.text is None:
+        return "not-read", {}, [], ledger
+    if not per_step:
+        return "no-entries", {}, [], ledger
+    flat = [tok for toks in per_step.values() for tok in toks]
+    if not any(isinstance(tok, datetime) for tok in flat):
+        return "date-only", {}, [], ledger
+    complete = {}
+    for step, toks in per_step.items():
+        if len(toks) >= 2 and isinstance(toks[0], datetime) and \
+                isinstance(toks[1], datetime):
+            hours = (toks[1] - toks[0]).total_seconds() / 3600.0
+            complete[step] = hours
+    wanted = list(universe.evidenced) or sorted(per_step)
+    incomplete = [s for s in wanted if s not in complete]
+    if incomplete:
+        return "partial", complete, incomplete, ledger
+    return "complete", complete, [], ledger
 
 
 def _derive_t1(captured, universe):
-    ledger = _ledger_piece(captured)
-    pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    if ledger is None:
-        return DerivationResult(
+    kind, complete, incomplete, ledger = _t1_state(captured, universe)
+    pointer = ledger.paths[0] if ledger is not None else "PATH-LEDGER.md"
+    pointer = _pointer("T-1", pointer, captured)
+    if kind == "no-ledger":
+        return _refusal(
             "T-1", "missing", "no interval figure", denom, pointer,
             shows="no path ledger piece stands in the capture, so no "
                   "transition log holds any timestamp field",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
             rule_name="T-1 feeder standing rule")
-    if ledger.text is None:
-        code = {"malformed": "malformed-piece",
-                "over limit": "over-limit-piece"}.get(
-                    ledger.quality_state or "", "unreadable-piece")
-        return DerivationResult(
+    if kind == "not-read":
+        token = _quality_code(ledger)
+        return _refusal(
             "T-1", "present but not derivable", "no interval figure",
             denom, pointer,
             shows="a path ledger piece is present but not read in "
                   "full in the capture, so no transition log can be "
                   "read to form an interval",
-            code_token=code,
-            follows=code + " the piece is marked not read in full in "
-                    "the inventory and no figure is read from it, so "
-                    "no interval figure stands",
+            token=token,
+            follows="the piece is marked not read in full in the "
+                    "inventory and no figure is read from it, so no "
+                    "interval figure stands",
             rule_name="T-1 not read in full rule")
-    intervals = _step_intervals(captured)
-    if not _ledger_has_full_ts(captured):
-        if _ledger_has_dates(captured):
-            recorded = re.findall(r"Recorded (\d{4}-\d{2}-\d{2})",
-                                  ledger.text)
-            entry_steps = [int(m.group(1)) for m in re.finditer(
-                r"^- Step (\d+)\b", ledger.text, re.M)]
-            if recorded and len(set(recorded)) == 1 and \
-                    "IN PROGRESS" not in ledger.text:
-                if entry_steps:
-                    denom += ("; transitions cover Steps %d to %d only"
-                              % (min(entry_steps), max(entry_steps)))
-                return DerivationResult(
-                    "T-1", "missing", "no interval figure", denom, pointer,
-                    shows="the transition log holds %d entries marked "
-                          "Recorded %s, every one date only %s, no time "
-                          "of day, no IN PROGRESS entry"
-                          % (len(recorded), recorded[0][:4], recorded[0]),
-                    code_token="date-only-form",
-                    follows="date-only-form no timestamp with a time of "
-                            "day can form an interval, so the metric is "
-                            "missing on the date only ground",
-                    rule_name="T-1 date only boundary rule")
-            return DerivationResult(
-                "T-1", "missing", "no interval figure", denom, pointer,
-                shows="the transition log in PATH-LEDGER.md holds timestamp "
-                      "fields in date only form, and no entry carries a "
-                      "time of day from which an interval can form",
-                code_token="date-only-form",
-                follows="date-only-form the metric specific boundary makes "
-                        "the row missing where no timestamp with a time of "
-                        "day stands",
-                rule_name="T-1 date only boundary rule")
-        return DerivationResult(
+    if kind == "no-entries":
+        return _refusal(
             "T-1", "missing", "no interval figure", denom, pointer,
-            shows="the transition log in PATH-LEDGER.md holds no timestamp "
-                  "field for any step",
-            code_token="no-feeder-record",
-            follows="no interval can form from the log as it stands, so "
-                    "the row is missing",
+            shows="the transition log in PATH-LEDGER.md holds no "
+                  "timestamp field for any step",
+            token="no-feeder-record",
+            follows="no interval can form from the log as it "
+                    "stands, so the row is missing",
             rule_name="T-1 feeder standing rule")
-    covered = sorted(intervals)
-    uncovered = [s for s in universe.evidenced if s not in intervals]
-    if uncovered:
-        return DerivationResult(
+    if kind == "date-only":
+        raw_dates = sorted(set(re.findall(
+            r"\d{4}-\d{2}-\d{2}", ledger.text or "")))
+        if len(raw_dates) == 1:
+            held = ("dates only, every transition in the ledger "
+                    "recorded %s with no time of day" % raw_dates[0])
+        elif raw_dates:
+            held = ("dates only, the transitions in the ledger "
+                    "recorded on %s with no time of day"
+                    % ", ".join(raw_dates))
+        else:
+            held = "dates only, with no time of day on any entry"
+        return _refusal(
+            "T-1", "missing", "no interval figure", denom, pointer,
+            shows="the transition log in PATH-LEDGER.md holds "
+                  "timestamp fields in date only form, and no entry "
+                  "carries a time of day from which an interval can "
+                  "form",
+            token="date-only-form",
+            follows="the metric specific boundary makes the row "
+                    "missing where no timestamp with a time of day "
+                    "stands",
+            rule_name="T-1 date only boundary rule",
+            broken="the timestamp field on the path ledger "
+                   "transition entries, which carries dates only "
+                   "and no time of day",
+            required="a timestamp with a time of day on the "
+                     "transition entry that opens the step and on "
+                     "the entry that closes it",
+            held=held)
+    if kind == "partial":
+        covered = sorted(complete)
+        return _refusal(
             "T-1", "present but not derivable",
-            "intervals stand for " + _each_step(covered), denom, pointer,
-            shows="the transition log yields a full timestamp interval "
-                  "for %s and no interval for %s"
-                  % (_each_step(covered), _each_step(uncovered)),
-            code_token="partial-span",
-            follows="partial-span the series covers only part of the step "
+            "intervals stand for " + _each_step(covered), denom,
+            pointer,
+            shows="the transition log yields a full timestamp "
+                  "interval for %s and no full interval for %s"
+                  % (_each_step(covered), _each_step(incomplete)),
+            token="partial-span",
+            follows="the series covers only part of the step "
                     "universe, so no build level figure stands",
             rule_name="T-1 mixed series rule")
-    figures = "; ".join("Step %d elapsed %s hours" % (s, _fmt_num(intervals[s]))
-                        for s in covered)
+    figures = "; ".join(
+        "Step %d elapsed %s hours" % (s, _fmt_num(complete[s]))
+        for s in sorted(complete))
     return DerivationResult("T-1", "present", figures, denom, pointer,
                             rule_name="T-1 interval rule")
 
 
-# Negation, denial and retraction markers for the duration tests.
-# A marker in the clause fragment before a mention, or in the
-# fragment after it up to the end of its sentence, takes that
-# mention out where the marker stands inside the mention's own
-# clause scope: the mention is denied in any auxiliary form (was not,
-# has not been, was never, does not), after a comma, after
-# intervening words, or as a contraction, or it is denied by another
-# verb or word (cannot, absent, without, fails to record, refuses to
-# record, unrecorded, missing, omitted, denied, removed, nowhere,
-# none recorded, absent, withdrawn, retracted, was wrong, is
-# wrong), quoted and retracted, or only discussed or named as a
-# heading. The before set and the after set carry the same listed
-# words, so a listed word works in either position. Four of the
-# listed words (absent, withdrawn, retracted and wrong) count
-# only in a denial construction: in predicative position, with
-# a copula or a stance verb and a subject that is the duration
-# itself or one of its anaphoric carriers (claim, note,
-# statement, log, record), in the anaphoric form the wrong one
-# (in its spaced form, or hyphenated as the wrong-one standing
-# on the duration itself), or standing attributively on the
-# duration itself, whether the duration follows the word
-# inside the part or the word stands at the end of the part
-# before the mention. The predicative construction still
-# counts where an adverb or a short phrase stands between the
-# copula and the listed word, and the carrying verbs take in
-# the stance verbs beside the copulas (became, appears, looks
-# and their common kin). The intervening run is the shared
-# run stated at _RUN_TOKEN, read by position: lowercase words
-# in adverb, degree, preposition or conjunction position
-# (plain adverbs such as soon and already, stacked adverbs
-# joined by and, degree adverbs such as very and pretty, the
-# parenthetical phrases in fact, in practice and for all
-# intents and purposes), the article carrying prepositional
-# phrases read as one phrase token by shape (in the end, in
-# a sense, on the record, at the time, in the long run, by
-# the book), a quoted adverb, the progressive participles becoming
-# and getting, a parenthesised group inside the run, and a
-# group set off by a pair of em or en dashes inside the run; a
-# run token is never a copula form and never a bare article, so
-# the run cannot cross a new clause's verb or a new subject's
-# article standing alone. A parenthetical
-# clause set off by commas between the copula and the listed
-# word (was, Lane noted, withdrawn) is rejoined by the scope
-# tests before the parts are read, its reporting verb read by
-# tense form and its length standing in any number of words,
-# and adverbs stacked with
-# a comma in place of and are rejoined there in the same way.
-# After a conjunction in the mention's
-# own after part, a new subject is read with an article, as
-# a bare name (a hyphenated or internal capital surname as a
-# plain one), as an initialled name, or as a pronoun from
-# the closed personal pronoun class, under any clause joining
-# conjunction (the reason clause joiners as, since and
-# because among them), with an adverb standing between the
-# conjunction and the subject read as part of the join, the pronoun it still naming
-# the mention itself. The affirming frame family is no
-# denial on either side of a mention: not only and not just
-# in their contiguous forms, the comma split frame (not,
-# only,), and the doubled frame whose complement negates a
-# listed word (not only was it not withdrawn), the
-# complement's run being the same shared run, so a complement
-# split by a comma parenthetical, whose subject stands
-# inverted after its copula (not only was it not, Lane
-# noted, withdrawn), and a complement carrying an article
-# phrase (not only was the duration not in the end
-# withdrawn) are removed with the frame as their contiguous
-# twins are, while a
-# genuine denial standing beside a frame, outside its
-# scope, still denies. As a bare
-# attributive modifier of another noun (an absent minded note,
-# a retracted note that still records, a withdrawn draft, a
-# wrong date) such a word denies nothing and takes nothing out.
-# Figures in the scope comparison are read in digits or in
-# number words, the hundred forms and the point forms among
-# them, so a figure stated in words compares the same
-# way a digit figure compares. The compounds and mixed forms
-# of the figure grammar at _clause_subject compare the same
-# way, and a grouping comma inside a figure opens no part.
-# A comma or a colon opens a new
-# clause part: a marker in another part takes
-# the mention out only where that part is about the mention's own
-# subject. A part naming a different step or a different figure is
-# scoped to that other subject, and so is a part carrying a bare
-# duration mention with a different figure, and a part whose
-# denial attaches to another named subject in plain words (the
-# appendix, the budget, the reviewers, the earlier work). A part
-# carrying a duration mention of the same step and the same figure
-# as the mention, or a duration denial naming neither, is about
-# the mention itself, so its marker reaches the mention. A mention
-# retracted by name in the following sentence on the same line
-# does not stand, and the sentence end detection in that test
-# follows the true sentence boundary rule stated at
-# _dot_ends_sentence: a stop inside a decimal, an abbreviation
-# from the completed set, or a person's initials is no sentence
-# end, while an abbreviation stop at a true sentence end, under
-# the abbreviation class rule stated there or at the end of the
-# passage, still ends the sentence. A
-# neighbouring line that denies any duration stands takes out a
-# mention that carries no value of its own. The marker sets cover
-# these proven shapes; an unlisted synonym remains outside the
-# handling, a known boundary of the cure.
-_BEFORE_NEGATION_RE = re.compile(
-    r"\b(?:no|not|never|without|cannot|unrecorded|missing|omitted|"
-    r"denied|removed|nowhere|none)\b|"
-    r"\b\w+n't\b|"
-    r"\bfails?\s+to\b|\bfailed\s+to\b|\brefus(?:e|es|ed)\s+to\b",
-    re.I)
-_AFTER_NEGATION_RE = re.compile(
-    r"\b(?:not|never|no|cannot|"
-    r"unrecorded|missing|omitted|denied|removed|nowhere|none)\b|"
-    r"\b\w+n't\b", re.I)
-_LISTED_WORD_RE = re.compile(
-    r"\b(absent|withdrawn|retracted|wrong)\b", re.I)
-# The intervening run between a copula and a listed word, and
-# between a negation and a listed word in a doubled affirming
-# frame complement, is one shared vocabulary, stated once here
-# so the two passages cannot drift apart. A run token is a
-# lowercase word in adverb, degree, preposition or conjunction
-# position (flatly, soon, very, pretty, in, fact, and their
-# kin, an open class read by position, not by list), one of
-# the stated participle or as phrases (becoming, getting,
-# noted as, recorded as, said to be and their listed kin), a
-# prepositional phrase carrying an article (in the end, in a
-# sense, on the record, at the time, in the long run, by the
-# book, across the board, within the stated limit, via the
-# log: the preposition read by its position, a lowercase word
-# that is no copula or stance form and no article standing
-# immediately before the article, then the article, and up to
-# three lowercase words, read as one phrase token by its
-# shape, with no preposition vocabulary list; the words
-# after the article are run words in their own right, never
-# a copula or stance form and never a bare article, so the
-# phrase token cannot consume a new clause's verb standing
-# after its article phrase), a quoted
-# group set off inside the run (was "flatly" withdrawn), a
-# parenthesised group set off inside the run (was (Lane
-# noted) withdrawn), or a group set off by a pair of dash
-# marks inside the run, em or en in either order (was — Lane
-# noted — withdrawn, and its mixed pair twin). A run
-# token is never a copula or stance verb form and never a
-# bare article, so a run cannot cross a new clause's verb or
-# a new subject's article to reach a listed word: an article
-# stands in a run only inside the prepositional phrase that
-# carries it, and the subject tests still decide whose
-# predication the listed word is, so the draft in the end
-# withdrawn leaves a standing figure standing. A capitalised
-# name is no single run token either.
-_RUN_TOKEN = (
-    r"(?:noted\s+as|recorded\s+as|marked\s+as|listed\s+as|"
-    r"shown\s+as|described\s+as|reported\s+as|said\s+to\s+be|"
-    r"becoming|getting|"
-    r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|appear|"
-    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
-    r"the|a|an)\b)[a-z][\w'-]*\s+(?:the|a|an)\s+"
-    r"(?:(?!(?:is|was|are|were|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|appear|"
-    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
-    r"the|a|an)\b)[a-z][\w'-]*\s+){0,2}"
-    r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|appear|"
-    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
-    r"the|a|an)\b)[a-z][\w'-]*|"
-    r"(?!(?:is|was|are|were|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|appear|"
-    r"appears|appeared|look|looks|looked|stay|stays|stayed|"
-    r"the|a|an)\b)[a-z][\w'-]*|\([^)]*\)|\"[^\"]*\"|"
-    r"—[^—]*—|–[^–]*–|—[^—–]*–|–[^—–]*—)")
-_COPULA_RE = re.compile(
-    r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|becoming|"
-    r"appear|appears|appeared|look|looks|looked|stay|stays|"
-    r"stayed)"
-    r"(?:\s+" + _RUN_TOKEN + r")*"
-    r"\s+(?:the\s+)?$", re.I)
-_ANAPHORIC_SUBJECT_RE = re.compile(
-    r"\b(?:duration|interval|banked|claim|note|statement|log|"
-    r"record)\b", re.I)
-_RETRACTION_RE = re.compile(
-    r"\b(?:withdrawn|retracted)\b|\bwas\s+wrong\b|\bis\s+wrong\b|"
-    r"\bis\s+the\s+wrong\s+one\b",
-    re.I)
-_RETRACTION_REF_RE = re.compile(
-    r"\bthat\s+(?:claim|note|statement|record)\b", re.I)
-_SENTENCE_END_RE = re.compile(r"[.;?!][\"')\]]*(?:\s|$)")
-_NON_ASSERTIVE_RE = re.compile(
-    r"\bis\s+discussed\b|\bheading\s+only\b|\bsee\s+the\s+note\b|"
-    r"\bsee\s+above\b", re.I)
-_NEIGHBOUR_DENIAL_RE = re.compile(
-    r"\bno\s+(?:such\s+)?(?:interval\s+)?duration\b|"
-    r"\bduration\s+(?:is|was)\s+not\s+recorded\b", re.I)
-
-
-def _clause_fragments(line, start, end):
-    """The clause fragments around a mention in one line.
-
-    The before fragment runs from the last sentence or clause break
-    before the mention; the after fragment runs to the end of the
-    mention's own sentence. A semicolon is a clause break on both
-    sides. A question mark and an exclamation mark are sentence
-    breaks on both sides, as they are in the sentence scope
-    fragments, so a step named in a previous sentence ending in
-    one of those marks never enters the mention's own fragment.
-    A full stop is a break only where it ends a sentence
-    under the true sentence boundary rule at _dot_ends_sentence:
-    a stop inside a decimal, an abbreviation from the completed
-    set, or a person's initials does not truncate a fragment, and
-    an abbreviation stop at a true sentence end still does.
-    """
-    before_all = line[:start]
-    cut = -1
-    for pos, char in enumerate(before_all):
-        if char in ";?!" or \
-                (char == "." and _dot_ends_sentence(before_all, pos)):
-            cut = pos
-    before = before_all[cut + 1:]
-    after_all = line[end:]
-    after = after_all
-    for pos, char in enumerate(after_all):
-        if char in ";?!" or \
-                (char == "." and _dot_ends_sentence(after_all, pos)):
-            after = after_all[:pos]
-            break
-    return before, after
-
-
-def _sentence_scope_fragments(line, start, end):
-    """The sentence scope fragments around a mention in one line.
-
-    The before fragment runs from the last true sentence end
-    before the mention and the after fragment runs to the first
-    true sentence end after it, under the true sentence boundary
-    rule at _dot_ends_sentence, with question and exclamation
-    marks as sentence ends. A semicolon is no break here: it is
-    a clause break for the denial scoping in _clause_fragments,
-    which is unchanged, but the T-4 attribution search reads the
-    mention's whole sentence scope, the parts beyond the first
-    semicolon included.
-    """
-    before_all = line[:start]
-    cut = -1
-    for pos, char in enumerate(before_all):
-        if char in "?!" or \
-                (char == "." and _dot_ends_sentence(before_all, pos)):
-            cut = pos
-    before = before_all[cut + 1:]
-    after_all = line[end:]
-    after = after_all
-    for pos, char in enumerate(after_all):
-        if char in "?!" or \
-                (char == "." and _dot_ends_sentence(after_all, pos)):
-            after = after_all[:pos]
-            break
-    return before, after
-
-
-# The clause joining conjunctions of the joined subject test
-# at _predicative_subject_denies, stated once so its two
-# searches cannot drift: the coordinating conjunctions, the
-# reason clause joiners (as, since, because) and the time and
-# condition clause joiners (when, whenever, wherever, whilst,
-# until, once, unless, lest, till, if, before, after, where),
-# a closed class of the grammar completed with whenever and
-# its same class neighbours. The word for stands outside it:
-# it governs a following noun phrase as a preposition in
-# these records, as the closure reading also holds it.
-_JOINED_CONJUNCTIONS = (
-    r"and|but|or|nor|yet|although|though|while|whereas|as|"
-    r"since|because|when|whenever|wherever|whilst|until|"
-    r"once|unless|lest|till|if|before|after|where")
-_JOINED_PRONOUNS = (
-    r"he|she|it|they|we|you|I|one|someone|somebody|anyone|"
-    r"anybody|everyone|everybody|nobody")
-_CARRIER_WORDS = frozenset({
-    "duration", "interval", "banked", "claim", "note",
-    "statement", "log", "record"})
-_SUBJECT_TAIL_PREPOSITIONS = frozenset({
-    "for", "of", "in", "on", "at", "by", "from", "with",
-    "about", "against", "over", "under", "after", "before",
-    "during", "through", "between", "among", "into", "onto",
-    "upon", "per", "via", "across", "behind", "within",
-    "without", "toward", "towards", "concerning", "regarding"})
-
-
-def _joined_determiner_head_denies(rest):
-    """Whether a joined determiner subject's head is a carrier.
-
-    Rest is the subject phrase after its determiner, running
-    to the copula that governs it. The head is the last word
-    of the subject core, the words before any prepositional
-    tail or step naming, with any trailing adverb word (an
-    ly word or itself) set aside, and it denies only where
-    it is a lowercase carrier word standing as the whole
-    head token. A carrier word modifying a later head (the
-    log keeper, whose head is keeper, and the record keeper
-    likewise), a carrier component inside a hyphenated
-    token and a capitalised carrier word therefore do not
-    deny, while the record, the duration, the claim and the
-    log standing as heads still do: the anaphoric reading
-    rests on the subject's head, never on a carrier word
-    standing anywhere in the joined span.
-    """
-    core = []
-    for word in re.findall(r"[A-Za-z][\w'-]*", rest):
-        if word.lower() in _SUBJECT_TAIL_PREPOSITIONS or \
-                word.lower() == "step":
-            break
-        core.append(word)
-    while core and (core[-1].lower() == "itself" or
-                    (core[-1].islower() and
-                     core[-1].lower().endswith("ly") and
-                     len(core) > 1)):
-        core.pop()
-    if not core:
-        return False
-    head = core[-1]
-    return head.islower() and head in _CARRIER_WORDS
-
-
-def _predicative_subject_denies(prefix, own_after):
-    """Whether a predicative listed word denies the mention.
-
-    In the mention's own after part the subject is the mention
-    itself, unless the part joins a new subject clause with a
-    conjunction, in which case that subject decides. A joined
-    new subject is read in each of its forms: with an article
-    (and the draft became withdrawn), as a bare name (and Lane
-    became withdrawn, and May became withdrawn), as an
-    initialled name (and J. Lane became withdrawn), or as a
-    pronoun (and she became withdrawn, and you became
-    withdrawn, and one became withdrawn); the joining
-    conjunction is any clause joining conjunction, the closed
-    class stated at _JOINED_CONJUNCTIONS (the reason clause
-    joiners as, since and because and the time clause joiner
-    whenever among them, which join a new clause as the
-    listed conjunctions do), the words standing between the
-    conjunction and the subject (and yet Lane, and also Lane,
-    and then Lane, and quite rightly Lane, and very quietly
-    Reyes became withdrawn: lowercase words in adverb
-    position, read by position in any number, where yet alone
-    stood before) are part of the join, not the subject, and
-    a name is read by its surname shape: a hyphenated surname
-    (Lane-Smith) and a surname carrying an internal capital
-    (McLane) are name tokens as a plain surname is, and a
-    surname carrying lowercase particles before its
-    capitalised head (de la Cruz, van der Berg, de los
-    Reyes) reads as one name through the same adverb
-    position words, the particles standing in that position
-    in the name's own shape. The pronoun set is the closed
-    pronoun class stated at _JOINED_PRONOUNS, the personal
-    pronouns completed with one and the indefinite person
-    pronouns. The pronoun it names the mention itself, as an
-    article subject whose head names the duration or one of
-    its carriers does, and still denies: the anaphoric
-    reading of a joined article subject rests on its head,
-    at _joined_determiner_head_denies, never on a carrier
-    word standing anywhere in the joined span, so a name or
-    role built on a carrier word (Record-Keeper, Lane
-    Record, the log keeper) is another subject. In any other
-    part the subject stands in the
-    text before the copula: it denies where it names the
-    duration, one of its anaphoric carriers, or a bare
-    anaphoric pronoun, and it does not deny where it names
-    another subject, as a wrong date does not.
-    """
-    if own_after:
-        joined = re.search(
-            r"\b(?:" + _JOINED_CONJUNCTIONS + r")\s+"
-            r"(?:[a-z][\w'-]*\s+)*"
-            r"(?:(?:the|that|this|a|an)\s+|"
-            r"(" + _JOINED_PRONOUNS + r")\b)", prefix, re.I)
-        pronoun = joined.group(1) if joined is not None else None
-        determiner = joined is not None and pronoun is None
-        if joined is None:
-            joined = re.search(
-                r"\b(?:" + _JOINED_CONJUNCTIONS + r")\s+"
-                r"(?:[a-z][\w'-]*\s+)*"
-                r"(?:(?:[A-Z]\.\s+)+[A-Z][A-Za-z'-]*|"
-                r"(?:[A-Z]\.\s+)+|[A-Z][A-Za-z'-]*)\s+", prefix)
-        if joined is not None:
-            if pronoun is not None:
-                return pronoun.lower() == "it"
-            if determiner:
-                return _joined_determiner_head_denies(
-                    prefix[joined.end():])
-            # A name subject is another subject and does not
-            # deny, whatever carrier word a component of the
-            # name carries (Record-Keeper, Lane Record); a
-            # lowercase carrier word standing as its own token
-            # in the join before the name (the duration for
-            # Step naming the name search reaches) keeps the
-            # carrier reading it held.
-            span_words = re.findall(
-                r"[A-Za-z][\w'-]*", prefix[joined.start():joined.end()])
-            return any(word.islower() and word in _CARRIER_WORDS
-                       for word in span_words[:-1])
-        return True
-    stripped = prefix.strip()
-    if not stripped:
-        return True
-    if _ANAPHORIC_SUBJECT_RE.search(prefix) is not None:
-        return True
-    return re.search(r"\b(?:that|this|it)$", stripped,
-                     re.I) is not None
-
-
-def _listed_word_denies(part, own_after=False):
-    """Whether a listed word stands in a denial construction.
-
-    The listed words absent, withdrawn, retracted and wrong
-    count only where the word is predicative with a denying
-    subject, where wrong stands in the anaphoric form the wrong
-    one, or where the word stands attributively on the duration
-    itself inside the part, before a duration word or a BANKED
-    word, or after the duration word it modifies. A bare
-    attributive use on another noun counts for nothing. The
-    predicative construction still counts where an adverb or a
-    short phrase stands between the copula and the listed word
-    (was flatly withdrawn, is hereby withdrawn, was noted as
-    withdrawn), where that intervening run is the shared run
-    stated at _RUN_TOKEN: a lowercase word in adverb, degree,
-    preposition or conjunction position read by position, so
-    plain adverbs (was soon withdrawn, was already withdrawn),
-    stacked adverbs joined by and (was flatly and completely
-    withdrawn), degree adverbs of any degree word (was very
-    flatly withdrawn, was pretty flatly withdrawn), the
-    parenthetical phrases (was in fact withdrawn, was in
-    practice withdrawn, was for all intents and purposes
-    withdrawn), the article carrying prepositional phrases
-    (was in the end withdrawn, was on the record withdrawn,
-    read as one phrase token by shape), a quoted adverb (was
-    "flatly" withdrawn), the progressive participles (is becoming
-    withdrawn, the copula carrying becoming in its run, and
-    becoming standing in the verb set itself; is getting
-    withdrawn), a parenthesised group inside the run (was
-    (Lane noted) withdrawn), and a group set off by a pair of
-    em or en dashes inside the run (was — Lane noted —
-    withdrawn) all stand in the run. A run token
-    is never a copula or stance verb form and never a bare
-    article, so the run cannot cross a new clause's verb or a
-    new subject's article standing alone. The subject of the
-    predication may also stand inverted, immediately after
-    the copula, in the frame and question order (was it not
-    withdrawn): an anaphoric pronoun in that position, with a
-    negation standing between it and the listed word, is the
-    mention's own subject, so a doubled frame complement
-    split by a parenthetical (not only was it not, Lane
-    noted, withdrawn) reads as the predication it states
-    before the frame cleaning reads it. A parenthetical clause set off by
-    commas between the copula and the word is rejoined by the
-    scope tests before this test reads the part, as
-    _merge_parenthetical_parts states, and adverbs stacked
-    with a comma in place of and (was flatly, completely
-    withdrawn) are rejoined by the same passage.
-    The carrying verb set takes in the stance
-    verbs beside the copulas (became, appears, looks and their
-    common kin). The anaphoric wrong one counts in its
-    hyphenated form the wrong-one standing on the duration
-    itself, as in the wrong-one BANKED duration; a wrong-one
-    compound modifying another noun counts for nothing, as its
-    spaced twin does.
-    """
-    for match in _LISTED_WORD_RE.finditer(part):
-        before_word = part[:match.start()]
-        after_word = part[match.end():]
-        copula = _COPULA_RE.search(before_word)
-        if copula is not None:
-            if _predicative_subject_denies(
-                    before_word[:copula.start()], own_after):
-                return True
-            inverted = re.match(
-                r"[a-z]+\s+(?:it|that|this)\b",
-                before_word[copula.start():], re.I)
-            if inverted is not None and re.search(
-                    r"\b(?:not|never)\b|\w+n't\b",
-                    before_word[copula.start():], re.I) is not None:
-                return True
-            continue
-        if match.group(1).lower() == "wrong" and \
-                re.search(r"\bthe\s+$", before_word, re.I) is not None:
-            one = re.match(r"(\s+|-)one\b", after_word, re.I)
-            if one is not None and one.group(1) == "-":
-                rest = after_word[one.end():].strip()
-                if not rest or rest[0] in ".,;:!?" or \
-                        re.match(r"(?:banked|interval|duration)\b",
-                                 rest, re.I) is not None:
-                    return True
-            elif one is not None:
-                return True
-        if re.match(r"\s+(?:banked\s+)?(?:interval\s+)?duration\b",
-                    after_word, re.I) is not None or \
-                re.match(r"\s+banked\b", after_word, re.I) is not None:
-            return True
-        if re.search(r"(?:duration|banked)\s+$", before_word,
-                     re.I) is not None:
-            return True
-    return False
-
-
-_LISTED_SUFFIX_RE = re.compile(
-    r"\b(?:absent|withdrawn|retracted|wrong)(?:\s+banked)?\s*$",
-    re.I)
-
-_FRAME_RE = re.compile(r"\bnot\s+(?:only|just)\b", re.I)
-_NEGATED_LISTED_RE = re.compile(
-    r"\b(?:not|never)\s+(?:" + _RUN_TOKEN + r"\s+)*"
-    r"(?:absent|withdrawn|retracted|wrong)\b", re.I)
-
-
-def _clean_affirming_frame(part):
-    """A clause part with its affirming frame forms removed.
-
-    The affirming frame family is not only and not just, in
-    their contiguous forms. A part carrying a frame states the
-    frame's complement as one affirmed thing among others, so
-    the frame words themselves carry no denial. Where the
-    complement itself negates a listed word (the doubled
-    frame: not only was it not withdrawn), that negated listed
-    construction is the complement's whole denial content and
-    is removed with the frame: the part affirms that the
-    duration was not withdrawn. The run between the
-    complement's negation and its listed word is the shared
-    run stated at _RUN_TOKEN, the same vocabulary the
-    predicative test reads, so a complement carrying a
-    widened form (not only was it not in fact withdrawn, not
-    only was it not recorded as withdrawn) is removed in the
-    same way. A denial that does not negate
-    a listed word stands in the cleaned part exactly as it
-    stood (not only was no BANKED interval duration recorded
-    keeps its no, and a frame part carrying a was not recorded
-    denial keeps that denial), and a part with no frame stands
-    unchanged.
-    """
-    if _FRAME_RE.search(part) is None:
-        return part
-    cleaned = _FRAME_RE.sub("", part)
-    return _NEGATED_LISTED_RE.sub("", cleaned)
-
-
-def _join_split_frame_parts(parts):
-    """The parts with a comma split affirming frame rejoined.
-
-    The split frame (not, only, and its not, just, twin) puts
-    the frame's two words in neighbouring comma parts, the
-    first part ending in not and the next opening on only or
-    just. Neither word then stands in the part the standing
-    per part cleaning reads. The two frame words are blanked
-    in place, the part slots and their order kept, so the own
-    part on either side keeps its standing position and a
-    genuine denial in any other part is untouched.
-    """
-    parts = list(parts)
-    for idx in range(len(parts) - 1):
-        not_match = re.search(r"\bnot\s*$", parts[idx], re.I)
-        only_match = re.match(r"\s*(?:only|just)\b",
-                              parts[idx + 1], re.I)
-        if not_match is not None and only_match is not None:
-            parts[idx] = parts[idx][:not_match.start()]
-            parts[idx + 1] = parts[idx + 1][only_match.end():]
-    return parts
-
-
-# A reporting verb is read by its tense form, not by tense
-# enumeration: the named reporting verbs in their past forms
-# and in their present third person forms (noted and notes,
-# said and says, observed and observes, pointed out and
-# points out), and beside them any verb form in the past
-# tense ending in ed or the present third person ending in
-# s, the same family in either tense.
-_REPORTING_VERB = (
-    r"(?:noted|notes|said|says|observed|observes|remarked|"
-    r"remarks|reported|reports|recorded|records|added|adds|"
-    r"wrote|writes|commented|comments|explained|explains|"
-    r"stated|states|confirmed|confirms|declared|declares|"
-    r"announced|announces|asserted|asserts|pointed\s+out|"
-    r"points\s+out|[a-z]+ed|[a-z]+s)")
-_PARENTHETICAL_PART_RE = re.compile(
-    r"^\s*(?:(?:in|for|by|as|to|at|on|of)\s+"
-    r"(?:[a-z][\w'-]*\s+){0,5}[a-z][\w'-]*|"
-    r"(?:as\s+)?(?:[A-Za-z][\w'.]*\s+)*"
-    + _REPORTING_VERB + r")\s*$", re.I)
-_PARENTHETICAL_WRAPPERS = (
-    ('"', '"'), ("'", "'"), ("[", "]"), ("(", ")"))
-
-
-def _parenthetical_part_matches(part):
-    """Whether a comma part is a parenthetical, wrapped or bare.
-
-    A parenthetical set off inside its comma part by a pair
-    of setting off marks (a quoted parenthetical, "Lane
-    noted", a bracketed one, [Lane noted], and their single
-    quote and parenthesis twins) is the same parenthetical
-    in a wrapped form: the marks are the setting off, and
-    the unwrapped text must read as a parenthetical under
-    _PARENTHETICAL_PART_RE in its own right, so a wrapped
-    part whose content is no parenthetical matches nothing.
-    """
-    if _PARENTHETICAL_PART_RE.match(part) is not None:
-        return True
-    text = part.strip()
-    for opening, closing in _PARENTHETICAL_WRAPPERS:
-        if len(text) >= 2 and text.startswith(opening) and \
-                text.endswith(closing) and \
-                _PARENTHETICAL_PART_RE.match(text[1:-1]) \
-                is not None:
-            return True
-    return False
-_ADVERB_CONTINUATION_RE = re.compile(
-    r"^\s*(?:and\s+)?(?:[a-z][\w'-]*\s+)*?"
-    r"(?:absent|withdrawn|retracted|wrong)\b", re.I)
-_ADVERB_ONLY_PART_RE = re.compile(
-    r"^\s*(?:\w+ly\s+)*\w+ly\s*$", re.I)
-_COPULA_WORD_RE = re.compile(
-    r"\b(?:is|was|are|were|be|been|being|stands|stood|seems|"
-    r"seemed|remains|remained|become|becomes|became|becoming|"
-    r"appear|appears|appeared|look|looks|looked|stay|stays|"
-    r"stayed)\b", re.I)
-
-
-def _merge_parenthetical_parts(parts, after_side):
-    """The parts with a comma parenthetical predicative rejoined.
-
-    A parenthetical clause set off by commas between a copula
-    and a listed word (was, Lane noted, withdrawn, and its as
-    form) splits the predicative construction across three
-    comma parts, none of which denies on its own. The middle
-    part may itself be set off by quotes or brackets inside
-    its comma part (was, "Lane noted", withdrawn, and its
-    [Lane noted] twin), a wrapped parenthetical read by the
-    test at _parenthetical_part_matches, so a doubled
-    affirming frame whose split complement carries such a
-    parenthetical rejoins and is removed with its frame as
-    its bare comma twin is. Where the
-    middle part is a parenthetical (a reporting clause of any
-    length before a reporting verb read by its tense form,
-    such as Lane noted, Lane notes, as Lane noted or as the
-    senior reviewing officer Lane quite rightly and very
-    carefully noted, the words before the verb standing in
-    any number, or a short prepositional phrase such as in fact, in short,
-    in practice or for all intents and purposes), the first
-    part ends on a copula or its intervening run, and the
-    three parts rejoined read as a denial construction under
-    _listed_word_denies, the three are merged into the one
-    part they state. Adverbs stacked with a comma in place of
-    and (was flatly, completely withdrawn) split the run
-    itself across two comma parts; where the first part ends
-    on a copula or its run and the next part is an adverb
-    continuation carrying the listed word and no copula of
-    its own, or a bare ly adverb part in a longer stack, the
-    two are merged on the same terms. The merge keeps the
-    merged part at the first part's position, so the own
-    part on either side keeps its standing position, and a
-    rejoined part whose subject is another subject (the draft
-    was, Lane noted, withdrawn) denies nothing under the same
-    subject test and is left split and standing. A rejoined
-    doubled affirming frame complement, whose subject stands
-    inverted after the copula (not only was it not, Lane
-    noted, withdrawn, and its in fact twin), denies under the
-    inverted subject rule at _listed_word_denies, is merged
-    on the same terms, and is then removed with its frame by
-    the frame cleaning, so the affirmed figure stands.
-    """
-    parts = list(parts)
-    idx = 0
-    while idx < len(parts) - 1:
-        first = parts[idx]
-        if _COPULA_RE.search(first.rstrip() + " ") is None:
-            idx += 1
-            continue
-        if idx < len(parts) - 2:
-            middle, last = parts[idx + 1], parts[idx + 2]
-            merged = first.rstrip() + " " + last.lstrip()
-            if _parenthetical_part_matches(middle) and \
-                    _listed_word_denies(
-                        merged, own_after=after_side and idx == 0):
-                parts[idx:idx + 3] = [merged]
-                continue
-        nxt = parts[idx + 1]
-        merged = first.rstrip() + " " + nxt.lstrip()
-        if _COPULA_WORD_RE.search(nxt) is None and \
-                _ADVERB_CONTINUATION_RE.match(nxt) is not None and \
-                len(nxt.split()) <= 6 and \
-                _listed_word_denies(
-                    merged, own_after=after_side and idx == 0):
-            parts[idx:idx + 2] = [merged]
-            continue
-        if idx < len(parts) - 2 and \
-                _ADVERB_ONLY_PART_RE.match(nxt) is not None and \
-                _ADVERB_CONTINUATION_RE.match(parts[idx + 2]) \
-                is not None:
-            parts[idx:idx + 2] = [merged]
-            continue
-        idx += 1
-    return parts
-
-
-def _after_is_negated(after, own=False):
-    cleaned = _clean_affirming_frame(after)
-    return _AFTER_NEGATION_RE.search(cleaned) is not None or \
-        _listed_word_denies(cleaned, own_after=own)
-
-
-_NUMBER_WORD_VALUES = {
-    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-    "fifteen": 15, "sixteen": 16, "seventeen": 17,
-    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
-    "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
-    "eighty": 80, "ninety": 90}
-_POINT_DIGIT_VALUES = {"oh": 0, "zero": 0}
-_POINT_DIGIT_VALUES.update(
-    {name: value for name, value in _NUMBER_WORD_VALUES.items()
-     if value < 10})
-_FIGURE_UNIT = r"(?:one|two|three|four|five|six|seven|eight|nine)"
-_FIGURE_TEEN = (r"(?:ten|eleven|twelve|thirteen|fourteen|fifteen|"
-                r"sixteen|seventeen|eighteen|nineteen)")
-_FIGURE_TENS = (r"(?:twenty|thirty|forty|fifty|sixty|seventy|"
-                r"eighty|ninety)")
-_FIGURE_SMALL = (r"(?:" + _FIGURE_TENS + r"(?:[ -]" + _FIGURE_UNIT +
-                 r")?|" + _FIGURE_TEEN + r"|" + _FIGURE_UNIT + r")")
-_FIGURE_SEP = r"[\s-]+"
-_FIGURE_HUNDRED = (
-    r"(?:" + _FIGURE_SMALL + r"|\d+)" + _FIGURE_SEP + r"hundred"
-    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
-    r"(?:" + _FIGURE_SMALL + r"|\d{1,2}))?")
-_FIGURE_THOUSAND = (
-    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
-    + _FIGURE_SEP + r"thousand"
-    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
-    r"(?:" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL +
-    r"|\d{1,3}))?")
-_FIGURE_MILLION = (
-    r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
-    _FIGURE_SMALL + r"|\d+)"
-    + _FIGURE_SEP + r"million"
-    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
-    r"(?:" + _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
-    _FIGURE_SMALL + r"|\d{1,3}))?")
-_FIGURE_BILLION = (
-    r"(?:" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND + r"|" +
-    _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d+)"
-    + _FIGURE_SEP + r"billion"
-    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
-    r"(?:" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND + r"|" +
-    _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r"|\d{1,3}))?")
-_FIGURE_TRILLION = (
-    r"(?:" + _FIGURE_BILLION + r"|" + _FIGURE_MILLION + r"|" +
-    _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
-    _FIGURE_SMALL + r"|\d+)"
-    + _FIGURE_SEP + r"trillion"
-    r"(?:" + _FIGURE_SEP + r"(?:and" + _FIGURE_SEP + r")?"
-    r"(?:" + _FIGURE_BILLION + r"|" + _FIGURE_MILLION + r"|" +
-    _FIGURE_THOUSAND + r"|" + _FIGURE_HUNDRED + r"|" +
-    _FIGURE_SMALL + r"|\d{1,3}))?")
-_FIGURE_INT = (r"(?:" + _FIGURE_TRILLION + r"|" + _FIGURE_BILLION +
-               r"|" + _FIGURE_MILLION + r"|" + _FIGURE_THOUSAND +
-               r"|" + _FIGURE_HUNDRED + r"|" + _FIGURE_SMALL + r")")
-_FIGURE_DIGITS = (r"(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)")
-_FIGURE_MIXED_DIGIT = (
-    r"(?:\d+00|\d{1,3}(?:,\d{3})*,\d00)\s+and\s+" + _FIGURE_SMALL)
-_FIGURE_POINT_DIGIT = (r"(?:one|two|three|four|five|six|seven|eight|"
-                       r"nine|oh|zero)")
-_FIGURE_POINT_ITEM = (r"(?:" + _FIGURE_SMALL + r"|oh|zero)")
-_FIGURE_POINT_TAIL = (_FIGURE_POINT_ITEM + r"(?:\s+" +
-                      _FIGURE_POINT_ITEM + r")*")
-_FIGURE_RE = re.compile(
-    r"((?:" + _FIGURE_DIGITS + r"|" + _FIGURE_INT + r")\s+point\s+"
-    + _FIGURE_POINT_TAIL
-    + r"|point\s+" + _FIGURE_POINT_TAIL
-    + r"|" + _FIGURE_MIXED_DIGIT
-    + r"|" + _FIGURE_DIGITS
-    + r"|" + _FIGURE_INT + r")"
-    r"\s*hours?\b", re.I)
-
-
-_SCALE_WORD_VALUES = {"thousand": 1000, "million": 1000000,
-                      "billion": 1000000000,
-                      "trillion": 1000000000000}
-_TENS_WORD_VALUES = {name: value for name, value in
-                     _NUMBER_WORD_VALUES.items()
-                     if value >= 20 and value % 10 == 0}
-
-
-def _integer_word_value(words):
-    # The words read as additive groups of descending scale,
-    # as the ladder states them (one trillion and five
-    # billion and nine). Inside one group the scale words may
-    # instead climb: a scale word above the group's last
-    # scale multiplies everything the group has accumulated
-    # so far, small words and hundred forms included, because
-    # that accumulated value is the higher scale's multiplier
-    # (one thousand and five million: the group before
-    # million is one thousand and five). A scale word at or
-    # below the group's last scale closes the group into the
-    # total and opens the next group on the words before it,
-    # so a crossed multiplier standing in a tail group reads
-    # in its own group (one billion and five thousand
-    # million: the tail group is five thousand million).
-    total = 0
-    scaled = 0
-    current = 0
-    last_scale = None
-    for part in words:
-        if part in _SCALE_WORD_VALUES:
-            scale = _SCALE_WORD_VALUES[part]
-            if last_scale is not None and scale > last_scale:
-                scaled = (scaled + current or 1) * scale
-            elif last_scale is not None:
-                total += scaled
-                scaled = (current or 1) * scale
-            else:
-                scaled = (current or 1) * scale
-            current = 0
-            last_scale = scale
-        elif part == "hundred":
-            current = (current or 1) * 100
-        elif part.isdigit():
-            current += int(part)
-        else:
-            current += _NUMBER_WORD_VALUES[part]
-    return total + scaled + current
-
-
-def _figure_value(token):
-    if re.search(r"[A-Za-z]", token) is None:
-        return float(token.replace(",", ""))
-    words = [part for part in
-             (piece.replace(",", "") for piece in
-              re.split(r"[\s-]+", token.lower()))
-             if part and part != "and"]
-    if "point" in words:
-        idx = words.index("point")
-        whole = _integer_word_value(words[:idx]) if idx else 0
-        digits = ""
-        tail = words[idx + 1:]
-        pos = 0
-        while pos < len(tail):
-            part = tail[pos]
-            if part.isdigit():
-                digits += part
-                pos += 1
-            elif part in _TENS_WORD_VALUES and pos + 1 < len(tail) \
-                    and tail[pos + 1] in _POINT_DIGIT_VALUES \
-                    and _POINT_DIGIT_VALUES[tail[pos + 1]] != 0:
-                digits += str(_TENS_WORD_VALUES[part] +
-                              _POINT_DIGIT_VALUES[tail[pos + 1]])
-                pos += 2
-            elif part in _POINT_DIGIT_VALUES:
-                digits += str(_POINT_DIGIT_VALUES[part])
-                pos += 1
-            else:
-                digits += str(_NUMBER_WORD_VALUES[part])
-                pos += 1
-        if not digits:
-            return float(whole)
-        return float("%d.%s" % (whole, digits))
-    return float(_integer_word_value(words))
-
-
-_CLAUSE_PART_SPLIT_RE = re.compile(r",(?!\d)|(?<!\d),|:")
-
-
-def _split_clause_parts(text):
-    """The comma or colon clause parts of a fragment.
-
-    A comma standing between two digits is a grouping comma
-    inside a figure (1,000), not a clause break, so the parts
-    are split at every comma except a grouping comma, and at
-    every colon as before.
-    """
-    return _CLAUSE_PART_SPLIT_RE.split(text)
-
-
-def _clause_subject(text):
-    """The step and the hours figure a clause part names.
-
-    The figure is read in digits or in number words: the common
-    forms one through twenty, the tens, and a tens form with a
-    unit, each standing before an hour or hours word, and beside
-    them the hundred forms read in full (one hundred, one
-    hundred and five, two hundred and thirty five), the thousand
-    forms and their compounds (one thousand, one thousand five
-    hundred, one thousand and five), and the point forms with
-    single or multi part tails (five point five, read as 5.5;
-    five point five five, read as 5.55). The scale compounds
-    read in full at their own edges: a small form stands before
-    hundred (eleven hundred, read as 1100), a hundred form
-    stands before thousand (one hundred thousand, read as
-    100000), and the hundred and thousand joins take a hyphen
-    as they take a space (one-hundred-and-five, read as 105).
-    Digit and word forms mix inside one figure: comma grouped
-    digits read as their whole value (1,000, read as 1000), a
-    round digit form takes a word tail (100 and five, read as
-    105), a word scale form takes a digit tail (one hundred
-    and 5, read as 105), and a digit form stands before a word
-    scale word (5 hundred and five, read as 505). Point tails
-    take oh and zero as the zero digit (five point oh five,
-    read as 5.05), a digit integer takes a word point tail
-    (5 point five, read as 5.5), and a point form with no
-    integer part reads as its fraction (point five, read
-    as 0.5).
-    The scale ladder continues by the same rule above
-    thousand: each higher scale word (million, billion,
-    trillion) multiplies the group before it by a thousand
-    over the rung below, takes the sub scale compound as
-    its multiplier (two hundred and fifty million, read as
-    250000000), and takes the compound of the rungs below
-    it as its tail (one million and five, read as 1000005;
-    one billion five hundred million, read as 1500000000).
-    The multiplier is that same compound of the rungs
-    below, not only its hundred form, so a multiplier may
-    itself carry a scale word and climb the ladder toward
-    the rung it multiplies (one thousand million, read as
-    1000000000; one hundred thousand million, read as
-    100000000000; one thousand billion, read as
-    1000000000000). Every scale word inside a multiplier
-    stands below the rung it multiplies: a multiplier
-    naming the rung itself or a higher rung is no figure,
-    and the ladder still stops at trillion.
-    A comma grouped round digit form takes a word tail as
-    the plain round form does (1,000 and five, read as
-    1005). A point tail item may name a two digit value, in
-    one word or in a tens and unit pair, and that value's
-    digits stand in the tail (five point fifteen, read as
-    5.15; five point twenty five, read as 5.25; point
-    twenty five, read as 0.25).
-    """
-    step = re.search(r"Step (\d+)\b", text)
-    figure = _FIGURE_RE.search(text)
-    return (int(step.group(1)) if step else None,
-            _figure_value(figure.group(1)) if figure else None)
-
-
-_OTHER_SUBJECT_RE = re.compile(
-    r"\bthe\s+(?!duration\b|interval\b|banked\b|step\b|claim\b|"
-    r"note\b|statement\b|log\b|record\b)[a-z]+", re.I)
-_OTHER_SUBJECT_HEAD_RE = re.compile(
-    r"^\s*(?:no|none)\s+(?!duration\b|interval\b|banked\b|"
-    r"recorded\b|such\b)[a-z]+", re.I)
-
-
-def _subclause_scoped_elsewhere(part, mention_step, mention_figure):
-    """Whether a clause part is scoped to another subject.
-
-    A part naming a different step or a different hours figure
-    than the mention under test belongs to that other subject, so
-    a denial marker inside it does not reach the mention. A part
-    carrying its own duration mention belongs to another subject
-    only where its step or its figure distinguishes it from the
-    mention in that way; a duration part naming the same step and
-    the same figure, or naming neither, is about the mention
-    itself. A part with no duration mention whose denial attaches
-    to another named subject in plain words, a definite noun
-    phrase or a no or none subject phrase naming a thing that is
-    not the duration, is likewise scoped to that other subject.
-    A part whose recorded for wording is falsity scoped, under
-    the test at _falsity_scoped_recorded_for in the attribution
-    passages below, is scoped to that recording: a falsity
-    predicate stated of a recording (the claim recorded for
-    Step 2 was wrong) denies the attribution of that recording,
-    not the figure itself, so its listed word does not reach a
-    mention standing in another part.
-    """
-    if _falsity_scoped_recorded_for(part):
-        return True
-    step, figure = _clause_subject(part)
-    if mention_step is not None and step is not None and \
-            step != mention_step:
-        return True
-    if mention_figure is not None and figure is not None and \
-            figure != mention_figure:
-        return True
-    if re.search(r"interval duration", part, re.I) or \
-            re.search(r"\bBANKED\b", part, re.I) or \
-            re.search(r"\bduration\b", part, re.I):
-        if step is not None and mention_step is None:
-            return True
-        if figure is not None and mention_figure is None:
-            return True
-        return False
-    if _OTHER_SUBJECT_RE.search(part) is not None or \
-            _OTHER_SUBJECT_HEAD_RE.search(part) is not None:
-        return True
-    return False
-
-
-def _mention_subject(before, after, mention):
-    """The step and figure of the clause the mention stands in.
-
-    The clause is the part after the last comma or colon before
-    the mention, the mention itself, and the part before the
-    first comma or colon after it. A grouping comma inside a
-    figure is no clause break, as _split_clause_parts states.
-    """
-    before_parts = _split_clause_parts(before)
-    after_parts = _split_clause_parts(after)
-    own = (before_parts[-1] if before_parts else "") + " " + \
-        mention + " " + (after_parts[0] if after_parts else "")
-    return _clause_subject(own)
-
-
-def _before_negated_in_scope(before, after, mention):
-    """Whether a marker before a mention takes the mention out.
-
-    A marker in the mention's own clause part counts. A marker in
-    an earlier comma or colon part counts only where that part is
-    not scoped to another subject. The affirming frame family
-    (not only, not just, the comma split frame, and the doubled
-    frame whose complement negates a listed word) is cleaned
-    before matching, as on the after side, so a frame
-    construction in the before fragment is no denial, and a
-    parenthetical clause between a copula and a listed word is
-    rejoined before the parts are read.
-    """
-    parts = _merge_parenthetical_parts(
-        _join_split_frame_parts(_split_clause_parts(before)),
-        after_side=False)
-    step, figure = _mention_subject(before, after, mention)
-    for idx, part in enumerate(parts):
-        cleaned = _clean_affirming_frame(part)
-        denied = _BEFORE_NEGATION_RE.search(cleaned) is not None or \
-            _listed_word_denies(cleaned)
-        if idx == len(parts) - 1 and \
-                _LISTED_SUFFIX_RE.search(cleaned) is not None:
-            denied = True
-        if not denied:
-            continue
-        if idx == len(parts) - 1:
-            return True
-        if _standalone_falsity_completed_by_next_part(parts, idx):
-            continue
-        if not _subclause_scoped_elsewhere(part, step, figure):
-            return True
-    return False
-
-
-def _after_negated_in_scope(after, before, mention):
-    """The after side of _before_negated_in_scope, on the same scope.
-
-    A marker in the mention's own clause part counts. A marker in
-    a later comma or colon part counts only where that part is
-    not scoped to another subject. The affirming frame cleaning,
-    the comma split frame rejoining, and the parenthetical
-    clause rejoining of the before side stand here in the same
-    form.
-    """
-    parts = _merge_parenthetical_parts(
-        _join_split_frame_parts(_split_clause_parts(after)),
-        after_side=True)
-    step, figure = _mention_subject(before, after, mention)
-    for idx, part in enumerate(parts):
-        if not _after_is_negated(part, own=idx == 0):
-            continue
-        if idx == 0:
-            return True
-        if _standalone_falsity_completed_by_next_part(parts, idx):
-            continue
-        if not _subclause_scoped_elsewhere(part, step, figure):
-            return True
-    return False
-
-
-_ABBREVIATION_WORDS = frozenset({
-    "e.g", "i.e", "etc", "cf", "vs", "viz", "a.k.a", "dr",
-    "mr", "mrs", "ms",
-    "prof", "capt", "lt", "col", "gen", "sen", "rep", "gov",
-    "st", "approx", "fig", "dept", "est", "inc", "ltd", "jr",
-    "sr", "a.m", "p.m", "ph.d", "m.d", "u.s", "u.k"})
-
-
-_TITLE_ABBREVIATION_WORDS = frozenset({
-    "dr", "mr", "mrs", "ms", "prof", "capt", "lt", "col",
-    "gen", "sen", "rep", "gov", "st", "jr", "sr"})
-
-
-_INTRODUCING_ABBREVIATION_WORDS = frozenset({"e.g", "i.e"})
-
-
-_JOINING_ABBREVIATION_WORDS = frozenset({"cf", "vs", "viz", "a.k.a"})
-
-
-# Words that open a sentence of their own and so can never
-# stand as the name a joining abbreviation governs: the
-# temporal and discourse sentence openers. A joining
-# abbreviation stop before one of these, or before a token
-# opening on a figure, stands at a true sentence end.
-_SENTENCE_OPENER_WORDS = frozenset({
-    "yesterday", "today", "tomorrow", "afterwards", "afterward",
-    "meanwhile", "thereafter", "subsequently", "however",
-    "finally", "later", "soon", "then", "next"})
-
-
-_DEGREE_ABBREVIATION_WORDS = frozenset({
-    "ph.d", "m.d", "ed.d", "ll.d", "d.phil"})
-
-
-def _dot_ends_sentence(text, pos):
-    """Whether the full stop at pos in a text ends a sentence.
-
-    The true sentence boundary rule, shared by the closure
-    fragment test, the clause fragments and the sentence end
-    detection. A stop followed immediately by a letter is
-    inside a word or a dotted form and is never an end, and a
-    stop inside a decimal (a digit on both sides) is never an
-    end, so a dotted form with multi letter components
-    (Ph.D., Ed.D., LL.D.) is read whole and is never cut at
-    its first stop. A stop closing an abbreviation from the
-    completed set in _ABBREVIATION_WORDS, a stop closing any
-    other dotted form, and a stop after a single letter
-    initial are ends only by the abbreviation class rule:
-    a title abbreviation (the title class of the completed
-    set, in _TITLE_ABBREVIATION_WORDS), a degree abbreviation
-    (in _DEGREE_ABBREVIATION_WORDS) and a single letter
-    initial never end a sentence before a following token,
-    because what follows them in these records is the name
-    they stand with (Dr. He and Dr. An are name continuations,
-    not false ends); an introducing abbreviation (e.g., i.e.)
-    does not end a sentence before a following token in mid
-    passage, because it introduces what follows; a joining
-    abbreviation (cf., vs., viz. and a.k.a., in
-    _JOINING_ABBREVIATION_WORDS, and the two word form et al.,
-    whose closing word al is read as a joining form only
-    where the word before it is et) does not end a sentence
-    before a following token either, because each stands
-    between the names it joins and the token after its stop
-    is the name it governs, as a title governs its name; a
-    joining abbreviation stop does end a sentence where the
-    token after it cannot be that governed name, because it
-    opens a sentence of its own: a token opening on a figure,
-    or a sentence opening adverb in _SENTENCE_OPENER_WORDS
-    (Yesterday the first of them), so a joining abbreviation
-    standing at a true sentence end ends its sentence; and
-    any other abbreviation (U.S., p.m. and their class) ends
-    a sentence before any capitalised token, whatever word
-    opens the next sentence, and does not end one before a
-    lowercase token. A capitalised single letter token that
-    is followed by a space and a word (the sentence openers
-    A and I) is a sentence opener of that class, not an
-    initial: an initial is followed by its own stop, so a
-    single letter token followed by a stop still holds its
-    sentence together, and the name continuation side of
-    the class rule stands as its disclosed sacrifice. A
-    token opening on a figure is a sentence opener of that
-    class too. An abbreviation stop standing last in
-    the passage, with nothing but closing quotes or a closing
-    parenthesis after it, still ends its sentence, and a
-    quoted sentence end closed by a parenthesis in mid
-    passage still ends the sentence where the class rule
-    makes the stop an end. Every other full stop ends the
-    sentence.
-    """
-    if pos + 1 < len(text) and text[pos + 1].isalpha():
-        return False
-    if 0 < pos and pos + 1 < len(text) and \
-            text[pos - 1].isdigit() and text[pos + 1].isdigit():
-        return False
-    token = re.search(r"([A-Za-z]+(?:\.[A-Za-z]+)*)$", text[:pos])
-    if token is None:
-        return True
-    word = token.group(1)
-    et_al = word.lower() == "al" and re.search(
-        r"\bet\s+$", text[:pos - len(word)], re.I) is not None
-    if not et_al and word.lower() not in _ABBREVIATION_WORDS and \
-            "." not in word and len(word) != 1:
-        return True
-    rest = text[pos + 1:]
-    while True:
-        rest = rest.lstrip()
-        if rest[:1] in ("\"", "'", ")", "]", "}"):
-            rest = rest[1:]
-            continue
-        break
-    if not rest:
-        return True
-    if word.lower() in _TITLE_ABBREVIATION_WORDS or \
-            word.lower() in _DEGREE_ABBREVIATION_WORDS or \
-            word.lower() in _INTRODUCING_ABBREVIATION_WORDS or \
-            len(word) == 1:
-        return False
-    if word.lower() in _JOINING_ABBREVIATION_WORDS or et_al:
-        if rest[0].isdigit():
-            return True
-        opener = re.match(r"([A-Za-z]+)", rest)
-        if opener is not None and \
-                opener.group(1).lower() in _SENTENCE_OPENER_WORDS:
-            return True
-        return False
-    if rest[0].isdigit():
-        return True
-    next_word = re.match(r"([A-Za-z]+)", rest)
-    if next_word is None:
-        return False
-    if len(next_word.group(1)) == 1:
-        if not next_word.group(1)[0].isupper():
-            return False
-        return rest[next_word.end():next_word.end() + 1] != "."
-    return next_word.group(1)[0].isupper()
-
-
-def _find_sentence_end(text):
-    """The first sentence end match in a text, or None.
-
-    A full stop ends a sentence only under the true sentence
-    boundary rule at _dot_ends_sentence, so a sentence carrying
-    an abbreviation, a decimal or a person's initials before its
-    true end is read whole, and a sentence ending on an
-    abbreviation still ends where the next sentence opens.
-    Semicolons, question marks and exclamation marks are ends
-    wherever they stand.
-    """
-    for match in _SENTENCE_END_RE.finditer(text):
-        if text[match.start()] == "." and \
-                not _dot_ends_sentence(text, match.start()):
-            continue
-        return match
-    return None
-
-
-def _retracted_in_following_sentence(line, end):
-    """Whether the next sentence on the line retracts the mention.
-
-    The following sentence must name the claim it takes back
-    (that claim, that note, that statement or that record) and
-    carry a retraction marker, so an unrelated following sentence
-    never takes a standing mention out.
-    """
-    rest = line[end:]
-    match = _find_sentence_end(rest)
-    if match is None:
-        return False
-    following = rest[match.end():]
-    match = _find_sentence_end(following)
-    if match is not None:
-        following = following[:match.start()]
-    return _RETRACTION_REF_RE.search(following) is not None and \
-        _RETRACTION_RE.search(following) is not None
-
-
-def _neighbouring_denial(lines, idx):
-    for other in (idx - 1, idx + 1):
-        if 0 <= other < len(lines) and \
-                _NEIGHBOUR_DENIAL_RE.search(lines[other]):
-            return True
-    return False
-
-
-def _interval_duration_mentions_stand(text):
-    """Whether an interval duration stands in a text.
-
-    A mention inside a negated, denied or retracted statement does
-    not stand, in any of the shapes the markers above cover. Any
-    other mention stands.
-    """
-    lines = text.splitlines()
-    for idx, line in enumerate(lines):
-        for m in re.finditer(r"interval duration", line, re.I):
-            before, after = _clause_fragments(line, m.start(),
-                                              m.end())
-            if _before_negated_in_scope(before, after, m.group(0)):
-                continue
-            if _after_negated_in_scope(after, before, m.group(0)):
-                continue
-            if _NON_ASSERTIVE_RE.search(after):
-                continue
-            if _retracted_in_following_sentence(line, m.end()):
-                continue
-            valued = re.search(r"\d", before + after) is not None \
-                or "banked" in before.lower()
-            if not valued and _neighbouring_denial(lines, idx):
-                continue
-            return True
-    return False
-
-
-def _banked_duration_stands(text):
-    """Whether a BANKED line carrying a number stands as a duration.
-
-    The BANKED alternative takes the same negation handling as the
-    interval duration path: a BANKED mention denied in its own
-    clause scope, before it or after it, stands as no duration.
-    """
-    for line in text.splitlines():
-        for m in re.finditer(r"BANKED", line):
-            before, after = _clause_fragments(line, m.start(),
-                                              m.end())
-            if re.search(r"\d", after) is None:
-                continue
-            if _before_negated_in_scope(before, after, m.group(0)):
-                continue
-            if _after_negated_in_scope(after, before, m.group(0)):
-                continue
-            if _retracted_in_following_sentence(line, m.end()):
-                continue
-            return True
-    return False
-
-
-def _t2_duration_stands(text):
-    """The T-2 duration test over a transition log text."""
-    return _interval_duration_mentions_stand(text) or \
-        _banked_duration_stands(text)
-
-
-def _derive_t2(captured, universe, t1):
-    ledger = _ledger_piece(captured)
-    pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
-    denom = "denominator step universe %d steps" % len(universe.evidenced)
-    if ledger is not None and ledger.text is None:
-        code = t1.code_token or "unreadable-piece"
-        return DerivationResult(
-            "T-2", "present but not derivable", "no interval figure",
-            denom, pointer,
-            shows="a path ledger piece is present but not read in "
-                  "full in the capture, so no transition log can be "
-                  "read to carry an active figure",
-            code_token=code,
-            follows=code + " the piece is marked not read in full in "
-                    "the inventory and no figure is read from it, so "
-                    "no active figure stands",
-            rule_name="T-2 not read in full rule")
-    if t1.verdict == "missing" and t1.code_token == "date-only-form":
-        has_duration = False
-        if ledger is not None and ledger.text is not None:
-            has_duration = _t2_duration_stands(ledger.text)
-        if not has_duration:
-            return DerivationResult(
-                "T-2", "missing", "no interval figure", denom, pointer,
-                shows="no BANKED, SUSPENDED or halt interval duration "
-                      "stands in the transition log and T-1 is missing "
-                      "on the date only ground",
-                code_token="date-only-form",
-                follows="date-only-form T-2 is missing where T-1 is "
-                        "missing on that ground and no interval duration "
-                        "stands",
-                rule_name="T-2 date only boundary rule")
-    if t1.verdict == "present but not derivable":
-        intervals = _step_intervals(captured)
-        covered = sorted(intervals)
-        uncovered = [s for s in universe.evidenced if s not in intervals]
-        return DerivationResult(
-            "T-2", "present but not derivable", "no figure stands", denom,
-            pointer,
-            shows="the elapsed series stands incomplete, with an "
-                  "interval for %s and no interval for %s, so the "
-                  "active series that rests on it stands incomplete in "
-                  "the same places"
-                  % (_each_step(covered), _each_step(uncovered)),
-            code_token=t1.code_token or "missing-field",
-            follows=(t1.code_token or "missing-field") +
-                    " the active figure rests on the elapsed series, so "
-                    "no active figure stands",
-            rule_name="T-2 mixed series rule")
-    if t1.verdict == "missing":
-        has_duration = False
-        if ledger is not None and ledger.text is not None:
-            has_duration = _t2_duration_stands(ledger.text)
-        if has_duration:
-            shows = ("the elapsed row is missing, and an interval "
-                     "duration stands in the transition log, but no "
-                     "active figure can carry from a missing elapsed "
-                     "row")
-        else:
-            shows = ("the elapsed row is missing, and no interval "
-                     "duration stands in the transition log to carry "
-                     "an active figure")
-        return DerivationResult(
-            "T-2", "missing", "no interval figure", denom, pointer,
-            shows=shows,
-            code_token="no-feeder-record",
-            follows="no feeder record yields an active figure, so the "
-                    "row is missing",
+def _derive_t2(captured, universe):
+    """T-2 interval durations, formed from the same T-1 timestamps."""
+    base = _derive_t1(captured, universe)
+    denom = base.denominator
+    kind, complete, incomplete, ledger = _t1_state(captured, universe)
+    pointer = base.pointer
+    if kind in ("no-ledger", "no-entries"):
+        return _refusal(
+            "T-2", "missing", "no duration figure", denom, pointer,
+            shows="no transition interval stands in the path ledger "
+                  "from which a duration can form",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
             rule_name="T-2 feeder standing rule")
-    intervals = _step_intervals(captured)
-    figures = "; ".join("Step %d active %s hours" % (s, _fmt_num(intervals[s]))
-                        for s in sorted(intervals))
+    if kind == "not-read":
+        return _refusal(
+            "T-2", "present but not derivable", "no duration figure",
+            denom, pointer,
+            shows="the path ledger piece is present but not read in "
+                  "full in the capture",
+            token=_quality_code(ledger),
+            follows="no duration is read from a piece that is not "
+                    "read in full, so no figure stands",
+            rule_name="T-2 not read in full rule")
+    if kind == "date-only":
+        return _refusal(
+            "T-2", "missing", "no duration figure", denom,
+            _pointer("T-2", pointer, captured),
+            shows="the transition log in PATH-LEDGER.md holds "
+                  "timestamp fields in date only form, and no "
+                  "interval can be formed from a date only field",
+            token="date-only-form",
+            follows="the row is missing on the same date only "
+                    "ground as T-1, with elapsed from T-1 missing on "
+                    "the same ground",
+            rule_name="T-2 date only boundary rule",
+            broken="the interval duration field in the path ledger, "
+                   "and the T-1 elapsed input",
+            required="BANKED, SUSPENDED and halt intervals with a "
+                     "start and an end at time of day precision or "
+                     "a stated duration, beside a formed elapsed "
+                     "figure",
+            held="no interval duration stands in the ledger and "
+                 "the T-1 input is missing on the date only ground")
+    if kind == "partial":
+        return _refusal(
+            "T-2", "present but not derivable",
+            "durations stand for " + _each_step(sorted(complete)),
+            denom, pointer,
+            shows="a duration forms for %s and no duration forms "
+                  "for %s" % (_each_step(sorted(complete)),
+                              _each_step(incomplete)),
+            token="partial-span",
+            follows="the series covers only part of the step "
+                    "universe, so no build level figure stands",
+            rule_name="T-2 mixed series rule")
+    figures = "; ".join(
+        "Step %d duration %s hours" % (s, _fmt_num(complete[s]))
+        for s in sorted(complete))
     return DerivationResult("T-2", "present", figures, denom, pointer,
-                            rule_name="T-2 interval rule")
+                            rule_name="T-2 interval duration rule")
 
 
-_RECORDED_FOR_STEP_RE = re.compile(
-    r"\brecorded\s+for\s+Step\s+(\d+)\b", re.I)
-_APPENDIX_PART_RE = re.compile(r"\bappendix\b", re.I)
-_FALSITY_RE = re.compile(
-    r"\bin\s+error\b|\bfalse\b|\bwrong\b|\bincorrect\b|"
-    r"\bmistaken\b|\berroneous\b|\buntrue\b|\binvalid\b|"
-    r"\bspurious\b|\bfabricated\b|"
-    r"\bincorrectly\b|\bmistakenly\b|\berroneously\b|"
-    r"\bfalsely\b|\bwrongly\b", re.I)
-_SEGMENT_CONJUNCTION_RE = re.compile(
-    r"\s+(?:and|but|or|while|since|because)\s+", re.I)
-
-
-def _segment_bounds(text):
-    """The segment bounds of a text, as (start, end) pairs.
-
-    A comma, colon, semicolon, question mark or exclamation
-    mark is always a bound. A full stop is a bound only where
-    it ends a sentence under the true sentence boundary rule
-    at _dot_ends_sentence, the same rule the sentence scope
-    readings follow: a stop inside a decimal, a dotted form, a
-    person's initials, or an abbreviation the rule holds is no
-    end (Dr., Prof., e.g.) does not cut a segment, so a falsity
-    predicate standing after such a stop in the same clause
-    stands in the wording's own segment. The conjunction and
-    dash bounds are the closure fragment reading's own join
-    set, read from _CLOSURE_JOIN_RE itself so the built form
-    and the stated form cannot drift apart: the conjunctions
-    and, or, but, while, yet, nor, so, as, whereas, although
-    and though, and a dash (an em or en dash at any spacing, a
-    hyphen dash spaced), beside the punctuation joins that set
-    also carries. Two further subordinating joins stand in
-    _SEGMENT_CONJUNCTION_RE: since and because, the joins
-    C10-2 names in this reading, which the closure reading
-    takes up on its own side in the same round. A denial and
-    a genuine recorded for joined by any of these bounds
-    therefore stand in two segments.
-    """
-    bounds = set()
-    for pos, char in enumerate(text):
-        if char in ",:;!?" or \
-                (char == "." and _dot_ends_sentence(text, pos)):
-            bounds.add((pos, pos + 1))
-    for match in _SEGMENT_CONJUNCTION_RE.finditer(text):
-        bounds.add((match.start(), match.end()))
-    for match in _CLOSURE_JOIN_RE.finditer(text):
-        bounds.add((match.start(), match.end()))
-    return sorted(bounds)
-
-
-def _segment_of(text, pos):
-    """The segment of a text around a position, and its offset.
-
-    A segment is the run between two segment bounds, at
-    _segment_bounds. A recorded for wording and the words that
-    govern it stand in one segment; a denial and a genuine
-    recorded for joined by a conjunction stand in two.
-    """
-    start = 0
-    end = len(text)
-    for bound_start, bound_end in _segment_bounds(text):
-        if bound_start < pos:
-            start = bound_end
-        elif bound_start >= pos and end == len(text):
-            end = bound_start
-            break
-    return text[start:end], pos - start
-
-
-def _recorded_for_scoped(part, match):
-    """Whether one recorded for wording is denial scoped.
-
-    The wording is read inside its own segment of the part. It
-    is denial scoped where its segment carries a falsity
-    predicate (in error, false, wrong, incorrect, mistaken,
-    erroneous, untrue, invalid, spurious, fabricated, and the
-    adverb forms of the listed bases), a listed word in a
-    denial construction, or a negation marker standing before
-    the wording (no interval duration was recorded for, it was
-    not recorded for). A falsity predicate is a denial
-    predicate beyond the marker sets: a recording stated to be
-    in error or false is denied, not offered, whatever step it
-    names and whatever subject carries the predicate, a plain
-    common noun subject (the entry recorded for Step 2 was
-    wrong) as much as a carrier subject, and the bare form
-    standing after the wording (recorded for Step 2 wrong)
-    with them. The predicate set at _FALSITY_RE is the bound
-    of this limb: the falsity adjectives and participles the
-    register and the round 9 papers name, with their adverb
-    forms; a further synonym stands outside it, as the marker
-    sets' own boundary states for their family.
-    """
-    segment, _offset = _segment_of(part, match.start())
-    cleaned = _clean_affirming_frame(segment)
-    if _FALSITY_RE.search(cleaned) is not None or \
-            _listed_word_denies(cleaned):
-        return True
-    cleaned_match = _RECORDED_FOR_STEP_RE.search(cleaned)
-    offset = cleaned_match.start() if cleaned_match is not None \
-        else _offset
-    for pattern in (_BEFORE_NEGATION_RE, _AFTER_NEGATION_RE):
-        for negation in pattern.finditer(cleaned):
-            if negation.start() < offset:
-                return True
-    return False
-
-
-def _falsity_scoped_recorded_for(part):
-    """Whether a part's recorded for wording is falsity scoped.
-
-    True where any recorded for wording in the part stands in
-    a segment carrying a falsity predicate, under the falsity
-    limb of _recorded_for_scoped alone: the negation and
-    listed word limbs are not read here, so a plain denial
-    wording (no interval duration was recorded for) does not
-    make its part falsity scoped. The clause scope test at
-    _subclause_scoped_elsewhere reads this to keep a falsity
-    predicate stated of a recording from denying a figure
-    standing in another part.
-    """
-    for match in _RECORDED_FOR_STEP_RE.finditer(part):
-        segment, _offset = _segment_of(part, match.start())
-        cleaned = _clean_affirming_frame(segment)
-        if _FALSITY_RE.search(cleaned) is not None:
-            return True
-    return False
-
-
-_BARE_RECORDED_FOR_RE = re.compile(
-    r"(?:(?:then|also)\s+)*"
-    r"recorded\s+for\s+Step\s+\d+"
-    r"(?:\s+(?:"
-    r"(?:by|in|on|at)\s+(?:the\s+|a\s+|an\s+)?"
-    r"[A-Za-z][\w.'-]*(?:\s+[A-Za-z][\w.'-]*){0,3}"
-    r"|[a-z][\w'-]*))?"
-    r"\.?$", re.I)
-
-
-def _bare_recorded_for_part(part):
-    """Whether a part is a bare recorded for wording alone.
-
-    The part, stripped of its surrounding space, is the
-    recorded for wording with at most inert additions that
-    state no subject of their own: a leading discourse adverb
-    (then, also), a trailing prepositional phrase naming an
-    agent or a place (by Lane, in the log), or a trailing
-    lone adverb (yesterday). Any addition carrying a subject
-    or a predication of its own takes the part out of the
-    bare form: a part carrying its own subject before the
-    wording (the figure recorded for Step 1), a second step
-    naming, or a verb phrase after the wording states
-    something of its own and is governed by its own segment
-    alone, as before. What governs a bare part stands in the
-    part before it.
-    """
-    return _BARE_RECORDED_FOR_RE.match(part.strip()) is not None
-
-
-def _standalone_falsity_part(part):
-    """Whether a part states a falsity claim and no wording.
-
-    The part carries a falsity predicate and names no recorded
-    for wording and no step, so its claim is about the
-    recording as such (the recording is in error, the claim is
-    false), and a bare recorded for part standing immediately
-    after it completes that claim. A falsity part carrying its
-    own recorded for wording (the claim recorded for Step 2 is
-    false) scopes that wording alone and completes nothing.
-    """
-    cleaned = _clean_affirming_frame(part)
-    return _FALSITY_RE.search(cleaned) is not None and \
-        _RECORDED_FOR_STEP_RE.search(part) is None and \
-        re.search(r"Step\s+\d+\b", part) is None
-
-
-def _standalone_falsity_completed_by_next_part(parts, idx):
-    """Whether a falsity part is completed by the next part.
-
-    A standalone falsity part (at _standalone_falsity_part)
-    standing immediately before a part carrying a recorded
-    for wording is scoped to that wording's recording, on the
-    same completion the adjacent part limb states for the
-    attribution reading: the claim states that recording
-    false, so a listed word inside it (the claim was wrong)
-    denies that recording's attribution, not a figure standing
-    in another part. Where no recorded for wording stands in
-    the part immediately after it, the falsity part keeps its
-    standing denial reach (the claim was wrong, an interval
-    duration is noted for this step still takes the unvalued
-    mention out). The denial scope tests at
-    _before_negated_in_scope and _after_negated_in_scope read
-    this beside _subclause_scoped_elsewhere.
-    """
-    if idx + 1 >= len(parts):
-        return False
-    return _standalone_falsity_part(parts[idx]) and \
-        _RECORDED_FOR_STEP_RE.search(parts[idx + 1]) is not None
-
-
-def _genuine_recorded_for_step(part):
-    """The step a part's genuine recorded for wording names.
-
-    Each recorded for wording in the part is tested on its own
-    segment: the first wording that is not denial scoped under
-    _recorded_for_scoped governs, so a genuine recorded for
-    sharing one comma part with a denial (no interval duration
-    was recorded for Step 2 and the figure recorded for Step 1)
-    still offers its step, while a wording carrying a falsity
-    predicate offers nothing.
-    """
-    for match in _RECORDED_FOR_STEP_RE.finditer(part):
-        if not _recorded_for_scoped(part, match):
-            return int(match.group(1))
-    return None
-
-
-def _fallback_step(line):
-    """The attribution fallback for a line naming no step in scope.
-
-    The standing fallback is the line's first Step token, with
-    one bound: a token named only inside denial scope never
-    governs. Tokens are read in line order; a token whose own
-    segment carries a negation marker, a falsity predicate, or
-    a listed word in a denial construction is passed over, and
-    the first token standing outside denial scope governs.
-    A token standing in a segment that is a bare recorded for
-    wording, where the segment immediately before it in the
-    line is a standalone falsity segment, is likewise passed
-    over: that wording is denial scoped by the falsity claim
-    it completes, under the same bound as at
-    _attribution_candidate, and the fallback does not land on
-    it. Where every token stands inside denial scope, and
-    where the line names no step at all, the figure keeps no
-    step.
-    """
-    spans = []
-    span_start = 0
-    for bound_start, bound_end in _segment_bounds(line):
-        spans.append((span_start, bound_start))
-        span_start = bound_end
-    spans.append((span_start, len(line)))
-    for match in re.finditer(r"Step (\d+)\b", line):
-        segment, _offset = _segment_of(line, match.start())
-        cleaned = _clean_affirming_frame(segment)
-        if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
-                _AFTER_NEGATION_RE.search(cleaned) is not None or \
-                _FALSITY_RE.search(cleaned) is not None or \
-                _listed_word_denies(cleaned):
-            continue
-        span_index = next(
-            idx for idx, (lo, hi) in enumerate(spans)
-            if lo <= match.start() < hi or
-            (idx == len(spans) - 1 and match.start() == hi))
-        if span_index >= 1 and \
-                _bare_recorded_for_part(segment) and \
-                _standalone_falsity_part(
-                    line[spans[span_index - 1][0]:
-                         spans[span_index - 1][1]]):
-            continue
-        return int(match.group(1))
-    return None
-
-
-def _attribution_candidate(part, previous_part=None):
-    """The attribution a clause part offers, as (tier, step).
-
-    A part stating what the figure was recorded for, in a
-    recorded for wording that is not denial scoped, offers the
-    step that wording names at tier 0, ahead of the denial test
-    on the part as a whole: a genuine recorded for sharing one
-    comma part with a denial still governs, because the denial
-    scopes its own wording, not the genuine one. A recorded for
-    wording carrying a falsity predicate (in error, is false,
-    wrong, incorrect, mistaken and their kin, under
-    _recorded_for_scoped) is denial scoped and never
-    attributes. A part carrying a denial marker, under the
-    standing before and after negation sets, a falsity
-    predicate, or a listed word in a denial construction, is
-    denial scoped: it offers no attribution at all, whatever
-    step it names, because the part states a non recording or a
-    denial about its own subject, not what this figure was
-    recorded for. The affirming frame family carries no denial,
-    as on the after side negation test. Any other part naming a
-    step offers that step in one of three tiers: tier 0 as
-    above; tier 1, a part merely naming a step; tier 2, a part
-    naming a step only inside an appendix clause, which names
-    the step as the subject of its appendix and not as the
-    figure's step. A part naming no step offers nothing.
-
-    One further scope stands on the previous part, where the
-    caller supplies it: a bare recorded for part, a part that
-    is the wording with at most inert additions and no
-    subject of its own (at _bare_recorded_for_part), standing
-    immediately after a standalone falsity part (at
-    _standalone_falsity_part: a falsity claim naming no wording
-    and no step, as in the recording is in error, recorded for
-    Step 2) is completed by that claim and is denial scoped by
-    it, so it offers nothing. A falsity part carrying its own
-    wording completes nothing, and a recorded for part carrying
-    its own subject is governed by its own segment alone.
-    """
-    genuine = _genuine_recorded_for_step(part)
-    if genuine is not None:
-        if previous_part is not None and \
-                _bare_recorded_for_part(part) and \
-                _standalone_falsity_part(previous_part):
-            return None
-        return (0, genuine)
-    cleaned = _clean_affirming_frame(part)
-    if _BEFORE_NEGATION_RE.search(cleaned) is not None or \
-            _AFTER_NEGATION_RE.search(cleaned) is not None or \
-            _FALSITY_RE.search(cleaned) is not None or \
-            _listed_word_denies(cleaned):
-        return None
-    step, _figure = _clause_subject(part)
-    if step is None:
-        return None
-    if _APPENDIX_PART_RE.search(part) is not None:
-        return (2, step)
-    return (1, step)
-
-
-def _t4_banked_durations(captured):
-    """Banked durations in the ledger, as (step, hours, interval form).
-
-    A BANKED mention denied in its own clause feeds no duration,
-    under the same negation handling the T-2 BANKED alternative
-    takes in _banked_duration_stands. Each figure is attributed
-    to the step its own sentence scope names. The mention's own
-    clause part is read under the clause scope the duration
-    helpers already use, the before and after fragments
-    _clause_fragments computes for the mention, and a step named
-    there governs first. Where the own part names no step, the
-    search widens to the mention's whole sentence scope, the
-    fragments _sentence_scope_fragments computes: every comma,
-    colon and semicolon part of that sentence, the parts beyond
-    the first semicolon included, the denial scoping keeping its
-    own semicolon breaks unchanged. Precedence over those parts,
-    each tier searched with after parts before before parts and
-    the nearest part first on each side: first a part stating
-    what the figure was recorded for, then a part merely naming
-    a step, then a part naming a step only inside an appendix
-    clause. A denial scoped part does not attribute at all, in
-    any tier, under the test at _attribution_candidate. A figure
-    whose sentence scope names no step keeps the line's first
-    Step token, the standing attribution, because that token is
-    the only step the line names for it, with the one bound at
-    _fallback_step: a token named only inside denial scope,
-    a falsity carrying recorded for wording included, never
-    governs as the fallback.
-    """
-    found = []
-    ledger = _ledger_piece(captured)
-    if ledger is None or ledger.text is None:
-        return found
-
-    def _banked_mention_denied(line, start):
-        # The T-2 BANKED alternative's negation handling, shared:
-        # a BANKED mention denied in its own clause scope, by a
-        # marker in the clause fragment before it or in the
-        # fragment after it, or retracted in the following
-        # sentence on the line, stands as no duration.
-        before, after = _clause_fragments(
-            line, start, start + len("BANKED"))
-        return _before_negated_in_scope(before, after, "BANKED") or \
-            _after_negated_in_scope(after, before, "BANKED") or \
-            _retracted_in_following_sentence(
-                line, start + len("BANKED"))
-
-    def _mention_step(line, match, line_step):
-        before, after = _clause_fragments(
-            line, match.start(), match.end())
-        step, _figure = _mention_subject(
-            before, after, match.group(0))
-        if step is not None:
-            # A step the own part names only through a denial
-            # scoped recorded for wording (a falsity carrying or
-            # negated wording inside the own part's own segment)
-            # does not govern: the own part is reread with those
-            # wordings blanked, and what remains decides.
-            before_parts = re.split(r"[,:]", before)
-            after_parts = re.split(r"[,:]", after)
-            own = (before_parts[-1] if before_parts else "") + \
-                " " + match.group(0) + " " + \
-                (after_parts[0] if after_parts else "")
-            scoped = [m for m in
-                      _RECORDED_FOR_STEP_RE.finditer(own)
-                      if _recorded_for_scoped(own, m)]
-            if scoped:
-                blanked = own
-                for scoped_match in reversed(scoped):
-                    blanked = blanked[:scoped_match.start()] + \
-                        blanked[scoped_match.end():]
-                step, _figure = _clause_subject(blanked)
-        if step is not None:
-            return step
-        # The own part names no step: widen to the parts of the
-        # mention's whole sentence scope beyond the own part, the
-        # first segment on each side being the own part's own
-        # segment. The parts stand in side and distance order,
-        # after parts nearest first, then before parts nearest
-        # first, and the tiers at _attribution_candidate govern
-        # across that order: a recorded for part ahead of a part
-        # merely naming a step, that ahead of an appendix part,
-        # and a denial scoped part nowhere. Each part is read
-        # with the part standing immediately before it in
-        # sentence order, so a bare recorded for part completed
-        # by a standalone falsity claim in that part is scoped
-        # by it, under the bound at _attribution_candidate.
-        wide_before, wide_after = _sentence_scope_fragments(
-            line, match.start(), match.end())
-        after_parts = re.split(r"[,:;]", wide_after)
-        before_parts = re.split(r"[,:;]", wide_before)
-        ordered = [(part, after_parts[idx - 1])
-                   for idx, part in enumerate(after_parts)
-                   if idx >= 1]
-        ordered += [(part, before_parts[idx - 1] if idx >= 1
-                      else None)
-                    for idx, part in reversed(
-                        list(enumerate(before_parts[:-1])))]
-        candidates = [_attribution_candidate(part, previous)
-                      for part, previous in ordered]
-        for tier in (0, 1, 2):
-            for candidate in candidates:
-                if candidate is not None and candidate[0] == tier:
-                    return candidate[1]
-        return _fallback_step(line)
-
-    for line in ledger.text.splitlines():
-        step_match = re.search(r"Step (\d+)\b", line)
-        line_step = int(step_match.group(1)) if step_match else None
-        for m in re.finditer(
-                r"BANKED interval duration\s+(\d+(?:\.\d+)?)\s*hours",
-                line):
-            if _banked_mention_denied(line, m.start()):
-                continue
-            found.append((_mention_step(line, m, line_step),
-                          float(m.group(1)), True))
-        if "interval duration" in line:
-            continue
-        for m in re.finditer(r"BANKED[^\n]*?(\d+(?:\.\d+)?)\s*hours",
-                             line):
-            if _banked_mention_denied(line, m.start()):
-                continue
-            found.append((_mention_step(line, m, line_step),
-                          float(m.group(1)), False))
-    return found
-
+# ------------------------------------------------------------- T-4, T-7
 
 def _derive_t4(captured, universe):
-    from metrics_starter_collector.cross_check import \
-        t4_cross_check_statement
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
     ledger = _ledger_piece(captured)
-    pointer = ledger.paths[0] if ledger else "PATH-LEDGER.md"
-    denom = "denominator decision items and banked states in the tree"
-    if ledger is not None and ledger.text is None:
-        code = {"malformed": "malformed-piece",
-                "over limit": "over-limit-piece"}.get(
-                    ledger.quality_state or "", "unreadable-piece")
-        return DerivationResult(
-            "T-4", "present but not derivable", "no figure stands",
-            denom, pointer,
-            shows="a path ledger piece is present but not read in "
-                  "full in the capture, so no banked state can be "
-                  "read to form a wait figure",
-            code_token=code,
-            follows=code + " the piece is marked not read in full in "
-                    "the inventory and no figure is read from it, so "
-                    "no wait figure stands",
-            rule_name="T-4 not read in full rule")
-    banked = False
-    durations = False
-    if ledger is not None and ledger.text is not None:
-        # A banked mention denied in its own clause stands as no
-        # banked state and no duration, under the same shared
-        # negation handling the T-2 BANKED alternative takes.
-        for line in ledger.text.splitlines():
-            for m in re.finditer(r"banked", line, re.I):
-                before, after = _clause_fragments(
-                    line, m.start(), m.end())
-                if _before_negated_in_scope(before, after,
-                                            m.group(0)):
-                    continue
-                if _after_negated_in_scope(after, before,
-                                           m.group(0)):
-                    continue
-                if _retracted_in_following_sentence(line, m.end()):
-                    continue
-                banked = True
-                if re.search(r"\d+(?:\.\d+)?\s*hours", after):
-                    durations = True
-    queue = captured.pieces_of(CLS_DECISION_QUEUE)
-    # Banked item counts stand only where a queue piece carries
-    # readable decision items, on the same completeness ground
-    # the D-1 queue selection applies: a piece whose text parses
-    # to a non empty decision item list, from the canonical piece
-    # or from a readable duplicate. A table holding a header and
-    # no item rows parses to an empty list and carries no items,
-    # as a queue piece standing in any other state (a directory,
-    # malformed, dangling, empty, or a disagreement piece carrying
-    # no text) carries none, so neither states an item count.
-    queue_counts_stand = False
-    for piece in queue:
-        if piece.text is not None and \
-                _decision_items(piece.text):
-            queue_counts_stand = True
-            break
-    if queue_counts_stand:
-        banked = True
-    if not banked and not queue:
-        return DerivationResult(
-            "T-4", "missing", "no figure stands", denom, pointer,
-            shows="no banked state and no decision item count stands in "
-                  "the feeder records for this metric",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
+    pointer = ledger.paths[0] if ledger is not None else "PATH-LEDGER.md"
+    if ledger is None or ledger.text is None:
+        return _refusal(
+            "T-4", "missing", "no banked duration figure", denom,
+            pointer,
+            shows="no path ledger piece in the capture holds a "
+                  "banked state from which a wait can form",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
             rule_name="T-4 feeder standing rule")
-    parsed = _t4_banked_durations(captured)
-    if not banked and not queue_counts_stand and not parsed and \
-            _decision_items(captured.assembled_metrics) is None:
-        return DerivationResult(
-            "T-4", "present but not derivable", "no figure stands",
-            denom, pointer,
-            shows="a decision queue piece stands in the capture, "
-                  "but no queue piece carries readable decision "
-                  "items, so no banked item count stands in the "
-                  "feeder records, and the path ledger holds no "
-                  "banked state",
-            code_token="missing-field",
-            follows="missing-field no complete decision queue "
-                    "stands, so no banked item count can form and "
-                    "no wait figure stands",
-            rule_name="T-4 queue completeness rule")
-    interval_durations = [(s, v) for s, v, is_interval in parsed
-                          if is_interval]
-    table_items = _decision_items(captured.assembled_metrics)
-    metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1] \
-        if captured.metrics_single_path else "build-metrics-record.md"
-    cross = t4_cross_check_statement(
-        [(s, v) for s, v, _ in parsed], captured.assembled_metrics,
-        metrics_name)
-    if interval_durations and table_items is None and not queue \
-            and cross is None:
+    durations = []
+    banked_seen = "banked" in ledger.text.lower()
+    for line in ledger.text.splitlines():
+        if "BANKED" not in line:
+            continue
+        m = re.search(r"(\d+(?:\.\d+)?)\s*hours", line)
+        step = _search_int(r"Step (\d+)\b", line)
+        if m:
+            durations.append((step, float(m.group(1))))
+    if durations:
         figures = "; ".join(
-            "Step %d banked wait %s hours" % (s, _fmt_num(v))
-            if s is not None else "banked wait %s hours" % _fmt_num(v)
-            for s, v in interval_durations)
-        return DerivationResult(
-            "T-4", "present", figures, denom, pointer,
-            statement="the row is shown without its queue cross check, "
-                      "from the BANKED interval durations standing in "
-                      "the feeder records, with only the decision table "
-                      "cross check absent.",
-            rule_name="T-4 degraded form rule")
-    if not durations:
-        if queue_counts_stand or table_items:
-            figures = ("banked item counts stand and no duration "
-                       "figure stands")
-            shows = ("banked states and item counts stand in the feeder "
-                     "records and every duration is absent")
-            if table_items:
-                open_items = [i for i in table_items if not i["ruled"]]
-                if open_items:
-                    first_origin = open_items[0]["origin"]
-                    same_origin = [i for i in open_items
-                                   if i["origin"] == first_origin]
-                    figures = ("banked item counts stand, for example "
-                               "Step %s: %d banked questions open; no "
-                               "duration figure"
-                               % (first_origin, len(same_origin)))
-                    shows += (", and the decision table rows %s stand open"
-                              % _join_names([i["item"] for i in open_items]))
+            ("Step %d wait %s hours" % (s, _fmt_num(v)))
+            if s is not None else ("wait %s hours" % _fmt_num(v))
+            for s, v in durations)
+        return DerivationResult("T-4", "present", figures, denom,
+                                pointer, rule_name="T-4 banked rule")
+    if banked_seen:
+        section = _metrics_section(
+            captured.assembled_metrics or "", "## Decision table")
+        items = _table_items(section if section
+                             else captured.assembled_metrics)
+        example = ""
+        if items:
+            origins = []
+            for item in items:
+                origin = _search_int(r"(\d+)", item.get("origin") or "")
+                if origin is not None:
+                    origins.append(origin)
+            if origins:
+                mode = max(sorted(set(origins)), key=origins.count)
+                count = origins.count(mode)
+                example = (", for example %d banked questions open "
+                           "at Step %d" % (count, mode))
+        queue_stands = bool(captured.pieces_of(CLS_DECISION_QUEUE))
+        if queue_stands:
+            held_tail = ("and a queue file stands in the tree for "
+                         "the cross check")
         else:
-            figures = ("banked states stand and no duration figure "
-                       "stands")
-            shows = ("banked states stand in the feeder records and "
-                     "every duration is absent")
-            if queue:
-                shows += (", and no banked item count stands because "
-                          "no queue piece carries readable decision "
-                          "items")
-        return DerivationResult(
-            "T-4", "present but not derivable", figures, denom, pointer,
-            shows=shows,
-            code_token="missing-field",
-            follows="missing-field a count of items is not a time, and "
-                    "the degraded form does not apply because the "
-                    "durations themselves are absent, not only the "
-                    "cross check, so no wait figure stands",
-            rule_name="T-4 duration absence rule")
-    return DerivationResult(
-        "T-4", "present but not derivable",
-        "durations stand in part and no build level figure stands",
-        denom, pointer,
-        shows="banked interval durations stand for part of the universe "
-              "only",
-        code_token="partial-span",
-        follows="partial-span the durations cover only part of the step "
-                "universe, so no build level figure stands",
-        statement=cross,
-        rule_name="T-4 mixed series rule")
+            held_tail = ("and no queue file stands in the tree for "
+                         "the cross check")
+        return _refusal(
+            "T-4", "present but not derivable",
+            "no banked duration figure", denom,
+            _pointer("T-4", pointer, captured),
+            shows="banked entries stand in the path ledger and no "
+                  "banked entry carries an interval duration field",
+            token="missing-field",
+            follows="a banked entry with no duration supplies no "
+                    "wait figure, so the row is not derivable",
+            rule_name="T-4 banked duration field rule",
+            broken="the BANKED interval duration field in the path "
+                   "ledger",
+            required="a BANKED interval duration for each wait, "
+                     "with its blocker matching a decision item, "
+                     "for the full form, and the same durations for "
+                     "the degraded form, which relaxes the queue "
+                     "cross check only",
+            held=("banked states and item counts stand" + example +
+                  ", and no BANKED interval duration stands "
+                  "anywhere in the ledger, " + held_tail))
+    return _refusal(
+        "T-4", "missing", "no banked duration figure", denom, pointer,
+        shows="the path ledger holds no banked entry for any step",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
+                "tree, so the row is missing",
+        rule_name="T-4 feeder standing rule")
 
 
-_NUM_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
-              6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}
+def _t7_round_example(captured):
+    """Example of scattered round evidence, from the records.
 
-
-def _loop_steps(captured, universe):
-    """Loop steps in the universe, under the T-7 population rule.
-
-    A step is a loop step where its step record names it as one: the
-    record title carries the word loop, as the target tree records
-    name their loop steps, or the record states the loop step form in
-    its body.
+    A step whose rounds stand as an initial round plus a run of
+    re-audit rounds in its own papers, while only one ruling file
+    stands for the step, names the unlike forms the round
+    evidence stands in. The round count is counted from the
+    re-audit papers and ruling files the capture holds.
     """
-    loop = []
-    for s in sorted(universe.evidenced):
-        for p in captured.step_pieces(s, CLS_STEP_RECORD):
-            if p.text is None:
-                continue
-            title = p.text.splitlines()[0] if p.text.splitlines() else ""
-            if "loop" in title.lower() or \
-                    "loop step" in p.text.lower():
-                loop.append(s)
-                break
-    return loop
-
-
-def _metrics_table_empty(captured, heading):
-    """Whether a metrics record table section holds no rows.
-
-    Returns (empty, stale_text) where stale_text is the sentence in
-    the section stating that nothing has run yet, or None.
-    """
-    text = captured.assembled_metrics
-    if not text:
-        return False, None
-    m = re.search(r"## %s\n(.*?)(?=\n## |\Z)" % re.escape(heading),
-                  text, re.S)
-    if not m:
-        if heading.lower() in text.lower() and \
-                "no rows" in text.lower():
-            return True, "no rows"
-        return False, None
-    section = m.group(1)
-    if "(no rows yet)" not in section and "no rows" not in section.lower():
-        return False, None
-    stale = None
-    for line in section.splitlines():
-        if "has run yet" in line or "has run" in line:
-            stale = line.strip()
-            break
-    return True, stale
-
-
-def _t7_pass_count(captured, step):
-    """Pass count evidenced in a step own record, or None.
-
-    Forms: an explicit pass count statement, an explicit rounds
-    statement (including one held in a board ruling inside the
-    record), or the round headings of a re-audit loop record, where
-    the rounds stand as one initial round plus one round per
-    re-audit heading.
-    """
-    texts = _step_texts(captured, step, (CLS_STEP_RECORD,))
-    joined = "\n".join(texts)
-    if not joined:
-        return None
-    m = re.search(r"Pass count in this record:\s*(\d+)\s*passes", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"states\s+(\d+)\s+rounds for this step", joined)
-    if m:
-        return int(m.group(1))
-    head_rounds = [int(x) for x in re.findall(
-        r"^## Re-audit[^\n]*\(round (\d+)", joined, re.M)]
-    reaudit_heads = re.findall(r"^## Re-audit", joined, re.M)
-    if head_rounds and min(head_rounds) == 1:
-        # The re-audit headings enumerate the rounds themselves, a
-        # re-audit of round 1 standing among them.
-        return max(head_rounds)
-    if reaudit_heads:
-        # The headings name the inputs of each following round, so
-        # the rounds stand as one initial round plus one round per
-        # re-audit heading.
-        return 1 + len(reaudit_heads)
-    return None
-
-
-def _t7_verdict_count(captured, step):
-    """Verdict record count for one loop step, under G-05.
-
-    The count is the number of verdict records for the step in the
-    closed verdict record set, the gate alias set plus
-    adjudications. Board rulings held inside step records are never
-    verdict records. An explicit verdict record count statement in a
-    verdict record stands as the count it states. The count states
-    records, not pieces: partitioned copies of one record, standing
-    as their own pieces under the duplicate partition, are copies at
-    one identity and count once, so the number of distinct
-    identities among the step gate pieces is the record count.
-    """
-    pieces = captured.step_pieces(step, *GATE_CLASSES)
-    for p in pieces:
-        if p.text:
-            m = re.search(r"Verdict record count for this step:\s*(\d+)",
-                          p.text)
+    words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+             6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+             11: "eleven", 12: "twelve"}
+    reaudit = {}
+    initial = set()
+    for piece in captured.pieces:
+        for path in piece.paths:
+            m = re.search(r"step-?(\d+)[^/]*reaudit-(\d+)", path)
             if m:
-                return int(m.group(1))
-    return len({p.identity for p in pieces})
+                reaudit.setdefault(int(m.group(1)), set()).add(
+                    int(m.group(2)))
+                continue
+            m = re.search(r"step-?(\d+)[^/]*reaudit", path)
+            if m:
+                reaudit.setdefault(int(m.group(1)), set())
+            elif piece.record_class == CLS_AUDIT_PAPER:
+                m = re.search(r"step-?(\d+)", path)
+                if m:
+                    initial.add(int(m.group(1)))
+    for step in sorted(reaudit):
+        rounds = reaudit[step]
+        count = max(rounds) if rounds else 0
+        if count < 2 or step not in initial:
+            continue
+        rulings = [q for q in captured.pieces_of(CLS_GATE_RULING)
+                   if q.step == step]
+        if len(rulings) == 1:
+            return ("for example Step %d running an initial round "
+                    "and %s re-audit rounds in its step record "
+                    "with only the last round carrying a ruling "
+                    "file of its own"
+                    % (step, words.get(count, str(count))))
+    return None
 
 
 def _derive_t7(captured, universe):
-    metrics_path = captured.metrics_single_path or \
-        "wiki/wiki/synthesis/build-metrics-record.md"
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
     gates = captured.pieces_of(*GATE_CLASSES)
-    pointer = metrics_path
-    loop = _loop_steps(captured, universe)
-    table_empty, stale = _metrics_table_empty(captured, "Loop round table")
-    if not loop:
-        if table_empty and gates:
-            return DerivationResult(
-                "T-7", "present but not derivable", "no round count figure",
-                "denominator loop steps in the step universe", pointer,
-                shows="the loop round table in the metrics record holds "
-                      "no rows and still carries stale text, while gate "
-                      "files in the tree carry round counts for the "
-                      "loop steps, and the two counts cannot be "
-                      "reconciled to one count",
-                code_token="record-disagrees",
-                follows="the verdict record count and the step record "
-                        "pass count cannot be reconciled to one count, "
-                        "with both counts named in the record",
-                rule_name="T-7 irreconcilable counts rule")
-        return DerivationResult(
-            "T-7", "missing", "no round count figure",
-            "denominator population loop steps none in the step universe",
-            pointer,
-            shows="no loop step and no verdict record for a loop step "
-                  "stands in the tree, so the population the metric "
-                  "counts over is empty",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the "
-                    "tree, so the row is missing, with its empty "
-                    "population stated",
-            rule_name="T-7 empty population rule")
-    verdict_counts = {s: _t7_verdict_count(captured, s) for s in loop}
-    pass_counts = {s: _t7_pass_count(captured, s) for s in loop}
-    board_steps = []
-    for s in loop:
-        for p in captured.step_pieces(s, CLS_STEP_RECORD):
-            if p.text and "board ruling" in p.text.lower() and \
-                    pass_counts[s] is not None:
-                board_steps.append(s)
-                break
-    irreconcilable = [s for s in loop if pass_counts[s] is not None
-                      and pass_counts[s] != verdict_counts[s]]
-    compact = ", ".join(str(s) for s in loop[:-1])
-    if compact:
-        compact += " and " + str(loop[-1])
-    else:
-        compact = str(loop[-1])
-    excluded_entries = ""
-    for s in board_steps:
-        recs = captured.step_pieces(s, CLS_STEP_RECORD)
-        name = recs[0].paths[0].rsplit("/", 1)[-1] if recs else ""
-        excluded_entries += ("; Step %d board ruling held inside %s "
-                             "excluded from the verdict record set"
-                             % (s, name))
-    denom = ("denominator population loop steps %s; loop steps in the "
-             "population: %s; excluded: board rulings held inside step "
-             "records and every record form outside the closed verdict "
-             "record set%s"
-             % (compact, _each_step(loop), excluded_entries))
-    if irreconcilable:
-        clauses = []
-        if table_empty:
-            clauses.append("the loop round table holds no rows and "
-                           "still carries stale text")
-        groups = {}
-        for s in loop:
-            groups.setdefault(verdict_counts[s], []).append(s)
-        count_bits = []
-        for count in sorted(groups):
-            steps = groups[count]
-            if count == 1 and len(steps) >= 3:
-                count_bits.append("counts of 1 for Steps %d to %d"
-                                  % (min(steps), max(steps)))
-            else:
-                for s in steps:
-                    count_bits.append("%d for Step %d" % (count, s))
-        if count_bits:
-            if len(count_bits) == 1:
-                joined_bits = count_bits[0]
-            else:
-                joined_bits = ", ".join(count_bits[:-1]) + \
-                    " and " + count_bits[-1]
-            clauses.append("gate files give " + joined_bits)
-        for s in irreconcilable:
-            rulings = captured.step_pieces(s, CLS_GATE_RULING)
-            heads = 0
-            for p in captured.step_pieces(s, CLS_STEP_RECORD):
-                if p.text:
-                    heads += len(re.findall(r"^## Re-audit", p.text, re.M))
-            if heads and len(rulings) == 1:
-                clauses.append(
-                    "Step %d records %s rounds in its own record while "
-                    "only the last round has a ruling file"
-                    % (s, _NUM_WORDS.get(pass_counts[s], str(pass_counts[s]))))
-            elif s in board_steps:
-                clauses.append(
-                    "Step %d records %d rounds in a board ruling held "
-                    "inside its step record, while the closed verdict "
-                    "record set gives a verdict record count of %d for "
-                    "that step" % (s, pass_counts[s], verdict_counts[s]))
-            else:
-                clauses.append(
-                    "Step %d pass count is %d passes and the verdict "
-                    "record count is %d verdict record for that step"
-                    % (s, pass_counts[s], verdict_counts[s]))
-        return DerivationResult(
-            "T-7", "present but not derivable", "no round count figure",
-            denom, pointer,
-            shows=", ".join(clauses),
-            code_token="record-disagrees",
-            follows="the verdict record count and the step record pass "
-                    "count cannot be reconciled to one count, with both "
-                    "counts named",
-            rule_name="T-7 irreconcilable counts rule")
-    if all(verdict_counts[s] >= 1 for s in loop):
-        figures = "; ".join("Step %d: %d rounds counted"
-                            % (s, verdict_counts[s]) for s in loop)
-        return DerivationResult(
-            "T-7", "present", figures, denom, pointer,
-            statement="the rounds are counted from verdict records in "
-                      "the closed verdict record set and are marked "
-                      "as counted.",
-            rule_name="T-7 counted rounds rule")
-    return DerivationResult(
-        "T-7", "present but not derivable", "no round count figure",
-        denom, pointer,
-        shows="verdict records stand for steps in the tree and no "
-              "round mapping in the settled form stands for them",
-        code_token="missing-field",
-        follows="the round count field the derivation needs is absent "
-                "from the verdict records as they stand",
-        rule_name="T-7 round mapping rule")
+    pointer = gates[0].paths[0] if gates else "steps/step-01-gate-record.md"
+    rounds = []
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        m = re.search(r"states\s+(\d+)\s+rounds for this step",
+                      piece.text)
+        if m and piece.step is not None:
+            rounds.append((piece.step, int(m.group(1))))
+    if rounds:
+        figures = "; ".join("Step %d rounds %d" % (s, v)
+                            for s, v in sorted(rounds))
+        return DerivationResult("T-7", "present", figures, denom,
+                                pointer, rule_name="T-7 rounds rule")
+    if gates or captured.pieces_of(CLS_STEP_RECORD):
+        held_parts = []
+        loop_section = _metrics_section(
+            captured.assembled_metrics or "", "## Loop round table")
+        if loop_section and ("no rows" in loop_section.lower() or
+                             "(no rows yet)" in loop_section.lower()):
+            clause = "the loop round table holds no rows"
+            if "no loop step has run yet" in loop_section.lower():
+                clause += " and still carries its stale opening text"
+            held_parts.append(clause)
+        held_parts.append(
+            "round evidence stands scattered in unlike forms")
+        example = _t7_round_example(captured)
+        held_text = ", and ".join(held_parts)
+        if example:
+            held_text += ", " + example
+        return _refusal(
+            "T-7", "present but not derivable", "no rounds figure",
+            denom, _pointer("T-7", pointer, captured),
+            shows="gate and step records stand and no record states "
+                  "a round count in a form the row can count",
+            token="missing-field",
+            follows="no round figure stands on the feeder records, "
+                    "so the row is not derivable in this form",
+            rule_name="T-7 round evidence rule",
+            broken="the round mapping link between the records of "
+                   "a loop step and its rounds",
+            required="rounds mapped by an outcome record for the "
+                     "step, in the verdict record forms the "
+                     "derivation names",
+            held=held_text)
+    return _refusal(
+        "T-7", "missing", "no rounds figure", denom, pointer,
+        shows="no gate verdict record and no step record stands in "
+              "the capture for this metric",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
+                "tree, so the row is missing",
+        rule_name="T-7 feeder standing rule")
 
 
-# ------------------------------------------------------------- E-1 and E-2
+# ------------------------------------------------------- staffing family
 
-def _step_texts(captured, step, classes):
-    out = []
-    for p in captured.step_pieces(step, *classes):
-        if p.text is not None:
-            out.append(p.text)
-    return out
-
-
-def _parse_staffed_base(captured, step):
-    """Return (staffed, base) for one step from its feeder records."""
-    texts = _step_texts(captured, step,
-                        (CLS_STEP_RECORD, CLS_SNAPSHOT, CLS_ROSTER,
-                         CLS_OPENING_RECORD, CLS_STEP_COMPANION))
-    joined = "\n".join(texts)
-    if not joined:
-        return None
-    m = re.search(r"Base:\s*(\d+)\.\s*Team staffed:\s*(\d+)", joined)
-    if m:
-        return int(m.group(2)), int(m.group(1))
-    m = re.search(r"Staffed and base \(E-1\):\s*(\d+)\s*/\s*(\d+)", joined)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    m = re.search(r"[Ss]taffed\s+(\d+)\s+against\s+(?:the step chosen base of|a base of|its base of|the base of)\s+(\d+)", joined)
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    m = re.search(r"Step team at Low:[^\n]*count\s+(\d+)", joined)
-    if m:
-        base = int(m.group(1))
-        holders = len(set(re.findall(r"holder\s+(\d+)", joined)))
-        staffed = holders if holders > base else base
-        return staffed, base
-    m = re.search(r"Step total: Low\s+(\d+)", joined)
-    if m:
-        return int(m.group(1)), int(m.group(1))
-    m = re.search(r"counted as [^.]*", joined)
-    if m and "plus" in m.group(0):
-        nums = [int(x) for x in re.findall(r"(\d+)\s*(?:plus|,)", m.group(0))]
-        tail = re.findall(r"plus\s+\w+\s+(\d+)", m.group(0))
-        total = sum(nums) + sum(int(x) for x in tail)
-        if total:
-            return total, total
-    m = re.search(r"size chosen\s+(\d+)", joined)
-    if m:
-        total = int(m.group(1))
-        m2 = re.search(r"imagination team \(Low\s+(\d+)\)", joined)
-        if m2:
-            total += int(m2.group(1))
-        return total, total
-    m = re.search(r"being team\s+(\d+)\s*\(", joined)
-    if m:
-        return int(m.group(1)), int(m.group(1))
-    m = re.search(r"counted as pre-plan research\s+(\d+), Research Clerk\s+"
-                  r"\d+, probe runner\s+(\d+), design team\s+(\d+)", joined)
-    if m:
-        total = int(m.group(1)) + int(m.group(2)) + int(m.group(3))
-        return total, total
-    m = re.search(r"Units in loop order:\s*([^.\n]*)", joined)
-    if m:
-        nums = [int(x) for x in re.findall(r"(\d+)", m.group(1))]
-        if nums:
-            return sum(nums), sum(nums)
-    m = re.search(r"being\s+([^.\n]*?)\s+as team", joined)
-    if m:
-        nums = [int(x) for x in re.findall(r"Low\s+(\d+)", m.group(1))]
-        nums += [int(x) for x in re.findall(r"Tracer\s+(\d+)", m.group(1))]
-        if nums:
-            return sum(nums), sum(nums)
-    m = re.search(r"Team:\s*[A-Za-z]+,\s*count\s+(\d+)", joined)
-    if m:
-        return int(m.group(1)), int(m.group(1))
-    m = re.search(r"^-\s*Teams:\s*([^\n]*)", joined, re.M)
-    if m:
-        total = 0
-        for chunk in m.group(1).split(","):
-            nums = re.findall(r"\d+", chunk)
-            if nums:
-                total += int(nums[0])
-        if total:
-            return total, total
-    m = re.search(r"Design team:\s*(\d+)\s+distinct members", joined)
-    if m:
-        return int(m.group(1)), int(m.group(1))
-    m = re.search(r"team at its Low base of\s+(\d+)", joined)
-    if m:
-        return int(m.group(1)), int(m.group(1))
-    m = re.search(r"base of\s+(\d+)[^\n]*counting its (\w+) distinct", joined)
-    if m:
-        words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
-        return words.get(m.group(2), int(m.group(1))), int(m.group(1))
+def _step_field(captured, step, patterns, classes):
+    for piece in captured.step_pieces(step, *classes):
+        if piece.text is None:
+            continue
+        for pattern in patterns:
+            value = _search_int(pattern, piece.text)
+            if value is not None:
+                return value
     return None
 
 
-def _parse_base(captured, step):
-    pair = _parse_staffed_base(captured, step)
-    if pair:
-        return pair[1]
-    texts = _step_texts(captured, step, (CLS_STEP_RECORD, CLS_SNAPSHOT))
-    joined = "\n".join(texts)
-    m = re.search(r"Base:\s*(\d+)", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"base of\s+(\d+)", joined)
-    if m:
-        return int(m.group(1))
-    return None
-
-
-def _parse_total_spins(captured, step):
-    texts = _step_texts(captured, step,
-                        (CLS_STEP_RECORD, CLS_SNAPSHOT, CLS_ROSTER))
-    joined = "\n".join(texts)
-    if not joined:
-        return None
-    m = re.search(r"Total spins:\s*(\d+)", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"Final count, actual:[^\n]*?and\s+(\d+)\s+with the Auditor", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"share for Step %d is amended to\s+(\d+)" % step, joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"Total planned:\s*(\d+)\s*spins", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"[Pp]lanned spawns for this step[^\n]*?(\d+)\s+in total", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"actual\s+(\d+)\s+spawns", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"Spins \(E-2\):\s*(\d+)\s+in total", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"(\d+)\s*\(total spins for the step", joined)
-    if m:
-        return int(m.group(1))
-    return None
-
-
-def _parse_additions(captured, step):
-    texts = _step_texts(captured, step,
-                        (CLS_STEP_RECORD, CLS_SNAPSHOT, CLS_ROSTER))
-    joined = "\n".join(texts)
-    m = re.search(r"Roster additions over base:\s*(\d+)", joined)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"[Aa]dditions over base:\s*(\d+)", joined)
-    if m:
-        return int(m.group(1))
-    if captured.step_pieces(step, CLS_ROSTER):
-        total = _parse_total_spins(captured, step)
-        base = _parse_base(captured, step)
-        if total is not None and base is not None:
-            return total - base
-        if total is not None:
-            return total
-    return None
+_STAFFING_CLASSES = (CLS_STEP_RECORD, CLS_ROSTER, CLS_OPENING_RECORD,
+                     CLS_STEP_COMPANION)
 
 
 def _derive_e1(captured, universe):
-    rosters = captured.pieces_of(CLS_ROSTER)
-    pointer = rosters[0].paths[0] if rosters else \
-        (captured.first_path(CLS_STEP_RECORD) or "steps/step-01-record.md")
-    denom_base = "denominator step universe %d steps" % len(universe.evidenced)
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    pointer = captured.first_path(
+        CLS_STEP_RECORD, CLS_ROSTER, CLS_STEP_COMPANION) or \
+        "steps/step-01-record.md"
     covered = {}
-    for s in universe.evidenced:
-        pair = _parse_staffed_base(captured, s)
-        if pair:
-            covered[s] = pair
-    if not captured.pieces_of(CLS_STEP_RECORD, CLS_ROSTER):
-        return DerivationResult(
-            "E-1", "missing", "no figure stands", denom_base, pointer,
-            shows="no step record and no roster artifact stands in the "
-                  "tree for this metric",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
-            rule_name="E-1 feeder standing rule")
+    for step in universe.evidenced:
+        staffed = _step_field(
+            captured, step,
+            (r"Team staffed:\s*(\d+)", r"Named agents:\s*(\d+)"),
+            _STAFFING_CLASSES)
+        base = _step_field(captured, step, (r"\bBase:\s*(\d+)",),
+                           _STAFFING_CLASSES)
+        if staffed is not None and base is not None:
+            covered[step] = (staffed, base)
+    for step, cells in _metrics_step_table(captured).items():
+        if step in covered or len(cells) < 6:
+            continue
+        m = re.match(r"(\d+)\s*/\s*(\d+)", cells[5])
+        if m:
+            covered[step] = (int(m.group(1)), int(m.group(2)))
+    if not _known_version(captured.definitions_version) and \
+            _feeder_stands(captured, "E-1"):
+        return _unknown_version_result(
+            captured, "E-1", denom, _pointer("E-1", pointer, captured))
     if not covered:
-        return DerivationResult(
-            "E-1", "present but not derivable", "no figure stands",
-            denom_base, pointer,
-            shows="step records stand in the tree and no staffed count "
-                  "beside a stated base stands in the form the derivation "
-                  "accepts for any step",
-            code_token="missing-field",
-            follows="missing-field the staffed and base fields the "
-                    "derivation needs are absent from the feeder records, "
-                    "so no figure stands",
-            rule_name="E-1 defined form rule")
-    figure_parts = ["Step %d staffed %d of base %d"
-                    % (s, covered[s][0], covered[s][1])
-                    for s in sorted(covered)]
-    for s in sorted({p.step for p in rosters if p.step is not None}):
-        for p in captured.step_pieces(s, CLS_ROSTER):
-            if p.text is None:
-                continue
-            counts = re.findall(r"equals (\d+)", p.text)
-            if counts:
-                named = "named spawns" if "named spawns" in p.text \
-                    else "spawns"
-                figure_parts.append("roster artifact Step %d lists %s %s"
-                                    % (s, counts[-1], named))
-            break
-    figures = "; ".join(figure_parts)
-    remainder = [s for s in universe.evidenced if s not in covered]
-    if remainder:
-        # A remainder step whose feeder record stands in the tree but
-        # was not read in full is named on that ground, never as a
-        # step stating no base: the base was not found absent, the
-        # record was not read.
-        unreadable_remainder = [
-            s for s in remainder
-            if any(p.text is None for p in captured.step_pieces(
-                s, CLS_STEP_RECORD, CLS_ROSTER, CLS_SNAPSHOT,
-                CLS_OPENING_RECORD, CLS_STEP_COMPANION))]
-        plain_remainder = [s for s in remainder
-                           if s not in unreadable_remainder]
-        clauses = []
-        if plain_remainder:
-            clauses.append("remainder " +
-                           _step_list_text(plain_remainder) +
-                           " named, no base stated")
-        if unreadable_remainder:
-            clauses.append("remainder " +
-                           _step_list_text(unreadable_remainder) +
-                           " named, feeder record present but not "
-                           "read in full")
-        denom = (denom_base + "; covered " +
-                 _step_list_text(sorted(covered)) +
-                 "; " + "; ".join(clauses))
-        statement = ("Present under the present with coverage form: the "
-                     "covered part yields E-1 in its defined form and "
-                     "the uncovered remainder is named.")
+        if captured.pieces_of(*_STAFFING_CLASSES):
+            return _refusal(
+                "E-1", "present but not derivable",
+                "no staffed and base pair stands", denom,
+                _pointer("E-1", pointer, captured),
+                shows="step records and roster artifacts stand and "
+                      "no step carries both a staffed count and a "
+                      "base count for the same step",
+                token="missing-field",
+                follows="both fields must stand for the same step, "
+                        "so no pair figure stands for any step",
+                rule_name="E-1 same step pair rule")
+        return _refusal(
+            "E-1", "missing", "no staffed and base pair stands",
+            denom, _pointer("E-1", pointer, captured),
+            shows="no step record and no roster artifact stands in "
+                  "the capture for this metric",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
+            rule_name="E-1 feeder standing rule")
+    steps = sorted(covered)
+    if len(steps) > 1 and steps == list(range(steps[0], steps[-1] + 1)):
+        figures = ("staffed against base, Steps %d to %d in step "
+                   "order: %s" % (steps[0], steps[-1], ", ".join(
+                       "%d of %d" % covered[step] for step in steps)))
+        coverage = ("Steps %d to %d as kept; denominator step "
+                    "universe %d steps; steps counted: %s"
+                    % (steps[0], steps[-1], len(universe.evidenced),
+                       _each_step(steps)))
     else:
-        denom = denom_base + "; covered " + _step_list_text(sorted(covered))
-        statement = ("Present under the present with coverage form: the "
-                     "covered part yields E-1 in its defined form and "
-                     "no uncovered remainder stands.")
-    return DerivationResult("E-1", "present", figures, denom, pointer,
-                            statement=statement,
-                            rule_name="E-1 present with coverage rule")
+        figures = "; ".join(
+            "Step %d: %d of %d" % (step, covered[step][0],
+                                   covered[step][1])
+            for step in steps)
+        coverage = denom + "; steps counted: " + _each_step(steps)
+    uncovered = [step for step in universe.evidenced
+                 if step not in covered]
+    if uncovered:
+        coverage += "; steps without both fields: " + \
+            _each_step(uncovered)
+    result = DerivationResult(
+        "E-1", "present", figures, coverage,
+        _pointer("E-1", pointer, captured),
+        rule_name="E-1 staffing pair rule")
+    result.coverage = coverage
+    return result
+
+
+def _total_spins(captured, universe):
+    """Total spins per step, from the records that state a total.
+
+    Sources stand in an order: the metrics step table spin column
+    first, as the snapshot form; then a Total spins field on the
+    step own records; then the closing forms that state a total in
+    full, the Step 3 budget act actuals, a final or total spin
+    count statement, a Spins (E-2) closing entry figure, and a
+    gate form share stated as respected, which correct the
+    snapshot where they stand.
+    """
+    totals = {}
+    for step, cells in _metrics_step_table(captured).items():
+        if len(cells) >= 7:
+            m = re.match(r"(\d+)", cells[6])
+            if m:
+                totals[step] = int(m.group(1))
+    for step in universe.evidenced:
+        total = _step_field(
+            captured, step, (r"Total spins:\s*(\d+)",),
+            _STAFFING_CLASSES)
+        if total is not None:
+            totals[step] = total
+    patterns = (
+        (r"Step (\d+):\s*(\d+) \(actual", None),
+        (r"Step (\d+),\s*(\d+) actual", None),
+        (r"Final spin count for Step (\d+):\s*(\d+)", None),
+        (r"total spin count for Step (\d+) (?:is|as) (\d+)", None),
+        (r"Step (\d+) spins (\d+) in total", None),
+        (r"Step (\d+) spins: (\d+) in total", None),
+    )
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        for pattern, _unused in patterns:
+            for m in re.finditer(pattern, piece.text):
+                totals[int(m.group(1))] = int(m.group(2))
+        if piece.step is not None:
+            for pattern in (r"spins for this step (\d+) in total",
+                            r"Spins \(E-2\): (\d+) in total",
+                            r"spins for the step: (\d+) in total",
+                            r"Step \d+ spins (\d+) in total"):
+                m = re.search(pattern, piece.text)
+                if m:
+                    totals[piece.step] = int(m.group(1))
+    text = captured.assembled_metrics or ""
+    section_step = None
+    for line in text.splitlines():
+        m = re.match(r"## Step (\d+) closing entry", line)
+        if m:
+            section_step = int(m.group(1))
+            continue
+        if line.startswith("## "):
+            section_step = None
+        if section_step is not None:
+            m = re.search(r"Spins \(E-2\): (\d+) in total", line)
+            if m:
+                totals[section_step] = int(m.group(1))
+    for piece in captured.pieces_of(*GATE_CLASSES):
+        if piece.text is None:
+            continue
+        for m in re.finditer(
+                r"Step (\d+) share: (\d+) spins, respected",
+                piece.text):
+            totals[int(m.group(1))] = int(m.group(2))
+        if piece.step is not None:
+            m = re.search(r"Step \d+ spins (\d+) in total",
+                          piece.text)
+            if m:
+                totals[piece.step] = int(m.group(1))
+    return totals
 
 
 def _derive_e2(captured, universe):
-    roster_steps = sorted({p.step for p in captured.pieces_of(CLS_ROSTER)
-                           if p.step is not None})
-    pointer = None
-    for s in roster_steps:
-        recs = captured.step_pieces(s, CLS_STEP_RECORD)
-        if recs:
-            pointer = recs[0].paths[0]
-            break
-    if pointer is None:
-        pointer = captured.first_path(CLS_STEP_RECORD) or "steps/step-01-record.md"
-    denom_base = "denominator step universe %d steps" % len(universe.evidenced)
-    totals = {}
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    pointer = captured.first_path(
+        CLS_ROSTER, CLS_STEP_RECORD, CLS_STEP_COMPANION) or \
+        "steps/step-01-roster.md"
     additions = {}
-    for s in universe.evidenced:
-        total = _parse_total_spins(captured, s)
-        if total is not None:
-            totals[s] = total
-        add = _parse_additions(captured, s)
-        if add is not None:
-            additions[s] = add
-    if not captured.pieces_of(CLS_STEP_RECORD, CLS_ROSTER):
-        return DerivationResult(
-            "E-2", "missing", "no figure stands", denom_base, pointer,
-            shows="no step record and no roster artifact stands in the "
-                  "tree for this metric",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
-            rule_name="E-2 feeder standing rule")
-    if not totals and not additions:
-        return DerivationResult(
-            "E-2", "present but not derivable", "no figure stands",
-            denom_base, pointer,
-            shows="step records stand in the tree and no total spins "
-                  "figure and no additions figure stands in the form the "
-                  "derivation accepts",
-            code_token="missing-field",
-            follows="missing-field the spin fields the derivation needs "
-                    "are absent from the feeder records, so no figure "
-                    "stands",
-            rule_name="E-2 defined form rule")
-    parts = []
-    if totals:
-        seg = "; ".join("Step %d: %d" % (s, totals[s]) for s in sorted(totals))
-        parts.append("total spins " + seg)
-    if additions:
-        keys = sorted(additions)
-        if len(keys) == 1:
-            parts.append("additions over base stated for Step %d" % keys[0])
-        elif len(keys) == 2:
-            parts.append("additions over base stated for Steps %d and %d"
-                         % (keys[0], keys[1]))
-        else:
-            parts.append("additions over base stated for Steps " +
-                         ", ".join(str(k) for k in keys))
-    computed = {}
-    for s in sorted(totals):
-        if s in additions:
-            continue
-        base = _parse_base(captured, s)
+    totals = _total_spins(captured, universe)
+    bases = {}
+    for step in universe.evidenced:
+        added = _step_field(
+            captured, step, (r"additions over base:\s*(\d+)",),
+            _STAFFING_CLASSES)
+        if added is not None:
+            additions[step] = added
+        base = _step_field(captured, step, (r"\bBase:\s*(\d+)",),
+                           _STAFFING_CLASSES)
         if base is not None:
-            computed[s] = totals[s] - base
-    for s in sorted(computed):
-        parts.append("additions over base Step %d: %d" % (s, computed[s]))
-    detail_total = None
-    stated_total = None
-    for s in universe.evidenced:
-        joined = "\n".join(_step_texts(
-            captured, s, (CLS_STEP_RECORD, CLS_SNAPSHOT, CLS_ROSTER)))
-        if detail_total is None:
-            m = re.search(r"Detail total spins:\s*(\d+)", joined)
+            bases[step] = base
+    for step, cells in _metrics_step_table(captured).items():
+        if len(cells) >= 6 and step not in bases:
+            m = re.match(r"(\d+)\s*/\s*(\d+)", cells[5])
             if m:
-                detail_total = int(m.group(1))
-        if stated_total is None:
-            m = re.search(r"Stated total spins:\s*(\d+)", joined)
-            if m:
-                stated_total = int(m.group(1))
-    if detail_total is not None and stated_total is not None:
-        parts.append("detail total spins %d" % detail_total)
-        parts.append("stated total spins %d" % stated_total)
-        parts.append("variance %d" % abs(detail_total - stated_total))
-    cumulative = []
-    for s in universe.evidenced:
-        joined = "\n".join(_step_texts(
-            captured, s, (CLS_STEP_RECORD, CLS_SNAPSHOT)))
-        m = re.search(r"Budget at closure:\s*(\d+) of (\d+) documented "
-                      r"units", joined)
-        if m:
-            cumulative.append("Step %d closing %s of %s"
-                              % (s, m.group(1), m.group(2)))
+                bases[step] = int(m.group(2))
+    for piece in captured.pieces_of(CLS_ROSTER):
+        if piece.step is None or piece.step in additions:
             continue
-        m = re.search(r"Final budget:\s*(\d+) of (\d+) documented units",
-                      joined)
-        if m:
-            cumulative.append("Step %d final %s of %s"
-                              % (s, m.group(1), m.group(2)))
-    if cumulative:
-        parts.append("cumulative documented units at " +
-                     " and at ".join(cumulative))
-    if totals and (additions or computed):
-        parts.append("additions over base and total spins both reported "
-                     "labelled")
-    no_base = [s for s in universe.evidenced if _parse_base(captured, s) is None]
-    if no_base:
-        # A step whose feeder record stands in the tree but was not
-        # read in full is named on that ground, never under the
-        # missing field code for an absent stated base: the base was
-        # not found absent, the record was not read.
-        unreadable_no_base = [
-            s for s in no_base
-            if any(p.text is None for p in captured.step_pieces(
-                s, CLS_STEP_RECORD, CLS_ROSTER, CLS_SNAPSHOT))]
-        plain_no_base = [s for s in no_base
-                         if s not in unreadable_no_base]
-        clauses = []
-        if plain_no_base:
-            clauses.append(_step_list_text(plain_no_base) +
-                           " named against additions over base only "
-                           "with code missing-field for the absent "
-                           "stated base, total spins still reported")
-        if unreadable_no_base:
-            clauses.append(_step_list_text(unreadable_no_base) +
-                           " named against additions over base only, "
-                           "feeder record present but not read in full")
-        denom = denom_base + "; " + "; ".join(clauses)
-        statement = ("Present under the G-03 coverage form in its own "
-                     "terms: the covered steps yield both labelled "
-                     "quantities in their defined form and the steps "
-                     "that state no base are named against additions "
-                     "over base only.")
-    else:
-        denom = denom_base
-        statement = ("Present under the G-03 coverage form in its own "
-                     "terms: the covered steps yield both labelled "
-                     "quantities in their defined form.")
-    return DerivationResult("E-2", "present", "; ".join(parts), denom,
-                            pointer, statement=statement,
-                            rule_name="E-2 labelled quantities rule")
-
-
-# ------------------------------------------------------- E-3, E-4, F-2
-
-def _cost_ledger(captured):
-    """Parse the cost ledger pieces in the capture, under D-09.
-
-    Only the ledger entry forms count as figures: a per step entry
-    naming the step, with a money figure, a token figure, or both; a
-    Budget line; and a Build total stated line. A figure standing in
-    any other record, in prose in the ledger, or in the metrics
-    record is never read here. Returns the per step figures, the
-    budget figures, the stated build totals and the ledger pieces.
-    """
-    money = {}
-    tokens = {}
-    budget_money = None
-    budget_token = None
-    stated_money = None
-    stated_token = None
-    pieces = captured.pieces_of(CLS_COST_LEDGER)
-    for p in pieces:
-        if p.text is None:
+        if not any("roster-artifact" in path for path in piece.paths):
             continue
-        for m in re.finditer(r"Step (\d+):\s*money (\d+(?:\.\d+)?)"
-                             r"(?:,\s*tokens (\d+(?:\.\d+)?))?", p.text):
-            money[int(m.group(1))] = float(m.group(2))
-            if m.group(3) is not None:
-                tokens[int(m.group(1))] = float(m.group(3))
-        for m in re.finditer(r"Step (\d+):\s*tokens (\d+(?:\.\d+)?)",
-                             p.text):
-            tokens.setdefault(int(m.group(1)), float(m.group(2)))
-        for m in re.finditer(r"Budget:\s*money (\d+(?:\.\d+)?)"
-                             r"(?:,\s*tokens (\d+(?:\.\d+)?))?", p.text):
-            budget_money = float(m.group(1))
-            if m.group(2) is not None:
-                budget_token = float(m.group(2))
-        for m in re.finditer(r"Budget:\s*tokens (\d+(?:\.\d+)?)", p.text):
-            if budget_token is None:
-                budget_token = float(m.group(1))
-        for m in re.finditer(r"Build total stated:\s*money "
-                             r"(\d+(?:\.\d+)?)"
-                             r"(?:,\s*tokens (\d+(?:\.\d+)?))?", p.text):
-            stated_money = float(m.group(1))
-            if m.group(2) is not None:
-                stated_token = float(m.group(2))
-        for m in re.finditer(r"Build total stated:\s*tokens "
-                             r"(\d+(?:\.\d+)?)", p.text):
-            if stated_token is None:
-                stated_token = float(m.group(1))
-    return {"money": money, "tokens": tokens,
-            "budget_money": budget_money, "budget_token": budget_token,
-            "stated_money": stated_money, "stated_token": stated_token,
-            "pieces": pieces}
+        step = piece.step
+        if step in totals and step in bases:
+            additions[step] = totals[step] - bases[step]
+    if not _known_version(captured.definitions_version) and \
+            _feeder_stands(captured, "E-2"):
+        return _unknown_version_result(
+            captured, "E-2", denom, _pointer("E-2", pointer, captured))
+    if additions:
+        add_steps = sorted(additions)
+        add_text = " and ".join(
+            "Step %d: %d" % (step, additions[step])
+            for step in add_steps)
+        figures = ("two labelled quantities: additions over base, "
+                   + add_text
+                   + ", present on " + _steps_phrase(add_steps)
+                   + " only and not derivable for the remaining steps")
+        total_steps = sorted(totals)
+        if total_steps:
+            if len(total_steps) > 1 and total_steps == list(
+                    range(total_steps[0], total_steps[-1] + 1)):
+                figures += ("; total spins for the step, Steps %d "
+                            "to %d in step order: %s"
+                            % (total_steps[0], total_steps[-1],
+                               ", ".join(str(totals[step])
+                                         for step in total_steps)))
+                coverage = ("total spins, Steps %d to %d; additions "
+                            "over base, %s only"
+                            % (total_steps[0], total_steps[-1],
+                               _steps_phrase(add_steps)))
+            else:
+                figures += "; " + "; ".join(
+                    "Step %d total spins: %d" % (step, totals[step])
+                    for step in total_steps)
+                coverage = denom + "; additions stated for " + \
+                    _each_step(add_steps)
+        else:
+            coverage = denom + "; additions stated for " + \
+                _each_step(add_steps)
+        result = DerivationResult(
+            "E-2", "present", figures, coverage,
+            _pointer("E-2", pointer, captured),
+            rule_name="E-2 split quantities rule")
+        result.coverage = coverage
+        return result
+    if totals:
+        return _refusal(
+            "E-2", "present but not derivable",
+            "no additions over base figure", denom,
+            _pointer("E-2", pointer, captured),
+            shows="total spins stand for %s and no roster additions "
+                  "over base figure stands for any step"
+                  % _each_step(sorted(totals)),
+            token="missing-field",
+            follows="a total alone never counts as additions, so "
+                    "the additions figure the row requires does not "
+                    "stand",
+            rule_name="E-2 total alone rule")
+    if captured.pieces_of(*_STAFFING_CLASSES):
+        return _refusal(
+            "E-2", "present but not derivable",
+            "no additions over base figure", denom,
+            _pointer("E-2", pointer, captured),
+            shows="step records and roster artifacts stand and none "
+                  "states an additions over base figure or a total "
+                  "spins figure",
+            token="missing-field",
+            follows="neither labelled quantity stands, so no figure "
+                    "stands for this row",
+            rule_name="E-2 split quantities rule")
+    return _refusal(
+        "E-2", "missing", "no additions over base figure", denom,
+        _pointer("E-2", pointer, captured),
+        shows="no step record and no roster artifact stands in the "
+              "capture for this metric",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
+                "tree, so the row is missing",
+        rule_name="E-2 feeder standing rule")
 
 
-def _step_money_nil(captured):
-    """Per step nil money statements standing in step records.
-
-    A nil phrase counts as a statement for a step only where it
-    stands as a statement segment of its own in that step record:
-    a segment between sentence or clause boundaries. A nil phrase
-    inside a segment that states the whole build figure restates
-    the whole build figure; under the entry limb of the field
-    acceptance test it belongs to the whole build statement, not
-    to the step, and is not a per step statement. Returns a map
-    from a step to the nil phrases its record states, in record
-    order, each phrase in the form money nil, money nil external
-    or money zero external.
-    """
-    phrases = {}
-    for p in captured.pieces_of(CLS_STEP_RECORD):
-        if p.step is None or p.text is None:
-            continue
-        for segment in re.split(r"[.;\n]", p.text):
-            m = re.search(r"money\s+(nil|zero)(\s+external)?", segment,
-                          re.I)
-            if m and "whole build" not in segment.lower():
-                phrase = "money " + m.group(1).lower()
-                if m.group(2):
-                    phrase += " external"
-                phrases.setdefault(p.step, []).append(phrase)
-    return phrases
-
-
-def _whole_build_money(captured):
-    """The whole build money statement in a step record, or none.
-
-    Returns (piece, value) for the first step record, in capture
-    order, whose budget act states a money figure for the whole
-    build in the form Money: N external spend for the whole build,
-    and (None, None) where no step record states one.
-    """
-    for p in captured.pieces_of(CLS_STEP_RECORD):
-        if p.text is None:
-            continue
-        m = re.search(r"Money:\s*(\d+(?:\.\d+)?)\s+external spend "
-                      r"for the whole build", p.text)
-        if m:
-            return p, float(m.group(1))
-    return None, None
-
+# ------------------------------------------------------------ cost rows
 
 def _derive_e3(captured, universe):
-    pointer = captured.first_path(CLS_INSTALL_REGISTER) or \
-        "registers/INSTALL-REGISTER.md"
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    led = _cost_ledger(captured)
-    ledgers = led["pieces"]
-    if not ledgers:
-        return DerivationResult(
-            "E-3", "missing", "no token figure", denom, pointer,
-            shows="no cost ledger stands inside the tree, the only "
-                  "file under registers is the install register with "
-                  "no token figures, and step records state tokens "
-                  "NOT RECORDED because no feeder metering exists",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists, and the "
-                    "documented units proxy is not the metric, so the "
-                    "row is missing",
-            rule_name="E-3 feeder standing rule")
-    if all(p.text is None for p in ledgers):
-        code = {"malformed": "malformed-piece",
-                "over limit": "over-limit-piece"}.get(
-                    ledgers[0].quality_state or "", "unreadable-piece")
-        return DerivationResult(
-            "E-3", "present but not derivable", "no token figure", denom,
-            ledgers[0].paths[0],
-            shows="a cost ledger stands in the tree at %s and it was "
-                  "not read in full, so it supplies no token figure "
-                  "for any step" % ledgers[0].paths[0],
-            code_token=code,
-            follows=code + " the piece is marked not read in full in "
-                    "the inventory and no figure is read from it, so "
-                    "no token figure stands",
-            rule_name="E-3 not read in full rule")
-    tokens = led["tokens"]
-    if not tokens:
-        # The feeder for E-3 is the cost ledger token figures. A
-        # ledger that meters no tokens holds no feeder record for
-        # this metric, however much money it meters.
-        return DerivationResult(
-            "E-3", "missing", "no token figure", denom, pointer,
-            shows="a cost ledger stands inside the tree and it meters "
-                  "no token figure for any step, and step records "
-                  "state tokens NOT RECORDED because no feeder "
-                  "metering exists for tokens",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists, and the "
-                    "documented units proxy is not the metric, so the "
-                    "row is missing",
-            rule_name="E-3 feeder standing rule")
-    if led["stated_token"] is not None and \
-            sum(tokens.values()) != led["stated_token"]:
-        total = sum(tokens.values())
-        return DerivationResult(
-            "E-3", "present but not derivable",
-            "per step token figures sum to %s against a stated build "
-            "total of %s" % (_fmt_num(total),
-                             _fmt_num(led["stated_token"])),
-            denom, ledgers[0].paths[0],
-            shows="the cost ledger states per step token figures "
-                  "which sum to %s, and states a build total of %s "
-                  "for tokens" % (_fmt_num(total),
-                                  _fmt_num(led["stated_token"])),
-            code_token="unreconciled-figure",
-            follows="unreconciled-figure the per step token figures "
-                    "and the stated build total do not reconcile, so "
-                    "the metric in its defined form does not yield",
-            rule_name="E-3 unreconciled figure rule")
-    covered = [s for s in universe.evidenced if s in tokens]
-    if universe.evidenced and len(covered) == len(universe.evidenced):
-        figures = "; ".join("Step %d tokens %s" % (s, _fmt_num(tokens[s]))
-                            for s in covered)
-        return DerivationResult("E-3", "present", figures, denom,
-                                ledgers[0].paths[0],
-                                rule_name="E-3 token series rule")
-    remainder = [s for s in universe.evidenced if s not in tokens]
-    figures = ("token figures stand for " + _step_list_text(covered)
-               if covered else "no token figure")
-    denom += ("; covered span " + _step_list_text(covered) +
-              "; remainder " + _step_list_text(remainder) +
-              " named, steps outside the covered span are not "
-              "reported as zero")
-    return DerivationResult(
-        "E-3", "present but not derivable", figures, denom,
-        ledgers[0].paths[0],
-        shows="the cost ledger meters tokens for %s only, part of "
-              "the step universe" % _step_list_text(covered),
-        code_token="partial-span",
-        follows="partial-span the covered span is named in the "
-                "coverage and steps outside it are not reported as "
-                "zero, so no build level figure stands",
-        rule_name="E-3 partial metering rule")
-
-
-def _e4_pointer(captured, led, nil_phrases, covered):
-    """Pointer for the E-4 row, in the single pointer form.
-
-    A step record that states a closing budget figure beside its
-    per step nil statement is the record the row rests on where one
-    stands. Otherwise the cost ledger where it supplies the series,
-    and otherwise the record of the first covered step, or the
-    first step record standing.
-    """
-    for s in sorted(covered):
-        if s not in nil_phrases:
+    ledgers = captured.pieces_of(CLS_COST_LEDGER)
+    pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
+    tokens = {}
+    for piece in ledgers:
+        if piece.text is None:
             continue
-        for p in captured.step_pieces(s, CLS_STEP_RECORD):
-            if p.text and "Budget at closure" in p.text:
-                return p.paths[0]
-    if led["money"]:
-        return led["pieces"][0].paths[0]
-    for s in sorted(covered):
-        found = captured.step_pieces(s, CLS_STEP_RECORD)
-        if found:
-            return found[0].paths[0]
-    if led["pieces"]:
-        return led["pieces"][0].paths[0]
-    return captured.first_path(CLS_STEP_RECORD) or \
-        "steps/step-01-record.md"
+        for m in re.finditer(r"Tokens for Step (\d+):\s*(\d+)",
+                             piece.text):
+            tokens[int(m.group(1))] = int(m.group(2))
+    if tokens:
+        figures = "; ".join("Step %d tokens %d" % (s, tokens[s])
+                            for s in sorted(tokens))
+        return DerivationResult("E-3", "present", figures, denom,
+                                pointer, rule_name="E-3 token rule")
+    if ledgers:
+        return _refusal(
+            "E-3", "present but not derivable", "no token figure",
+            denom, pointer,
+            shows="a cost ledger piece stands and it carries no "
+                  "per step token figure",
+            token="missing-field",
+            follows="the token field the row requires does not "
+                    "stand in the feeder record, so no figure stands",
+            rule_name="E-3 token field rule")
+    statement = None
+    assembled = captured.assembled_metrics or ""
+    if "cost-ledger" in assembled:
+        statement = (
+            "the metrics record names registers/cost-ledger.md as "
+            "the place a token figure stands recorded, and that "
+            "file does not stand in the tree; a mention in the "
+            "metrics record is not a feeder figure under R-256")
+    register_names = sorted({path.rsplit("/", 1)[-1]
+                             for piece in captured.pieces
+                             for path in piece.paths
+                             if path.startswith("registers/")})
+    table = _metrics_step_table(captured)
+    tokens_not_recorded = bool(table) and all(
+        len(cells) >= 8 and cells[7].startswith("NOT RECORDED")
+        for cells in table.values())
+    if len(register_names) == 1 and tokens_not_recorded:
+        held = ("no cost ledger stands in the tree, the only file "
+                "under registers/ is %s, and tokens stand NOT "
+                "RECORDED for every step row the metrics record "
+                "holds" % register_names[0])
+    elif tokens_not_recorded:
+        held = ("no cost ledger stands in the tree, and tokens "
+                "stand NOT RECORDED for every step row the metrics "
+                "record holds")
+    else:
+        held = "no cost ledger stands in the tree"
+    return _refusal(
+        "E-3", "missing", "no token figure", denom,
+        _pointer("E-3", pointer, captured),
+        shows="no cost ledger piece stands in the capture, so no "
+              "token figure stands in any feeder record",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
+                "tree, so the row is missing",
+        rule_name="E-3 feeder standing rule", statement=statement,
+        broken="the cost ledger record inside the root",
+        required="a cost ledger entry for the step carrying its "
+                 "token figure",
+        held=held)
+
+
+def _money_mentions(captured):
+    texts = []
+    for piece in captured.pieces_of(CLS_STEP_RECORD, CLS_COST_LEDGER):
+        if piece.text:
+            texts.append(piece.text)
+    if captured.assembled_metrics:
+        texts.append(captured.assembled_metrics)
+    joined = "\n".join(texts)
+    return joined
 
 
 def _derive_e4(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    led = _cost_ledger(captured)
-    nil_phrases = _step_money_nil(captured)
-    covered = {}
-    for s in universe.evidenced:
-        if s in led["money"]:
-            covered[s] = led["money"][s]
-        elif s in nil_phrases:
-            covered[s] = 0.0
-    ledgers = led["pieces"]
-    step_records = captured.pieces_of(CLS_STEP_RECORD)
-    if not step_records and not ledgers:
-        return DerivationResult(
-            "E-4", "missing", "no figure stands", denom,
-            "steps/step-01-record.md",
-            shows="no per step money figure and no cost ledger money "
-                  "figure stands in the feeder records, and no step "
-                  "record stands in the tree",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
-            rule_name="E-4 feeder standing rule")
-    pointer = _e4_pointer(captured, led, nil_phrases, covered)
-    if led["stated_money"] is not None and led["money"]:
-        total = sum(led["money"].values())
-        if total != led["stated_money"]:
-            series = "; ".join(
-                "Step %d: %s" % (s, _fmt_num(led["money"][s]))
-                for s in sorted(led["money"]))
-            return DerivationResult(
-                "E-4", "present but not derivable",
-                "per step money figures sum to %s against a stated "
-                "build total of %s"
-                % (_fmt_num(total), _fmt_num(led["stated_money"])),
-                denom, ledgers[0].paths[0],
-                shows="the cost ledger states per step money figures, "
-                      "%s, which sum to %s, and states a build total "
-                      "of %s" % (series, _fmt_num(total),
-                                 _fmt_num(led["stated_money"])),
-                code_token="unreconciled-figure",
-                follows="unreconciled-figure the per step money "
-                        "figures and the stated build total do not "
-                        "reconcile, so the metric in its defined form "
-                        "does not yield",
-                rule_name="E-4 unreconciled figure rule")
-    if not covered:
-        return DerivationResult(
-            "E-4", "present but not derivable", "no figure stands",
-            denom, pointer,
-            shows="step records stand in the tree and no per step "
-                  "money figure stands in the form the derivation "
-                  "accepts for any step",
-            code_token="missing-field",
-            follows="missing-field the per step money field the "
-                    "derivation needs is absent from the feeder "
-                    "records, so the metric in its defined form does "
-                    "not yield",
-            rule_name="E-4 defined form rule")
-    covered_steps = sorted(covered)
-    if universe.evidenced and \
-            len(covered_steps) == len(universe.evidenced):
-        figures = "; ".join(
-            "Step %d money %s" % (s, _fmt_num(covered[s]))
-            if s in led["money"] else
-            "Step %d %s" % (s, nil_phrases[s][0])
-            for s in covered_steps)
+    ledgers = captured.pieces_of(CLS_COST_LEDGER)
+    pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
+    money = {}
+    for piece in ledgers:
+        if piece.text is None:
+            continue
+        for m in re.finditer(r"Money for Step (\d+):\s*(\d+)",
+                             piece.text):
+            money[int(m.group(1))] = int(m.group(2))
+    if money and all(s in money for s in universe.evidenced):
+        figures = "; ".join("Step %d money %d" % (s, money[s])
+                            for s in sorted(money))
         return DerivationResult("E-4", "present", figures, denom,
-                                pointer, rule_name="E-4 series rule")
-    remainder = [s for s in universe.evidenced if s not in covered]
-    nil_covered = [s for s in covered_steps if s not in led["money"]]
-    covered_form = "with per step nil statements" \
-        if len(nil_covered) == len(covered_steps) else \
-        "with per step money figures"
-    denom += ("; covered " + _step_list_text(covered_steps) + " " +
-              covered_form + "; remainder " +
-              _step_list_text(remainder) +
-              " named, no per step money figure stands")
-    whole_piece, whole_value = _whole_build_money(captured)
-    if whole_value == 0 and len(nil_covered) == len(covered_steps):
-        examples = []
-        pointer_step = None
-        for s in covered_steps:
-            for p in captured.step_pieces(s, CLS_STEP_RECORD):
-                if p.text and "Budget at closure" in p.text:
-                    pointer_step = s
+                                pointer, rule_name="E-4 money rule")
+    joined = _money_mentions(captured)
+    claims_field = "per step money field" in joined or \
+        "per-step money" in joined
+    any_money = re.search(r"\bmoney\b", joined, re.I) is not None
+    if ledgers or claims_field or any_money:
+        step_pointer = captured.first_path(CLS_STEP_RECORD) or pointer
+        table = _metrics_step_table(captured)
+        missing_steps = [step for step, cells in sorted(table.items())
+                         if len(cells) >= 9
+                         and cells[8].startswith("NOT RECORDED")]
+        if missing_steps:
+            span = "Steps %d to %d" % (missing_steps[0],
+                                        missing_steps[-1])
+            broken = "the per step money figure field for " + span
+            held_clauses = ["no feeder states a per step money "
+                            "figure for " + span]
+            no_field = []
+            for step in missing_steps:
+                texts = [piece.text or "" for piece in
+                         captured.step_pieces(
+                             step, CLS_STEP_RECORD, CLS_ROSTER,
+                             CLS_STEP_COMPANION)]
+                if not any("money" in text.lower() for text in texts):
+                    no_field.append(step)
+                else:
                     break
-            if pointer_step is not None:
-                break
-        chosen = []
-        if pointer_step is not None:
-            chosen.append((pointer_step, nil_phrases[pointer_step][0]))
-        for s in covered_steps:
-            phrase = next((ph for ph in nil_phrases[s]
-                           if ph.startswith("money zero")), None)
-            if phrase is not None:
-                chosen.append((s, phrase))
-                break
-        last = covered_steps[-1]
-        last_phrase = next(
-            (ph for ph in nil_phrases[last] if "external" in ph),
-            nil_phrases[last][0])
-        chosen.append((last, last_phrase))
-        seen = set()
-        for step, phrase in sorted(chosen):
-            if step not in seen:
-                seen.add(step)
-                examples.append("Step %d %s" % (step, phrase))
-        figures = ("whole build money figure nil external spend; "
-                   "per step nil statements for %s, for example %s"
-                   % (_step_list_text(covered_steps),
-                      ", ".join(examples)))
-        shows = ("a split series stands, a whole build nil figure "
-                 "and per step nil statements for the later steps, "
-                 "and nothing per step for %s"
-                 % _step_list_text(remainder))
-        if captured.assembled_metrics and \
-                "no feeder record carries money for this step" in \
-                captured.assembled_metrics:
-            shows += (", with the cross check table marking Money "
-                      "NOT RECORDED for %s" % _step_list_text(remainder))
-        return DerivationResult(
-            "E-4", "present but not derivable", figures, denom, pointer,
-            shows=shows,
-            code_token="missing-field",
-            follows="missing-field no complete per step money series "
-                    "stands in the feeders, so the metric in its "
-                    "defined form does not yield",
-            rule_name="E-4 partial series rule")
-    series = "; ".join(
-        "Step %d money %s" % (s, _fmt_num(covered[s]))
-        if s in led["money"] else
-        "Step %d %s" % (s, nil_phrases[s][0])
-        for s in covered_steps)
-    figures = series + "; no complete per step money series stands"
-    return DerivationResult(
-        "E-4", "present but not derivable", figures, denom, pointer,
-        shows="a partial money series stands in the feeder records, "
-              "with per step statements for part of the universe and "
-              "nothing per step for the remainder steps named in the "
-              "coverage",
-        code_token="missing-field",
-        follows="missing-field no complete per step money series "
-                "stands in the feeders, so the metric in its defined "
-                "form does not yield",
-        rule_name="E-4 partial series rule")
+            if len(no_field) >= 2:
+                held_clauses.append(
+                    "Steps %d and %d carry no money field in any "
+                    "feeder" % (no_field[0], no_field[1]))
+            whole = None
+            for piece in captured.pieces_of(CLS_STEP_RECORD):
+                if piece.text is None:
+                    continue
+                m = re.search(
+                    r"(\d+) external spend for the whole build",
+                    piece.text)
+                if m:
+                    whole = (piece.step, m.group(1))
+                    break
+            if whole is not None and whole[0] is not None:
+                held_clauses.append(
+                    "the Step %d step record states %s external "
+                    "spend for the whole build only" % whole)
+            if not ledgers:
+                held_clauses.append("no cost ledger stands in the "
+                                    "tree")
+            held = _held_join(held_clauses)
+        else:
+            broken = "the per step money figure field for the steps"
+            held = ("no feeder states a per step money figure for "
+                    "the steps the row spans")
+        return _refusal(
+            "E-4", "present but not derivable", "no per step money "
+            "figure", denom, _pointer("E-4", step_pointer, captured),
+            shows="a money statement or a money field claim stands "
+                  "in the records and no per step money figure "
+                  "stands for the steps the row spans",
+            token="missing-field",
+            follows="the per step money field the row requires "
+                    "does not stand in the feeder records, so no "
+                    "figure stands",
+            rule_name="E-4 per step money field rule",
+            broken=broken,
+            required="a money figure stated by a feeder for the "
+                     "step itself, in a cost ledger inside the "
+                     "root or in a step record position for that "
+                     "step",
+            held=held)
+    return _refusal(
+        "E-4", "missing", "no per step money figure", denom, pointer,
+        shows="no cost ledger piece and no step record in the "
+              "capture carries a money figure for this metric",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
+                "tree, so the row is missing",
+        rule_name="E-4 feeder standing rule")
 
 
-_CLOSURE_TOKENS = ("CLOSED-PASS", "CLOSED-QUALIFIED", "CLOSED-FAIL",
-                   "RECYCLED")
-
-
-# A closure token ends where it is not continued as a token:
-# an alphanumeric continuation, or a hyphen carrying an
-# uppercase or digit continuation (CLOSED-PASS-EXTRA), is
-# part of a longer token and no closure stands. A hyphen
-# carrying a lowercase word or a space is a dash standing
-# after the token, the unspaced hyphen join, and the token
-# ends before it as it ends before an em dash.
-_CLOSURE_EXACT = r"(?![A-Za-z0-9]|-(?=[A-Z0-9]))"
-_CLOSURE_PATTERNS = (
-    (r"(?:Step closure state|Closure state):\s*"
-     r"(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|RECYCLED)"
-     + _CLOSURE_EXACT, 0),
-    (r"^[ \t]*(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL|"
-     r"RECYCLED)\s*[.,]", re.M),
-    (r"recorded as\s+(CLOSED-PASS|CLOSED-QUALIFIED|"
-     r"CLOSED-FAIL|RECYCLED)" + _CLOSURE_EXACT, 0),
-    (r"recorded\s+(RECYCLED)\b", 0),
-    (r"closes\s+(CLOSED-PASS|CLOSED-QUALIFIED|CLOSED-FAIL)"
-     + _CLOSURE_EXACT, 0),
-    (r"Verdict grade:\s*(FAIL)\b", 0),
-)
-
-
-def _closure_match_spans(text):
-    """The (start, end) span of every settled closure match."""
-    spans = []
-    for pattern, flags in _CLOSURE_PATTERNS:
-        for m in re.finditer(pattern, text, flags):
-            spans.append((m.start(), m.end()))
-    return spans
-
-
-_CLOSURE_JOIN_RE = re.compile(
-    r",|;|:|\s+(?:and|or|but|while|yet|nor|so|as|whereas|"
-    r"although|though|since|because|unless|when|if|until|"
-    r"once|whenever|before|after|lest|till|wherever|whilst)"
-    r"\s+|\s+[-—–]\s+|\s*[—–]\s*", re.I)
-
-
-# The genuine clause joiners the positional reading takes,
-# beside the listed joins in _CLOSURE_JOIN_RE: the
-# subordinating words that can stand in the joiner position
-# between two closure statements and join them as clauses.
-# A word in that position that is not one of these, and is
-# not a phrase below, is no joiner, whatever its position:
-# a verb head (counts, states) is the earlier statement's
-# own predicate, a lowercase name head (reyes) is the
-# following statement's subject, and an adverb head (soon,
-# yesterday) is a modifier, and none of them joins the two
-# statements as clauses.
-_POSITIONAL_JOINER_WORDS = frozenset({
-    "after", "although", "assuming", "because", "before",
-    "considering", "given", "if", "lest", "notwithstanding",
-    "once", "provided", "providing", "since", "supposing",
-    "though", "till", "unless", "until", "when", "whenever",
-    "where", "whereas", "wherever", "while", "whilst"})
-
-
-# Multi word joiners bound at their first word. The for
-# fear phrase stands here on its own ground: the word for
-# alone is no joiner, because for Step N is a statement
-# completion, but for fear carries no for Step N completion
-# after it, so the completion ground of the exclusion does
-# not reach it.
-_POSITIONAL_JOINER_PHRASES = (
-    "even though", "in case", "for fear", "as though", "as if")
-
-
-def _positional_rest_bound(rest):
-    """Whether a free punctuation bound stands in a join rest.
-
-    The rest of a segment after a joiner is read up to its
-    first Step naming, or to its end where it carries none:
-    punctuation standing after that naming belongs to the
-    joined clause itself (an aside after the foreign ruling,
-    a comma pair setting off a note after it) and does not
-    disarm the join. Before the naming, a punctuation mark
-    disarms the join only where it stands free as the
-    segment's own separator, and is left to the scan at
-    _first_closure_join, so a phrase standing before such a
-    bound is never misread as part of a join: a hyphen inside
-    a word (well-known) is no separator, and punctuation
-    standing as or inside a set off aside that closes inside
-    the rest is no separator either, the aside being crossed
-    as the scan crosses a closed aside. An aside opening in
-    the rest and never closing in it is a bound, as it is in
-    the scan.
-    """
-    step = re.search(r"Step\s+\d+\b", rest)
-    limit = step.start() if step is not None else len(rest)
-    pos = 0
-    while pos < limit:
-        char = rest[pos]
-        if char in "\"([{":
-            closing = {"\"": "\"", "(": ")", "[": "]",
-                       "{": "}"}[char]
-            if char == "\"":
-                found = rest.find("\"", pos + 1, limit)
-                if found < 0:
-                    return True
-                pos = found + 1
-                continue
-            level = 1
-            scan = pos + 1
-            while scan < limit and level:
-                if rest[scan] == char:
-                    level += 1
-                elif rest[scan] == closing:
-                    level -= 1
-                scan += 1
-            if level:
-                return True
-            pos = scan
-            continue
-        if char in ",;:—–)]}":
-            return True
-        if char == "-":
-            before = rest[pos - 1] if pos > 0 else ""
-            after = rest[pos + 1] if pos + 1 < len(rest) else ""
-            if not (before.isalnum() and after.isalnum()):
-                return True
-        pos += 1
-    return False
-
-
-def _positional_closure_join(text, lo, hi):
-    """A closure join read by position, or None.
-
-    The segment between two closure matches opens with the
-    earlier match's own completions, where it carries any
-    (a for Step N completion, or a quoted, parenthesised or
-    bracketed completion standing at the segment's head,
-    in sequence where two stand in a row, in either order),
-    and the word standing in the joiner position, at the
-    head of the segment or immediately after the last of
-    those completions, bounds the fragment only where it is
-    a genuine clause joiner: a single word in
-    _POSITIONAL_JOINER_WORDS or a phrase in
-    _POSITIONAL_JOINER_PHRASES, bound at its first word.
-    The position alone does not make a joiner: a verb head,
-    a lowercase name head, an adverb head, an article (the,
-    a, an), a capitalised word and a preposition in that
-    position are constituents of one of the two statements,
-    not a join between them, and the fragment is not cut
-    there, so a single statement naming two steps keeps its
-    settled not derivable reading. The word for alone opens
-    a completion, not a join, where it does not carry the
-    for Step N form; the phrase for fear is a joiner under
-    its own entry above. Where the segment carries
-    completions at its head and no joiner word stands after
-    them, the bound stands at the end of the last completion
-    where the next word is this, the onset of the following
-    statement, so completions in sequence do not leak the
-    step they name into the following statement.
-    The reading is bounded in the places stated here. A word
-    governing a Step naming directly after it (in Step 3, by
-    Step 3) is a preposition inside the earlier statement,
-    not a join; a joiner whose own clause opens on that
-    naming as its subject is the exception, read by the
-    naming's shape: Step N followed by a predicate word
-    (was, is, were, recorded, closes, closed, stands) is a
-    clause subject, as in provided Step 3 was recorded as,
-    and any other word after the naming leaves it a governed
-    naming, not a subject. Where a free punctuation bound
-    stands in the rest before its Step naming, at
-    _positional_rest_bound, that bound is the segment's
-    separator and is left to the scan, so a phrase standing
-    before such a bound is never misread as a joiner.
-    A joiner word is followed by a space, as the listed
-    joins are. Stated bound of this reading: a genuine
-    clause joiner standing outside _POSITIONAL_JOINER_WORDS,
-    _POSITIONAL_JOINER_PHRASES and the listed joins in
-    _CLOSURE_JOIN_RE does not bound by position; those
-    vocabularies are the design's bound for the class.
-    """
-    if text[:lo].count("\"") % 2 == 1:
-        return None
-    if text[:lo].count("(") - text[:lo].count(")") > 0:
-        return None
-    if text[:lo].count("[") - text[:lo].count("]") > 0:
-        return None
-    pos = lo
-    while pos < hi and text[pos] == " ":
-        pos += 1
-    if pos >= hi:
-        return None
-    cand = pos
-    completion_end = None
-    while cand < hi:
-        if text[cand] in "\"([":
-            closing = {"\"": "\"", "(": ")", "[": "]"}[text[cand]]
-            if text[cand] == "\"":
-                found = text.find("\"", cand + 1, hi)
-                if found < 0:
-                    return None
-                cand = found + 1
-            else:
-                level = 1
-                scan = cand + 1
-                while scan < hi and level:
-                    if text[scan] == text[cand]:
-                        level += 1
-                    elif text[scan] == closing:
-                        level -= 1
-                    scan += 1
-                if level:
-                    return None
-                cand = scan
-            completion_end = cand
-            while cand < hi and text[cand] == " ":
-                cand += 1
-            continue
-        completion = re.match(r"for\s+Step\s+\d+\b", text[cand:hi])
-        if completion is not None:
-            cand = cand + completion.end()
-            completion_end = cand
-            while cand < hi and text[cand] == " ":
-                cand += 1
-            continue
-        break
-    if cand >= hi:
-        return None
-    join_end = None
-    for phrase in _POSITIONAL_JOINER_PHRASES:
-        if text[cand:cand + len(phrase)] == phrase:
-            after_phrase = cand + len(phrase)
-            if after_phrase < hi and text[after_phrase] == " ":
-                join_end = after_phrase
-            break
-    if join_end is None:
-        match = re.match(r"([A-Za-z]+)", text[cand:hi])
-        if match is not None and \
-                match.group(1) in _POSITIONAL_JOINER_WORDS:
-            end = cand + match.end()
-            if end < hi and text[end] == " ":
-                join_end = end
-    if join_end is None:
-        if completion_end is not None:
-            onset = re.match(r"([A-Za-z]+)", text[cand:hi])
-            if onset is not None and onset.group(1) == "this":
-                return (completion_end, completion_end)
-        return None
-    rest = text[join_end:hi]
-    if re.match(r"\s*Step\s+\d+\b", rest) is not None:
-        subject = re.match(
-            r"Step\s+\d+\s+(?:was|is|were|recorded|closes|"
-            r"closed|stands)\b", rest.lstrip())
-        if subject is None:
-            return None
-    if _positional_rest_bound(rest):
-        return None
-    return (cand, join_end)
-
-
-def _first_closure_join(text, lo, hi, before_side=False,
-                        other_pos=None):
-    """The first closure statement bound in text[lo:hi], or None.
-
-    The bound is returned as a (start, end) pair. Beside the
-    joins in _CLOSURE_JOIN_RE (the punctuation joins, the
-    conjunction joins and the dash joins, an em or en dash
-    bounding at any spacing and a hyphen dash bounding
-    spaced, as before), a word in the joiner position bounds
-    under the positional rule at _positional_closure_join,
-    and a hyphen standing in a join position, at the head of
-    the segment (immediately after a closure match) or
-    immediately after a Step N completion inside the segment,
-    bounds at any spacing, as its em dash twin does: a hyphen
-    inside a word elsewhere in the segment (well-known) is no
-    join. A quoted, parenthesised or bracketed statement
-    is a bound in either direction. After a match, an
-    opening quote, parenthesis or bracket bounds the fragment
-    where the set off matter begins, where that
-    matter holds the neighbouring match (other_pos stands
-    inside it, or it never closes before it); set off
-    matter that closes before the neighbouring
-    match is a completion of the match own statement, not a
-    bound, and a step named inside it stays in the fragment.
-    A closing quote, parenthesis or bracket bounds the
-    fragment where matter the match stands inside ends.
-    Before a match, a closing mark
-    bounds the fragment after it, and a set off
-    completion of the earlier statement
-    bounds the fragment after its closing mark, so a step
-    named inside that completion stays with the earlier
-    statement; an opening mark whose matter does not close
-    before the match bounds nothing on the before side, the
-    match standing inside that matter itself. The word for
-    is no conjunction join: for Step N is a statement
-    completion, not a join, and a bound at it would cut that
-    completion from the statement it completes. Single
-    quotes bound nothing: an apostrophe inside a word is
-    indistinguishable from one in these records.
-    """
-    if hi <= lo:
-        return None
-    positional = _positional_closure_join(text, lo, hi)
-    if positional is not None:
-        return positional
-    in_quote = text[:lo].count("\"") % 2 == 1
-    depth = text[:lo].count("(") - text[:lo].count(")")
-    bracket_depth = text[:lo].count("[") - text[:lo].count("]")
-    pos = lo
-    while pos < hi:
-        char = text[pos]
-        if in_quote or depth > 0 or bracket_depth > 0:
-            if char == "\"" and in_quote:
-                return (pos, pos + 1)
-            if char == ")" and depth > 0:
-                return (pos, pos + 1)
-            if char == "]" and bracket_depth > 0:
-                return (pos, pos + 1)
-            if char == "\"":
-                in_quote = True
-            elif char == "(":
-                depth += 1
-            elif char == "[":
-                bracket_depth += 1
-            pos += 1
-            continue
-        if char == "\"" or char == "(" or char == "[":
-            if char == "\"":
-                found = text.find("\"", pos + 1, hi)
-                scan = found + 1 if found >= 0 else None
-            else:
-                closing = ")" if char == "(" else "]"
-                level = 1
-                scan = pos + 1
-                while scan < hi and level:
-                    if text[scan] == char:
-                        level += 1
-                    elif text[scan] == closing:
-                        level -= 1
-                    scan += 1
-                if level:
-                    scan = None
-            if not before_side:
-                if scan is None or other_pos is None or \
-                        other_pos < scan - 1:
-                    return (pos, pos + 1)
-                pos = scan
-                continue
-            if scan is not None:
-                return (pos, scan)
-            if char == "\"":
-                in_quote = True
-            elif char == "(":
-                depth = 1
-            else:
-                bracket_depth = 1
-            pos += 1
-            continue
-        if char == ")" or char == "]":
-            return (pos, pos + 1)
-        if char == "-":
-            head = text[lo:pos].rstrip()
-            if not head or re.search(r"Step \d+$", head):
-                return (pos, pos + 1)
-        join = _CLOSURE_JOIN_RE.match(text, pos, hi)
-        if join is not None:
-            return (join.start(), join.end())
-        pos += 1
-    return None
-
-
-def _closure_names_foreign_step(text, match, step):
-    """Whether the closure statement at a match names another step.
-
-    The statement is the fragment holding the match, bounded by
-    true sentence boundaries under the rule at _dot_ends_sentence:
-    the last true sentence end or line break before the match, and
-    the first one after it, where a stop inside an abbreviation
-    from the completed set, a decimal, or a person's initials is
-    no end, a semicolon before the match is no end either, and
-    question and exclamation marks are ends. A comma in the
-    closure sentence stays inside the fragment where no second
-    closure statement stands in the sentence. The fragment is
-    also bounded by the neighbouring closure statements in the
-    same sentence, at the full bound set stated at
-    _first_closure_join: a comma, a semicolon, a colon, a dash
-    (an em or en dash at any spacing, a hyphen spaced or in
-    join position), the conjunction joins
-    and, or, but, while, yet, nor, so, as, whereas, although,
-    though, since, because, unless, when, if, until, once,
-    whenever, before, after, lest, till, wherever and whilst,
-    a word in the joiner position under the positional rule,
-    and a quoted, parenthesised or bracketed statement bound.
-    A join counts as a
-    bound only where it joins two closure statements, that is,
-    where a second closure match stands on its other side in
-    the same sentence. After the match, the fragment ends at
-    the first such join between the match and the nearest
-    later closure match. Before the match, the fragment begins
-    after the first such join following the nearest earlier
-    closure match, so a step named after that earlier match's
-    token, as the completion of the earlier statement, stays
-    with that earlier statement and does not leak into this
-    one; where no join stands between the earlier match and
-    this one, the fragment begins at the earlier match's end,
-    as before. A Step number standing in a different closure
-    statement of the same sentence is therefore not part of
-    this statement. A Step number in that fragment other than
-    the piece own step makes the statement a closure for that
-    other step, not for this piece. A fragment naming the
-    piece own step, or naming no step at all, keeps its
-    standing reading.
-    """
-    if step is None:
-        return False
-    start = 0
-    for pos in range(match.start()):
-        char = text[pos]
-        if char == "\n" or char in "?!" or \
-                (char == "." and _dot_ends_sentence(text, pos)):
-            start = pos + 1
-    end = len(text)
-    for pos in range(match.end(1), len(text)):
-        char = text[pos]
-        if char == "\n" or char in "?!;" or \
-                (char == "." and _dot_ends_sentence(text, pos)):
-            end = pos
-            break
-    spans = sorted(_closure_match_spans(text))
-    earlier = [span_end for span_start, span_end in spans
-               if span_end <= match.start() and span_end > start]
-    if earlier:
-        earlier_end = max(earlier)
-        join = _first_closure_join(text, earlier_end, match.start(),
-                                   before_side=True)
-        start = join[1] if join is not None else earlier_end
-    later = [span_start for span_start, span_end in spans
-             if span_start >= match.end()]
-    if later:
-        join = _first_closure_join(text, match.end(), min(later),
-                                   other_pos=min(later))
-        if join is not None and join[0] < end:
-            end = join[0]
-    fragment = text[start:end]
-    for found in re.finditer(r"Step (\d+)\b", fragment):
-        if int(found.group(1)) != step:
-            return True
-    return False
-
-
-def _recorded_closure(text, step=None):
-    """Return the recorded closure state in a settled form, or None.
-
-    Matching is on the recorded closure state field and on the verdict
-    forms the gate records use, exact forms only, never on a closure
-    token mentioned in prose. Extraction is step scoped where the
-    piece step is given: a closure statement naming a different step
-    is not a closure for the piece own step and counts nowhere, so a
-    statement in a settled form whose sentence names another step is
-    passed over, and the scan continues to any later statement in
-    the settled forms that names the piece own step or names no
-    step at all. A piece whose only closure is foreign carries no
-    closure of its own.
-    """
-    for pattern, flags in _CLOSURE_PATTERNS:
-        for m in re.finditer(pattern, text, flags):
-            if _closure_names_foreign_step(text, m, step):
-                continue
-            return m.group(1)
-    return None
-
-
-def _f2_ranked_pieces(captured, step):
-    ranked = []
-    for cls, rank in ((CLS_GATE_RECORD, 0), (CLS_GATE_RULING, 1),
-                      (CLS_GATE_ADJUDICATION, 2), (CLS_REGATE_RECORD, 3)):
-        for p in captured.step_pieces(step, cls):
-            name = p.paths[0]
-            r = rank
-            num = 0
-            if "round" in name or "reaudit" in name:
-                r = 3
-                m = re.search(r"(?:round|reaudit)-?(\d+)", name)
-                num = int(m.group(1)) if m else 0
-            if cls == CLS_REGATE_RECORD:
-                # G-02 order: base form first, regate variants last.
-                # A regate record ranks behind every piece that is
-                # not itself a regate, numbered round or re-audit
-                # named rulings included, so a regate is the counted
-                # first ruling only where no earlier ruling piece
-                # stands.
-                r = 4
-            ranked.append((r, num, name, p))
-    ranked.sort(key=lambda item: (item[0], item[1], item[2]))
-    # Selection within each identity group, and nothing else: where
-    # a piece at an identity carries substantive text and a duplicate
-    # at the same identity carries none (its text was not read in
-    # full, or it carries no content at all), the ranked list rests
-    # on the substantive piece for that identity, so the gate record
-    # selection feeds from the readable duplicate as the step record
-    # and metrics record selections do on the same shapes. Where no
-    # piece at an identity carries substantive text, every piece at
-    # that identity stands in the ranked list as it stands today, so
-    # the standing not derivable forms hold unchanged. The ranked
-    # order itself, and every counting passage that rests on this
-    # list, are unchanged.
-    selected = {}
-    for item in ranked:
-        piece = item[3]
-        if piece.text is not None and piece.text.strip() and \
-                piece.identity not in selected:
-            selected[piece.identity] = piece
-    if selected:
-        ranked = [item for item in ranked
-                  if item[3].identity not in selected
-                  or item[3] is selected[item[3].identity]]
-    return ranked
-
-
-def _f2_base_closures(ranked):
-    """The closures standing in a step base gate record and ruling.
-
-    Only the base forms count, the pieces whose file name carries
-    no round or re-audit naming, as the F15-14 conflict guard has
-    always read them. A base piece standing as a disagreement
-    merged piece carries no text of its own, so no closure can be
-    read from it; it stands in the set as a contested entry instead,
-    wherever it stands in the ranked order, behind a substantive
-    governing piece included. Where a substantive base closure
-    stands beside that entry the set holds more than one entry, so
-    the conflict guard in every consumer of this set treats the
-    step as contested and prints it present but not derivable,
-    whatever the governing piece carries. Where no substantive
-    base closure stands beside it, _f2_first_closure already
-    returns the contested governing form or a closure of None for
-    the step, so the not derivable form holds on that ground too.
-    """
-    closures = set()
-    for item in ranked:
-        piece = item[3]
-        base_name = piece.paths[0].rsplit("/", 1)[-1]
-        if piece.record_class not in (CLS_GATE_RECORD,
-                                      CLS_GATE_RULING) \
-                or "round" in base_name or "reaudit" in base_name:
-            continue
-        if piece.text:
-            found = _recorded_closure(piece.text, piece.step)
-            if found:
-                closures.add(found)
-        elif piece.text is None and piece.not_read_reason and \
-                "duplicate content disagreement" in \
-                piece.not_read_reason:
-            closures.add("CONTESTED")
-    return closures
-
-
-def _f2_first_closure(ranked):
-    """The piece carrying a step first ruling, and its closure.
-
-    One governing test in ranked order. The first piece carrying
-    substantive text governs, closure or not: a governing piece
-    carrying no closure in the settled forms leaves the step not
-    derivable, whatever stands behind it, as the pinned head rule
-    has always stated for a substantive head. A disagreement
-    merged piece also governs, as contested: it carries no text
-    of its own, because its copies disagree, and its copies
-    closures are the contest the base closure conflict guard
-    weighs, so it returns with a closure of None and the step is
-    not derivable on that ground. Only pieces carrying neither
-    substantive text nor a disagreement are passed over: a piece
-    with no content at all, its text not read in full or empty,
-    carries no closure either, and it does not erase a sound
-    ruling at another alias form of the same step, so the scan
-    continues past it to the governing piece. Where no governing
-    piece stands in the group, the head piece stands with a
-    closure of None, so the standing not derivable forms hold
-    unchanged.
-    """
-    if not ranked:
-        return None, None
-    for item in ranked:
-        piece = item[3]
-        if piece.text is not None and piece.text.strip():
-            return piece, _recorded_closure(piece.text, piece.step)
-        if piece.text is None and piece.not_read_reason and \
-                "duplicate content disagreement" in \
-                piece.not_read_reason:
-            return piece, None
-    return ranked[0][3], None
-
+# ------------------------------------------------------- F-2, Q-1, Q-3
 
 def _derive_f2(captured, universe):
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
     gates = captured.pieces_of(*GATE_CLASSES)
-    pointer = None
-    for p in captured.pieces_of(CLS_SNAPSHOT):
-        if p.text and "steps ruled on" in p.text:
-            pointer = p.paths[0]
-            break
-    if pointer is None:
-        pointer = gates[0].paths[0] if gates else \
-            (captured.first_path(CLS_STEP_RECORD) or "steps/step-01-record.md")
-    history_steps = []
-    for s in sorted(universe.evidenced):
-        if captured.step_pieces(s, *GATE_CLASSES):
-            continue
-        for p in captured.step_pieces(s, CLS_STEP_RECORD):
-            if p.text and "gate history" in p.text.lower():
-                history_steps.append(s)
-                break
-    if not gates and not history_steps:
-        return DerivationResult(
-            "F-2", "missing", "no rate figure",
-            "denominator steps ruled on, with plain approvals and "
-            "qualified approvals as two subcounts under that one "
-            "denominator", pointer,
+    pointer = gates[0].paths[0] if gates else \
+        "steps/step-01-gate-record.md"
+    if not gates:
+        return _refusal(
+            "F-2", "missing", "no first ruling figure", denom,
+            pointer,
             shows="no gate record, gate ruling or gate adjudication "
-                  "stands in the tree for any step",
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists in the tree, "
-                    "so the row is missing",
+                  "stands in the capture for this metric",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
             rule_name="F-2 feeder standing rule")
-    plain = 0
-    qualified = 0
-    ruled = 0
-    not_derivable = []
-    unruled = []
-    not_approved = []
-    recycled_notes = []
-    adjudication_only = []
-    keeper_note = None
-    for s in sorted(universe.evidenced):
-        ranked = _f2_ranked_pieces(captured, s)
-        if not ranked:
-            if s in history_steps:
-                not_derivable.append(s)
-            else:
-                unruled.append(s)
-            continue
-        regates = [item for item in ranked
-                   if item[3].record_class == CLS_REGATE_RECORD]
-        closure = None
-        if regates:
-            if len(_f2_base_closures(ranked)) > 1:
-                not_derivable.append(s)
-                continue
-            first, closure = _f2_first_closure(ranked)
-            if first is not None and \
-                    first.record_class == CLS_GATE_ADJUDICATION:
-                adjudication_only.append(s)
-            # The recycled note scan rests on the same base gate
-            # record and gate ruling pieces as the conflict guard
-            # above, so the note can never name a closure the
-            # counting does not rest on. A first ruling standing
-            # outside that pair counts in the non regate form.
-            for item in ranked:
-                piece = item[3]
-                base_name = piece.paths[0].rsplit("/", 1)[-1]
-                if piece.record_class not in (CLS_GATE_RECORD,
-                                              CLS_GATE_RULING) \
-                        or "round" in base_name \
-                        or "reaudit" in base_name:
-                    continue
-                if piece.text:
-                    earlier = _recorded_closure(piece.text, piece.step)
-                    if earlier in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
-                        recycled_notes.append(
-                            "Step %d ran as two instances with the first "
-                            "instance closed %s" % (s, earlier))
-                        not_approved.append(s)
-                        break
-        else:
-            if len(_f2_base_closures(ranked)) > 1:
-                not_derivable.append(s)
-                continue
-            first, closure = _f2_first_closure(ranked)
-            if first is not None and \
-                    first.record_class == CLS_GATE_ADJUDICATION:
-                adjudication_only.append(s)
-        if closure is None:
-            not_derivable.append(s)
-        elif closure == "CLOSED-PASS":
-            plain += 1
-            ruled += 1
-        elif closure == "CLOSED-QUALIFIED":
-            qualified += 1
-            ruled += 1
-        elif closure in ("CLOSED-FAIL", "RECYCLED", "FAIL"):
-            ruled += 1
-            if s not in not_approved:
-                not_approved.append(s)
-        else:
-            not_derivable.append(s)
-        if s == 22 and closure:
-            for item in ranked:
-                piece = item[3]
-                if piece.text and "Keeper" in piece.text:
-                    keeper_note = (
-                        "Step 22 is classed by content as that step gate "
-                        "record with closure %s" % closure)
-                    break
-    denom = ("denominator %d steps ruled on, with plain approvals and "
-             "qualified approvals as two subcounts under that one "
-             "denominator" % ruled)
-    if unruled:
-        denom += ("; " + _step_list_text(unruled) +
-                  " named, no gate record or gate ruling stands for "
-                  "that step")
-    subcounts = ("plain approvals %d; qualified approvals %d; steps "
-                 "ruled on %d" % (plain, qualified, ruled))
-    note_parts = list(recycled_notes)
-    for s in sorted(set(not_approved) - set(
-            n for n in not_approved
-            if any(note.startswith("Step %d " % n)
-                   for note in recycled_notes))):
-        note_parts.append("Step %d ruled and not approved" % s)
-    if not_derivable:
-        facts = []
-        classes = {p.record_class for p in gates}
-        if CLS_GATE_RECORD in classes and CLS_GATE_RULING in classes:
-            facts.append("first ruling outcomes stand in gate files "
-                         "under both gate names")
-        for s in adjudication_only:
-            if s in not_derivable:
-                facts.append("Step %d first ruling stands only in its "
-                             "gate adjudication" % s)
-        facts.extend(recycled_notes)
-        if keeper_note:
-            facts.append(keeper_note)
-        facts.append("the steps named here carry no first ruling "
-                     "outcome in the settled forms: " +
-                     _named_steps(not_derivable))
-        figures = "no rate figure; " + subcounts
-        for p in captured.pieces_of(CLS_SNAPSHOT):
-            if p.text and p.step is not None:
-                m = re.search(r"(\d+) of (\d+) steps ruled on", p.text)
-                if m:
-                    figures += ("; the only stated figure is the "
-                                "provisional snapshot figure %s of %s "
-                                "steps ruled on at Step %d"
-                                % (m.group(1), m.group(2), p.step))
-                    break
-        if note_parts and not recycled_notes:
-            figures += "; " + "; ".join(note_parts)
+    outcomes = 0
+    for piece in gates:
+        if piece.text and "First ruling outcome" in piece.text:
+            outcomes += 1
+    if outcomes == len([g for g in gates if g.text is not None]) and \
+            outcomes:
         return DerivationResult(
-            "F-2", "present but not derivable", figures, denom, pointer,
-            shows=", ".join(facts),
-            code_token="missing-field",
-            follows="missing-field one or more step contributions are "
-                    "not derivable in the settled forms, so no rate is "
-                    "printed",
-            rule_name="F-2 first ruling rule")
-    if ruled == 0:
-        return DerivationResult(
-            "F-2", "present but not derivable",
-            "no rate figure; " + subcounts, denom, pointer,
-            shows="gate pieces stand in the tree and no step has been "
-                  "ruled on, so the denominator of steps ruled on is zero",
-            code_token="missing-field",
-            follows="missing-field the ruling outcome field is absent "
-                    "for every step, so no rate is printed",
-            rule_name="F-2 empty denominator rule")
-    rate = (plain + qualified) * 100.0 / ruled
-    figures = ("first-time approval rate %s percent; %s"
-               % (_fmt_num(rate), subcounts))
-    extra_notes = list(recycled_notes)
-    if recycled_notes:
-        extra_notes = [note + ", and that first instance was not "
-                              "approved; the recycled step counts once"
-                       for note in recycled_notes]
-    plain_not_approved = [s for s in sorted(set(not_approved))
-                          if not any(note.startswith("Step %d " % s)
-                                     for note in recycled_notes)]
-    for s in plain_not_approved:
-        extra_notes.append("Step %d ruled and not approved" % s)
-    if extra_notes:
-        figures += "; " + "; ".join(extra_notes)
-    return DerivationResult("F-2", "present", figures, denom, pointer,
-                            rule_name="F-2 first ruling rule")
-
-
-# ------------------------------------------------------- Q-1, Q-3, Q-4
-
-_SEV_RE = re.compile(r"(Critical|High|Medium|Low)\s+(\d+)")
-
-
-def _sev_counts_in(line):
-    counts = {}
-    for name, value in _SEV_RE.findall(line):
-        if name not in counts:
-            counts[name] = int(value)
-    return counts
-
-
-def _fmt_sev(counts):
-    return ", ".join("%s %d" % (name, counts[name]) for name in counts)
-
-
-def _repair_cited(piece):
-    """Whether a piece repairs its own truncation in place.
-
-    The recognition marker is a Completion section inside the same
-    piece, standing after the truncated part, headed Completion
-    section, stating that the piece was found truncated and
-    identifying its piece as this file, which supplies the missing
-    content in place.
-    """
-    if piece.text is None:
-        return False
-    base = piece.paths[0].rsplit("/", 1)[-1]
-    return ("Completion section" in piece.text and
-            "found truncated" in piece.text and base in piece.text and
-            "supplies the missing content in place" in piece.text)
-
-
-def _is_truncated_piece(piece):
-    if piece.text is None or _repair_cited(piece):
-        return False
-    lines = [line for line in piece.text.splitlines() if line.strip()]
-    if not lines:
-        return False
-    last = lines[-1].strip()
-    if "[truncated" in last:
-        return True
-    if piece.record_class != CLS_AUDIT_PAPER:
-        return False
-    if last.startswith(("#", "|", "-", "*")):
-        return False
-    return not last.endswith((".", "!", "?", ":", "`", '"'))
-
-
-def _accepted_breakdown(piece):
-    """Post triage severity breakdown in a round record, or None.
-
-    Accepted forms under G-06: a line that states it is post triage
-    carrying severity counts, in any round record; a Totals line in
-    a gate adjudication table or in a register; and a verdict
-    summary line, a verdict grade or a no finding outstanding
-    statement carrying the four severity counts. Pre triage lines,
-    attack totals and fresh break lines never qualify.
-    """
-    if piece.text is None:
-        return None
-    for line in piece.text.splitlines():
-        counts = _sev_counts_in(line)
-        if not counts:
-            continue
-        low = line.lower()
-        if "pre triage" in low or "pre-triage" in low:
-            continue
-        if "attack" in low or "fresh breaks" in low:
-            continue
-        if "post triage" in low or "post-triage" in low:
-            return counts, line
-        if piece.record_class in (CLS_GATE_ADJUDICATION, CLS_ADJUDICATION,
-                                  CLS_FIX_REGISTER, CLS_DEFECT_REGISTER) \
-                and "totals" in low:
-            return counts, line
-        if "verdict grade" in low or "no finding is outstanding" in low:
-            return counts, line
-    return None
-
-
-def _round_number_for_piece(piece):
-    name = piece.paths[0].rsplit("/", 1)[-1]
-    m = re.search(r"round(\d+)", name)
-    if m:
-        return int(m.group(1))
-    m = re.search(r"reaudit-(\d+)", name)
-    if m:
-        return int(m.group(1)) + 1
-    if "reaudit" in name:
-        return 2
-    m = re.search(r"fix-register-(\d+)", name)
-    if m:
-        return int(m.group(1))
-    if piece.text:
-        for line in piece.text.splitlines()[:3]:
-            if line.startswith("#"):
-                m = re.search(r"Round (\d+)", line)
-                if m:
-                    return int(m.group(1))
-    return 1
-
-
-def _governing_rounds(captured):
-    """Governing severity scale statements for Q-1, under G-07 and WV-6.
-
-    Returns (governing, conflict_round_numbers). A later governing
-    statement that states it resolves the conflict supersedes the
-    conflict for the rounds it names.
-    """
-    governing = {}
-    conflict = set()
-    order = (CLS_GATE_ADJUDICATION, CLS_ADJUDICATION)
-    for p in captured.pieces_of(*order):
-        if p.text is None:
-            continue
-        resolves = "resolves the conflict" in p.text.lower()
-        statements = []
-        for m in re.finditer(r"Scale (\w+) governs Rounds? ([0-9, and]+)",
-                             p.text):
-            rounds = {int(x) for x in re.findall(r"\d+", m.group(2))}
-            statements.append((m.group(1), rounds))
-        for m in re.finditer(
-                r"commissioned severity scale governs Rounds? "
-                r"([0-9, and]+)", p.text, re.I):
-            rounds = {int(x) for x in re.findall(r"\d+", m.group(1))}
-            statements.append(("commissioned scale", rounds))
-        for scale, rounds in statements:
-            if resolves:
-                for r in rounds:
-                    governing[r] = scale
-                    conflict.discard(r)
+            "F-2", "present",
+            "first ruling outcomes recorded for %d steps" % outcomes,
+            denom, pointer, rule_name="F-2 first ruling rule")
+    held_clauses = []
+    classes = {piece.record_class for piece in gates}
+    if CLS_GATE_RECORD in classes and CLS_GATE_RULING in classes:
+        held_clauses.append(
+            "gate outcomes stand scattered across gate records and "
+            "gate rulings under both names")
+    rate = None
+    text = captured.assembled_metrics or ""
+    section_step = None
+    for line in text.splitlines():
+        m = re.match(r"## Step (\d+) step snapshot", line)
+        if m:
+            section_step = int(m.group(1))
+        m = re.search(r"First-time approval rate so far \(F-2\): "
+                      r"(\d+) of (\d+)", line)
+        if m:
+            rate = (m.group(1), m.group(2), section_step)
+    if rate is None:
+        for piece in captured.pieces:
+            if piece.text is None:
                 continue
-            for r in rounds:
-                if r in governing and governing[r] != scale:
-                    conflict.add(r)
-                else:
-                    governing.setdefault(r, scale)
-    return governing, conflict
-
-
-def _q1_rounds(captured):
-    """Audit rounds evidenced in the tree, keyed by (step, round)."""
-    rounds = {}
-
-    def entry(key):
-        return rounds.setdefault(key, {"pieces": [], "breakdown": None,
-                                       "source": None, "line": None,
-                                       "truncated": False,
-                                       "attack_numbers": None})
-
-    sources = captured.pieces_of(CLS_AUDIT_PAPER, CLS_FIX_REGISTER,
-                                 CLS_DEFECT_REGISTER, CLS_GATE_RULING)
-    for p in sources:
-        if p.step is None:
-            continue
-        key = (p.step, _round_number_for_piece(p))
-        e = entry(key)
-        e["pieces"].append(p)
-        found = _accepted_breakdown(p)
-        if found and e["breakdown"] is None:
-            e["breakdown"], e["line"] = found
-            e["source"] = p
-        if _is_truncated_piece(p):
-            e["truncated"] = True
-        if p.text:
-            m = re.search(r"(\d+) numbered attacks", p.text)
+            m = re.search(r"First-time approval rate so far: "
+                          r"(\d+) of (\d+)", piece.text)
             if m:
-                e["attack_numbers"] = int(m.group(1))
-            elif any("attack" in line.lower() and "total" in line.lower()
-                     and _sev_counts_in(line)
-                     for line in p.text.splitlines()):
-                e["attack_numbers"] = e["attack_numbers"] or 0
-    for p in captured.pieces_of(CLS_GATE_ADJUDICATION, CLS_ADJUDICATION):
-        if p.step is None:
-            continue
-        found = _accepted_breakdown(p)
-        if not found:
-            continue
-        key = (p.step, _round_number_for_piece(p))
-        e = entry(key)
-        e["pieces"].append(p)
-        if e["breakdown"] is None:
-            e["breakdown"], e["line"] = found
-            e["source"] = p
-    return rounds
+                rate = (m.group(1), m.group(2), piece.step)
+                break
+    if rate is not None and rate[2] is not None:
+        held_clauses.append(
+            "the only rate in the tree is provisional and partial "
+            "at %s of %s in the Step %d snapshot" % rate)
+    held_clauses.append("no rate is derived from final closing "
+                        "states")
+    return _refusal(
+        "F-2", "present but not derivable", "no first ruling figure",
+        denom, _pointer("F-2", pointer, captured),
+        shows="gate files stand for the steps and no first ruling "
+              "outcome field stands recorded in one named place for "
+              "the steps the row spans",
+        token="missing-field",
+        follows="the first ruling outcome field the row requires "
+                "does not stand, so no rate figure stands",
+        rule_name="F-2 first ruling outcome field rule",
+        broken="the first ruling outcome field recorded per step "
+               "in one named place",
+        required="a first ruling outcome recorded per step in one "
+                 "named place, in the Auditor approval row form",
+        held=_held_join(held_clauses))
 
 
 def _derive_q1(captured, universe):
-    registers = captured.pieces_of(CLS_FIX_REGISTER)
-    papers = captured.pieces_of(CLS_AUDIT_PAPER, CLS_ADJUDICATION,
-                                 CLS_GATE_ADJUDICATION)
-    if registers:
-        pointer = max(registers, key=lambda p: p.size).paths[0]
-    elif papers:
-        pointer = papers[0].paths[0]
-    else:
-        pointer = captured.metrics_single_path or \
-            "wiki/wiki/synthesis/build-metrics-record.md"
-    rounds = _q1_rounds(captured)
-    governing, conflict_numbers = _governing_rounds(captured)
-    if not rounds and not conflict_numbers:
-        return DerivationResult(
-            "Q-1", "missing", "no count figure",
-            "denominator population audit rounds evidenced in the "
-            "tree: none; excluded: none", pointer,
-            shows="no audit round is evidenced in the tree, so the "
-                  "population the metric counts over is empty",
-            code_token="no-feeder-record",
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    papers = captured.pieces_of(CLS_AUDIT_PAPER, CLS_FIX_REGISTER)
+    pointer = papers[0].paths[0] if papers else \
+        "audit/step-01-audit-paper.md"
+    if not papers:
+        return _refusal(
+            "Q-1", "missing", "no audit round figure", denom, pointer,
+            shows="no audit round record stands in the capture for "
+                  "this metric",
+            token="no-feeder-record",
             follows="no feeder record for the metric exists in the "
-                    "tree, so the row is missing, with its empty "
-                    "population stated",
-            rule_name="Q-1 empty population rule")
-    # Mixed severity scales stated on breakdown lines, with no
-    # governing statement, block the rounds that state them (D-10).
-    scale_by_round = {}
-    for key, e in rounds.items():
-        if e["line"]:
-            m = re.search(r"on Scale (\w+)", e["line"])
-            if m:
-                scale_by_round[key] = m.group(1)
-    mixed_blocked = set()
-    if len(set(scale_by_round.values())) > 1 and not governing:
-        mixed_blocked = set(scale_by_round)
-    qualifying = {}
-    excluded = []
-    for key in sorted(rounds):
-        step, rnd = key
-        e = rounds[key]
-        name = "Step %d Round %d" % (step, rnd)
-        if rnd in conflict_numbers or key in mixed_blocked:
-            excluded.append((key, "governing scale conflict"))
-        elif e["breakdown"] is not None:
-            qualifying[key] = e
-        elif e["attack_numbers"] is not None:
-            excluded.append((key, "the round totals grade attacks, "
-                                  "not triaged findings"))
-        elif e["truncated"]:
-            excluded.append((key, "truncated with no correcting "
-                                  "record, and the round is marked "
-                                  "incomplete"))
-        else:
-            excluded.append((key, "no post triage breakdown"))
-    for r in sorted(conflict_numbers):
-        if all(key[1] != r for key in rounds):
-            excluded.append(((None, r), "governing scale conflict"))
-            excluded.sort(key=lambda item: (item[0][0] is None,
-                                            item[0][0] or 0, item[0][1]))
-    excl_text = "; ".join(
-        "%s excluded: %s" % (
-            "Round %d" % key[1] if key[0] is None else
-            "Step %d Round %d" % key, reason)
-        for key, reason in excluded)
-    count_bits = []
-    for key in sorted(qualifying):
-        e = qualifying[key]
-        adjective = "adjudicated breakdown" if e["source"].record_class \
-            in (CLS_GATE_ADJUDICATION, CLS_ADJUDICATION) else "breakdown"
-        count_bits.append("Step %d Round %d %s %s"
-                          % (key[0], key[1], adjective,
-                             _fmt_sev(e["breakdown"])))
-    counts_label = "bounded counts" if excluded else "counts"
-    denom = ("denominator population audit rounds evidenced in the "
-             "tree, stated before the counts; excluded: %s; %s: %s"
-             % (excl_text or "none", counts_label,
-                "; ".join(count_bits) if count_bits else "none"))
-    # Shows, built from the records that stand in this tree.
-    clauses = []
-    table_empty, stale = _metrics_table_empty(captured, "Audit round table")
-    if table_empty:
-        clauses.append("the audit round table is empty with stale text")
-    if registers:
-        biggest = max(registers, key=lambda p: p.size)
-        entries = None
-        if biggest.text:
-            m = re.search(r"[Ff]indings and checks registered:\s*(\d+)",
-                          biggest.text)
-            if m:
-                entries = int(m.group(1))
-        if entries is not None:
-            clauses.append("the Step %d fix register holds %d entries "
-                           "with no severity breakdown"
-                           % (biggest.step, entries))
-            for p in captured.step_pieces(biggest.step, CLS_AUDIT_PAPER):
-                if p.text and "red" in p.paths[0]:
-                    for line in p.text.splitlines():
-                        counts = _sev_counts_in(line)
-                        if counts and "totals" in line.lower():
-                            clauses.append(
-                                "the Step %d Red paper totals %s are "
-                                "pre triage paper counts"
-                                % (biggest.step, _fmt_sev(counts)))
-                            break
-                    break
-    for key in sorted(rounds):
-        e = rounds[key]
-        if e["attack_numbers"]:
-            clauses.append("the Step %d totals grade %d numbered "
-                           "attacks, not triaged findings"
-                           % (key[0], e["attack_numbers"]))
+                    "tree, so the row is missing",
+            rule_name="Q-1 feeder standing rule")
+    for piece in papers:
+        if piece.text and "Post triage" in piece.text:
+            return DerivationResult(
+                "Q-1", "present",
+                "post triage breakdown stands in the round record",
+                denom, pointer, rule_name="Q-1 breakdown rule")
+    held_clauses = []
+    audit_section = _metrics_section(
+        captured.assembled_metrics or "", "## Audit round table")
+    if audit_section and ("no rows" in audit_section.lower() or
+                          "(no rows yet)" in audit_section.lower()):
+        held_clauses.append("the audit round table holds no rows")
+    held_clauses.append("severity evidence stands scattered in "
+                        "unlike forms")
+    fix_step = None
+    for piece in captured.pieces_of(CLS_FIX_REGISTER):
+        if piece.text is None:
+            continue
+        if "dispositions" in piece.text.lower() and \
+                "severity" not in piece.text.lower():
+            if piece.paths[0].startswith("audit/"):
+                fix_step = piece.step
+                break
+            if fix_step is None:
+                fix_step = piece.step
+    if fix_step is not None:
+        held_clauses.append(
+            "the Step %d fix register states dispositions with no "
+            "severity breakdown" % fix_step)
+    adj_step = None
+    for piece in captured.pieces_of(CLS_GATE_ADJUDICATION):
+        if piece.text is None:
+            continue
+        if "commissioned" in piece.text.lower() and \
+                "critical" in piece.text.lower():
+            adj_step = piece.step
             break
-    statement = None
-    for key in sorted(qualifying):
-        e = qualifying[key]
-        src = e["source"]
-        if src is not None and src.text and \
-                "corrected total" in src.text.lower():
-            truncated_names = [p.paths[0] for p in e["pieces"]
-                               if _is_truncated_piece(p)]
-            if truncated_names:
-                statement = ("source citation: %s, the correcting "
-                             "record that names the corrected total "
-                             "for the truncated paper %s."
-                             % (src.paths[0], truncated_names[0]))
-    if conflict_numbers or mixed_blocked:
-        blocked = sorted(conflict_numbers) or \
-            sorted({key[1] for key in mixed_blocked})
-        if mixed_blocked and not conflict_numbers:
-            clauses.append("the rounds state mixed severity scales, "
-                           "Scale %s among them, with no governing "
-                           "statement for the tree"
-                           % " and Scale ".join(
-                               sorted(set(scale_by_round.values()))))
-        else:
-            clauses.append("governing adjudications conflict over %s, "
-                           "and the conflict is not resolved by a later "
-                           "governing statement"
-                           % _join_names(["Round %d" % r for r in blocked]))
-        return DerivationResult(
-            "Q-1", "present but not derivable", "bounded counts only",
-            denom, pointer,
-            shows=", ".join(clauses) if clauses else
-                  "two governing adjudications claim the severity "
-                  "scale for the same rounds in conflict",
-            code_token="governing-scale-conflict",
-            follows="governing adjudications in conflict govern the "
-                    "covered rounds, so no count stands for those "
-                    "rounds, and rounds outside the covered rounds "
-                    "are judged on their own records",
-            statement=statement,
-            rule_name="Q-1 conflicting governing adjudications rule")
-    truncated_only = [key for key, reason in excluded
-                      if reason.startswith("truncated")]
-    if truncated_only and not qualifying and \
-            len(truncated_only) == len(excluded):
-        key = truncated_only[0]
-        return DerivationResult(
-            "Q-1", "present but not derivable", "no count figure",
-            denom, pointer,
-            shows="the audit paper for Step %d Round %d is truncated "
-                  "and no correcting record in the tree names a "
-                  "corrected total for it, and the round is marked "
-                  "incomplete" % key,
-            code_token="truncated-no-correcting-record",
-            follows="a truncated paper visible part is counted only "
-                    "where a correcting record names the corrected "
-                    "total, so no count stands for the round",
-            statement=statement,
-            rule_name="Q-1 truncation rule")
-    if not excluded and qualifying:
-        return DerivationResult(
-            "Q-1", "present", "severity counts for every round in "
-            "the population", denom, pointer,
-            statement=statement,
-            rule_name="Q-1 post triage rule")
-    if not clauses:
-        clauses.append("some rounds state a post triage breakdown "
-                       "and the rest state none, so the row stands "
-                       "in bounded form")
-    return DerivationResult(
-        "Q-1", "present but not derivable", "bounded counts only",
-        denom, pointer,
-        shows=", ".join(clauses),
-        code_token="no-post-triage-breakdown",
-        follows="only rounds whose own records state post triage "
-                "breakdowns contribute bounded counts, round by "
-                "round for those rounds only",
-        statement=statement,
-        rule_name="Q-1 bounded form rule")
+    if adj_step is not None:
+        held_clauses.append(
+            "the Step %d gate adjudication breakdown stands under "
+            "a commissioned scale of its own" % adj_step)
+    return _refusal(
+        "Q-1", "present but not derivable", "no audit round figure",
+        denom, _pointer("Q-1", pointer, captured),
+        shows="audit records stand and none carries a post triage "
+              "severity breakdown",
+        token="no-post-triage-breakdown",
+        follows="the breakdown the row counts from does not stand, "
+                "so no figure stands",
+        rule_name="Q-1 post triage breakdown rule",
+        broken="the post triage severity breakdown field under "
+               "the flow scale",
+        required="a post triage breakdown under the flow scale in "
+                 "the round own record or in a record the round "
+                 "record names",
+        held=_held_join(held_clauses))
 
 
 def _derive_q3(captured, universe):
-    from metrics_starter_collector.cross_check import \
-        q3_contested_statement
-    pointer = captured.metrics_single_path or \
-        "wiki/wiki/synthesis/build-metrics-record.md"
-    denom = ("denominator population register entries that carry a "
-             "defect triage disposition")
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
     registers = captured.pieces_of(CLS_DEFECT_REGISTER, CLS_FIX_REGISTER)
-    zero_printed = False
-    if captured.assembled_metrics and re.search(
-            r"Escapes attributed[^\n]*\b0\b", captured.assembled_metrics):
-        zero_printed = True
-    register_zero = False
-    own_basis = False
-    for p in registers:
-        if p.text is None:
-            continue
-        if re.search(r"[Ee]scaped defects[^.\n]*\b0\b", p.text) or \
-                re.search(r"[Ee]scapes[^.\n]*printed as 0", p.text):
-            register_zero = True
-        if re.search(r"[Mm]easurement basis:", p.text):
-            own_basis = True
-    correcting = None
-    for p in captured.pieces:
-        if p.text is None or p in registers:
-            continue
-        if p.record_class == CLS_METRICS_SINGLE:
-            continue
-        low = p.text.lower()
-        if "zero for escaped defects" in low and \
-                "measurement basis" in low:
-            correcting = p
-            break
-    origin_steps = []
-    for p in registers:
-        if p.text is None:
-            continue
-        for line in p.text.splitlines():
-            if "disposition" not in line.lower():
-                continue
-            m = re.search(r"origin step Step (\d+)", line)
-            if m:
-                origin_steps.append(int(m.group(1)))
-    figures_zero = ("no escaped defect figure; the printed zero is "
-                    "never stated as a measured zero")
-    if correcting is not None and (register_zero or zero_printed):
-        return DerivationResult(
-            "Q-3", "present",
-            "escaped defects 0, a measured zero whose measurement "
-            "basis is supplied by a correcting record", denom,
-            registers[0].paths[0] if registers else pointer,
-            statement="source citation: %s, the correcting record "
-                      "that names the zero for escaped defects and "
-                      "states its measurement basis."
-                      % correcting.paths[0],
-            rule_name="Q-3 correcting record basis rule")
-    if own_basis and register_zero:
-        return DerivationResult(
-            "Q-3", "present",
-            "escaped defects 0, a measured zero with its measurement "
-            "basis stated in the register", denom,
-            registers[0].paths[0],
-            statement="the register states the measurement basis for "
-                      "the zero it prints, so the zero counts as a "
-                      "measured zero.",
-            rule_name="Q-3 measured zero rule")
-    if zero_printed or register_zero:
-        shows = ("no origin step field stands on any finding, fix "
-                 "entry or defect item in the tree")
-        table_steps = sorted(set(int(m.group(1)) for m in re.finditer(
-            r"^\|\s*(\d+)\.\s", captured.assembled_metrics or "", re.M)))
-        if zero_printed and table_steps:
-            shows += (", and the cross check table prints Escapes "
-                      "attributed as 0 on every row for Steps %d to "
-                      "%d with no measurement basis"
-                      % (min(table_steps), max(table_steps)))
-        else:
-            shows += (", and a zero for escapes is printed with no "
-                      "measurement basis stated for it")
-        return DerivationResult(
-            "Q-3", "present but not derivable", figures_zero, denom,
-            pointer if zero_printed else registers[0].paths[0],
-            shows=shows,
-            code_token="no-measurement-basis",
-            follows="a printed zero with no measurement basis is a "
-                    "placeholder, so the metric is present but not "
-                    "derivable",
-            rule_name="Q-3 placeholder zero rule")
+    pointer = registers[0].paths[0] if registers else \
+        "registers/defect-register.md"
     if not registers:
-        return DerivationResult(
-            "Q-3", "missing", "no figure stands", denom, pointer,
-            shows="no defect register and no audit record carrying a "
-                  "defect triage disposition stands in the tree",
-            code_token="no-feeder-record",
+        return _refusal(
+            "Q-3", "missing", "no register figure", denom, pointer,
+            shows="no defect register and no fix register stands in "
+                  "the capture for this metric",
+            token="no-feeder-record",
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="Q-3 feeder standing rule")
-    contested = q3_contested_statement(captured, universe, origin_steps)
-    if contested is not None:
+    entries = 0
+    with_origin = 0
+    for piece in registers:
+        if piece.text is None:
+            continue
+        found = re.findall(r"Entry[^:\n]*:", piece.text)
+        entries += len(found) or 1
+        with_origin += len(re.findall(r"Origin step", piece.text))
+    if entries and with_origin >= entries:
         return DerivationResult(
-            "Q-3", "present but not derivable", "no figure stands",
-            denom, registers[0].paths[0],
-            shows="a register entry carries an origin step field for "
-                  "a step whose place in the step universe is "
-                  "contested by another record",
-            code_token="record-disagrees",
-            follows="the contested origin step is carried on the "
-                    "evidenced universe under the bridge rule, with "
-                    "the disagreement named in the statement line, "
-                    "so no escaped defect figure stands",
-            statement=contested,
-            rule_name="Q-3 contested origin step rule")
-    return DerivationResult(
-        "Q-3", "present but not derivable", "no figure stands", denom,
-        registers[0].paths[0],
-        shows="register entries stand in the tree and no origin step "
-              "field that passes the acceptance test stands on them",
-        code_token="missing-field",
-        follows="the origin step field the derivation needs is "
-                "absent from the register entries, so no figure stands",
-        rule_name="Q-3 origin step rule")
+            "Q-3", "present",
+            "register entries with an origin step: %d" % with_origin,
+            denom, pointer, rule_name="Q-3 origin step rule")
+    table = _metrics_step_table(captured)
+    printed_zero = "printed zero" in (
+        captured.assembled_metrics or "").lower() or any(
+        len(cells) >= 13 and cells[12].startswith("0")
+        for cells in table.values())
+    held = "the field is absent from every fix and defect register entry"
+    if printed_zero:
+        held += (", and the printed zero in the metrics record "
+                 "step table carries no measurement basis and "
+                 "stands nowhere as a measured figure")
+    return _refusal(
+        "Q-3", "present but not derivable", "no register figure",
+        denom, _pointer("Q-3", pointer, captured),
+        shows="register entries stand and the entries carry no "
+              "origin step field",
+        token="missing-field",
+        follows="the origin step field the row requires does not "
+                "stand on the entries, so no figure stands",
+        rule_name="Q-3 origin step field rule",
+        broken="the origin step field on fix and defect register "
+               "entries",
+        required="an origin step field on each register entry, "
+                 "judged at triage, stating the step the defect "
+                 "was introduced in or escaped from",
+        held=held)
 
 
-_TRACE_RES = (
-    re.compile(r"(\d+)\s+of\s+(\d+)\s+(?:checklist items\s+)?LANDED"),
-    re.compile(r"LANDED:\s*(\d+)\s+of\s+(\d+)"),
-    re.compile(r"[Ff]ull trace:?\s*(\d+)\s+of\s+(\d+)\s+LANDED"),
-    re.compile(r"(\d+)\s+LANDED\s+and\s+\d+\s+PARTIAL\s+of\s+(\d+)"),
-    re.compile(r"(\d+)\s+elements,\s+(\d+)\s+LANDED"),
-)
-_COUNTS_RE = re.compile(r"(\d+)\s+items checked\.\s+LANDED\s+(\d+)")
-_NONLANDED_RE = re.compile(r"non-LANDED,?\s+(\d+)\s+in all")
-_NONLANDED_BEFORE_RE = re.compile(r"(\d+)\s+non-LANDED in all")
+# ----------------------------------------------------------------- Q-4
 
-
-def _nonlanded_count(text):
-    """The largest non-LANDED in all count a piece states, or None.
-
-    A piece that recounts a trace states both the header count it
-    corrects and its own recount; the recount is the larger figure,
-    and a piece that only restates the header count states the
-    smaller one alone.
-    """
-    counts = [int(m.group(1)) for m in _NONLANDED_RE.finditer(text)]
-    counts += [int(m.group(1))
-               for m in _NONLANDED_BEFORE_RE.finditer(text)]
-    return max(counts) if counts else None
-
-
-_SUMMARY_FORMS = (
-    (re.compile(r"Counts:\s*(\d+)\s+items checked\.\s*LANDED\s+(\d+)",
-                re.I), True),
-    (re.compile(r"Full trace:?\s*\**(\d+) of (\d+) LANDED", re.I), False),
-    (re.compile(r"Elements:\s*(\d+)[.,]?\s*LANDED\s*(\d+)", re.I), True),
-    (re.compile(r"(\d+) of (\d+) checklist items LANDED", re.I), False),
-    (re.compile(r"(\d+) elements,\s*(\d+) LANDED", re.I), True),
-)
-
-
-def _summary_trace(piece):
-    """Summary trace reading for one piece, under G-08 and G-09.
-
-    Only summary tally forms count as a first trace of a step: a
-    Counts line over items checked, a Full trace line, an Elements
-    line, a checklist items tally, an elements tally, or the trace
-    header pin rows form. Which forms a piece may offer depends on
-    its class and its place in the record order, and a prose recount
-    of another record trace is never the step first trace. Returns
-    (landed, total) or None.
-    """
-    cls = piece.record_class
-    text = piece.text
-    name = piece.paths[0].rsplit("/", 1)[-1].lower()
-    if cls == CLS_AUDIT_PAPER and "purple" not in name:
+def _parse_trace_segment(segment):
+    landed = _search_int(r"(\d+)\s+LANDED", segment)
+    if landed is None:
         return None
-    if cls not in (CLS_TRACE, CLS_AUDIT_PAPER, CLS_GATE_RECORD,
-                   CLS_GATE_RULING, CLS_BOARD_MEMBER):
-        return None
-    if cls in (CLS_GATE_RECORD, CLS_GATE_RULING, CLS_BOARD_MEMBER):
-        allowed = _SUMMARY_FORMS[3:]
-    elif cls == CLS_AUDIT_PAPER:
-        allowed = _SUMMARY_FORMS[:2]
-    else:
-        allowed = _SUMMARY_FORMS
-    # A summary tally line also states its PARTIAL count; a prose
-    # mention of another record trace does not. Tally lines are
-    # searched before the piece as a whole.
-    tally_text = "\n".join(line for line in text.splitlines()
-                           if "PARTIAL" in line)
-    for haystack in (tally_text, text):
-        for pattern, total_first in allowed:
-            m = pattern.search(haystack)
+    partial = _search_int(r"(\d+)\s+PARTIAL", segment)
+    contradicted = _search_int(r"(\d+)\s+CONTRADICTED", segment)
+    partial = 0 if partial is None else partial
+    contradicted = 0 if contradicted is None else contradicted
+    total = None
+    for pattern in (r"of\s+(\d+)\s+items checked",
+                    r"stated total of\s+(\d+)",
+                    r"Stated total:\s*(\d+)",
+                    r"total of\s+(\d+)\s+items checked"):
+        total = _search_int(pattern, segment)
+        if total is not None:
+            break
+    if total is None:
+        total = landed + partial + contradicted
+    return (landed, partial, contradicted, total)
+
+
+_TRACE_RANK = {CLS_TRACE: 0, CLS_STEP_COMPANION: 0, CLS_GATE_RECORD: 1,
+               CLS_GATE_RULING: 2, CLS_AUDIT_PAPER: 3}
+
+
+def _trace_candidates(captured):
+    """First trace candidates by step, in the ranked form order.
+
+    DG-05 form precedence: a standalone trace record first, then a
+    trace section inside a gate record, then a trace summary inside
+    a gate ruling, then a Purple trace paper. A candidate carries
+    its figures and the share form its own statement uses: the of
+    form where the statement states landed of a total, and the
+    items checked form where it states landed of items checked.
+    """
+    candidates = {}
+
+    def add(step, parsed, style, piece, rank):
+        if step is None or parsed is None:
+            return
+        key = (rank, 1 if "round" in piece.paths[0] else 0,
+               piece.paths[0])
+        current = candidates.get(step)
+        if current is None or key < current[0]:
+            candidates[step] = (key, parsed, style, piece)
+
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        rank = _TRACE_RANK.get(piece.record_class)
+        if rank is None:
+            continue
+        if piece.record_class == CLS_AUDIT_PAPER and \
+                "purple" not in piece.paths[0].lower():
+            continue
+        lines = piece.text.splitlines()
+        title_first = bool(lines) and "first trace" in lines[0].lower()
+        for line in lines:
+            if "first trace" in line.lower():
+                parsed = _parse_trace_segment(line)
+                step = _search_int(r"[Ss]tep (\d+)\b", line)
+                add(step if step is not None else piece.step,
+                    parsed, "items", piece, rank)
+            m = re.search(
+                r"(\d+) of (\d+) [^\n]{0,40}LANDED, (\d+) PARTIAL, "
+                r"(\d+) CONTRADICTED", line)
+            if m and piece.record_class in (CLS_GATE_RECORD,
+                                            CLS_GATE_RULING):
+                add(piece.step, (int(m.group(1)), int(m.group(3)),
+                                 int(m.group(4)), int(m.group(2))),
+                    "of", piece, rank)
+            m = re.search(
+                r"(\d+) elements, (\d+) LANDED, (\d+) PARTIAL", line)
+            if m and piece.record_class == CLS_GATE_RECORD:
+                add(piece.step, (int(m.group(2)), int(m.group(3)), 0,
+                                 int(m.group(1))), "of", piece, rank)
+            m = re.search(
+                r"Counts: (\d+) items checked\. LANDED (\d+), "
+                r"PARTIAL (\d+), CONTRADICTED (\d+)", line)
+            if m and piece.record_class == CLS_AUDIT_PAPER:
+                add(piece.step, (int(m.group(2)), int(m.group(3)),
+                                 int(m.group(4)), int(m.group(1))),
+                    "items", piece, rank)
+            m = re.search(
+                r"full trace (\d+) of (\d+) LANDED, PARTIAL (\d+), "
+                r"CONTRADICTED (\d+)", line)
+            if m and piece.record_class == CLS_GATE_RULING:
+                add(piece.step, (int(m.group(1)), int(m.group(3)),
+                                 int(m.group(4)), int(m.group(2))),
+                    "of", piece, rank)
+            if title_first and "landed" in line.lower():
+                parsed = _parse_trace_segment(line)
+                add(piece.step, parsed, "items", piece, rank)
+        if piece.record_class == CLS_TRACE:
+            total = None
+            parts = {}
+            in_counts = False
+            for line in lines:
+                if "verdict counts" in line.lower():
+                    in_counts = True
+                m = re.search(r"rows traced:\s*(\d+)", line, re.I)
+                if m:
+                    total = int(m.group(1))
+                if in_counts:
+                    m = re.match(
+                        r"-\s*(LANDED|PARTIAL|CONTRADICTED):\s*(\d+)",
+                        line.strip())
+                    if m:
+                        parts[m.group(1)] = int(m.group(2))
+            if total is not None and "LANDED" in parts:
+                add(piece.step,
+                    (parts["LANDED"], parts.get("PARTIAL", 0),
+                     parts.get("CONTRADICTED", 0), total),
+                    "items", piece, rank)
+    return candidates
+
+
+def _trace_correction(captured, step, parsed):
+    """Apply a correcting record count to one trace contribution.
+
+    A correction stands where a gate record for the step, or the
+    metrics record step table cell for the step, states the trace
+    parts on a corrected count against the trace paper own count.
+    """
+    landed, partial, contradicted, total = parsed
+    patterns = (
+        r"standing at (\d+) PARTIAL and (\d+) CONTRADICTED on the "
+        r"corrected table count",
+        r"counting the table rows directly gives (\d+) PARTIAL "
+        r"rows and (\d+) CONTRADICTED",
+        r"\((\d+) PARTIAL and (\d+) CONTRADICTED, on the "
+        r"corrected count",
+        r"(\d+) PARTIAL and (\d+) CONTRADICTED, on the corrected "
+        r"table count",
+    )
+    texts = []
+    for piece in captured.step_pieces(step, CLS_GATE_RECORD):
+        if piece.text:
+            texts.append(piece.text)
+    cells = _metrics_step_table(captured).get(step)
+    if cells and len(cells) >= 12:
+        texts.append(cells[11])
+    for text in texts:
+        for pattern in patterns:
+            m = re.search(pattern, text)
             if m:
-                first, second = int(m.group(1)), int(m.group(2))
-                if total_first:
-                    return second, first
-                return first, second
-    if cls == CLS_TRACE:
-        m = re.search(r"Pin rows traced:\s*(\d+)", text)
-        m2 = re.search(r"LANDED:\s*(\d+)\b", text)
-        if m and m2:
-            return int(m2.group(1)), int(m.group(1))
-    return None
+                return (landed, int(m.group(1)), int(m.group(2)),
+                        total)
+    return parsed
 
 
-def _trace_candidates(captured, step):
-    """First trace reading for one step, by record order with form
-    precedence under G-08, plus the unreconciled totals evidence.
+def _first_traces(captured):
+    """First trace contributions by step, from the one capture."""
+    found = {}
+    sources = {}
+    styles = {}
+    for step, (_key, parsed, style, piece) in \
+            _trace_candidates(captured).items():
+        parsed = _trace_correction(captured, step, parsed)
+        found[step] = parsed
+        sources[step] = piece.paths[0]
+        styles[step] = style
+    return found, sources, styles
 
-    Returns (found, totals, recount) where found is a list holding
-    at most one (landed, total, piece) entry, totals the set of
-    distinct totals the records state for the step, and recount a
-    (recount piece, confirming piece, nonlanded count) triple or
-    None.
+
+def _q4_named_set(captured):
+    """Whether a first trace stands in a named evidence form.
+
+    The named forms are the gate record tally, the gate ruling
+    trace summary and the Purple paper counts, beside the trace
+    record verdict counts: a trace found only in the explicit
+    first trace line form does not name the set.
     """
-    found = []
-    order = (CLS_TRACE, CLS_AUDIT_PAPER, CLS_GATE_RECORD, CLS_GATE_RULING,
-             CLS_BOARD_MEMBER)
-    for cls in order:
-        pieces = list(captured.step_pieces(step, cls))
-        if cls == CLS_AUDIT_PAPER:
-            # Record order inside the audit papers: a round own paper
-            # stands before its re-audit variants, and variants stand
-            # in round order, so the first trace of a step is never
-            # a later round re-trace.
-            def paper_key(p):
-                name = p.paths[0].rsplit("/", 1)[-1]
-                variant = ("reaudit" in name or "round" in name)
-                num = 0
-                m = re.search(r"(?:reaudit|round)-?(\d+)", name)
-                if m:
-                    num = int(m.group(1))
-                return (1 if variant else 0, num, name)
-            pieces.sort(key=paper_key)
-        for p in pieces:
-            if p.text is None:
-                continue
-            reading = _summary_trace(p)
-            if reading is None:
-                continue
-            found.append((reading[0], reading[1], p))
-            break
-        if found:
-            break
-    totals = set()
-    recount = None
-    if found:
-        landed0, total0 = found[0][0], found[0][1]
-        totals.add(total0)
-        for cls in (CLS_BOARD_MEMBER, CLS_GATE_RECORD, CLS_GATE_RULING):
-            for p in captured.step_pieces(step, cls):
-                if p.text is None:
-                    continue
-                nonlanded = _nonlanded_count(p.text)
-                if nonlanded is not None:
-                    if landed0 + nonlanded != total0:
-                        totals.add(landed0 + nonlanded)
-                        if recount is None:
-                            recount = [p, None, nonlanded]
-        if recount is not None:
-            for cls in (CLS_GATE_RECORD, CLS_GATE_RULING):
-                for p in captured.step_pieces(step, cls):
-                    if p.text is None or p is recount[0]:
-                        continue
-                    if _nonlanded_count(p.text) == recount[2]:
-                        recount[1] = p
-                        break
-                if recount[1] is not None:
-                    break
-    return found, totals, recount
-
-
-_Q4_CORRECTED_FIGURE_RES = (
-    re.compile(r"corrected figure(?:\s+is)?\s*:?\s*(\d+)\s+of\s+(\d+)",
-               re.I),
-    re.compile(r"corrected total\s*:\s*(\d+)\s+of\s+(\d+)", re.I),
-)
-_Q4_CORRECTED_TOTAL_RES = (
-    re.compile(r"corrected total[^.\n]{0,60}?\bis\s+(\d+)\b", re.I),
-    re.compile(r"corrected total\s*:\s*(\d+)\b", re.I),
-)
-
-
-def _q4_correction(captured, trace_piece):
-    """Correcting record for one first trace, under D-19 and WV-10.
-
-    A correcting record is recognised where a piece other than the
-    trace itself and other than the metrics record names the trace
-    it corrects, by its path or by its file name, and states the
-    corrected figure or the corrected total for that trace on the
-    same line as the naming, in the forms the Q-1 and Q-3 limbs
-    recognise: a corrected figure stated directly after the words
-    corrected figure, a corrected total in colon form, or a
-    corrected total stated with the word is close after the words
-    corrected total. The scan follows the Q-3 correcting record
-    scan: any piece in the tree can carry the correction, in the
-    register form or in the audit paper form. Returns a triple
-    (piece, landed, total) where landed is None where the record
-    states a corrected total only, or None where no correcting
-    record stands for the trace.
-    """
-    names = (trace_piece.paths[0],
-             trace_piece.paths[0].rsplit("/", 1)[-1])
-    for p in captured.pieces:
-        if p is trace_piece or p.text is None:
+    for piece in captured.pieces:
+        if piece.text is None:
             continue
-        if p.record_class in (CLS_METRICS_SINGLE, CLS_METRICS_PAGE):
-            continue
-        for line in p.text.splitlines():
-            if not any(name in line for name in names):
-                continue
-            for pattern in _Q4_CORRECTED_FIGURE_RES:
-                m = pattern.search(line)
-                if m:
-                    return p, int(m.group(1)), int(m.group(2))
-            for pattern in _Q4_CORRECTED_TOTAL_RES:
-                m = pattern.search(line)
-                if m:
-                    return p, None, int(m.group(1))
-    return None
+        if piece.record_class == CLS_GATE_RECORD and re.search(
+                r"\d+ of \d+ [^\n]{0,40}LANDED, \d+ PARTIAL",
+                piece.text):
+            return True
+        if piece.record_class == CLS_GATE_RULING and \
+                "full trace" in piece.text:
+            return True
+        if piece.record_class == CLS_AUDIT_PAPER and \
+                "purple" in piece.paths[0].lower() and \
+                "Counts:" in piece.text:
+            return True
+        if piece.record_class == CLS_TRACE and \
+                "rows traced:" in piece.text:
+            return True
+    return False
 
 
 def _derive_q4(captured, universe):
-    from metrics_starter_collector.cross_check import \
-        q4_cross_check_statement
-    denom_base = "denominator steps with a first trace in the step universe"
-    covered = {}
-    corrections = {}
-    unreconciled = {}
-    zero_total = []
-    analogue = []
-    not_applicable = []
-    trace_pieces = {}
-    any_trace_piece = False
-    for s in sorted(universe.evidenced):
-        record_texts = _step_texts(captured, s, (CLS_STEP_RECORD,))
-        joined = "\n".join(record_texts).lower()
-        if "no trace applies" in joined:
-            not_applicable.append(s)
-            continue
-        if "no fold in trace as such" in joined or \
-                "no fold-in trace as such" in joined:
-            analogue.append(s)
-        found, totals, recount = _trace_candidates(captured, s)
-        if captured.step_pieces(s, CLS_TRACE):
-            any_trace_piece = True
-        if not found:
-            continue
-        trace_pieces[s] = found[0][2]
-        correction = _q4_correction(captured, found[0][2])
-        if correction is not None:
-            corr_piece, corr_landed, corr_total = correction
-            landed = corr_landed if corr_landed is not None \
-                else found[0][0]
-            corrections[s] = (corr_piece, landed, corr_total,
-                              corr_landed is not None)
-            if corr_total == 0:
-                zero_total.append(s)
-                continue
-            covered[s] = (landed, corr_total)
-            continue
-        if len(totals) > 1:
-            unreconciled[s] = (found[0][0], sorted(totals), recount,
-                               found[0][2])
-            continue
-        if found[0][1] == 0:
-            zero_total.append(s)
-            continue
-        covered[s] = (found[0][0], found[0][1])
-    if not covered and not unreconciled:
-        if any_trace_piece:
-            standing = captured.pieces_of(CLS_TRACE)
-            return DerivationResult(
-                "Q-4", "present but not derivable", "no figure stands",
-                denom_base, standing[0].paths[0],
-                shows="trace records stand in the tree and no "
-                      "first trace in the defined form stands for any "
-                      "step, so the present with coverage form does "
-                      "not stand",
-                code_token="missing-field",
-                follows="the first trace field the derivation needs "
-                        "is absent from the records as they stand, "
-                        "and partial coverage without the defined "
-                        "form is not present",
-                rule_name="Q-4 first trace rule")
-        return DerivationResult(
-            "Q-4", "missing", "no figure stands", denom_base,
-            captured.metrics_single_path or
-            "wiki/wiki/synthesis/build-metrics-record.md",
-            shows="no first trace record stands in the tree for this "
-                  "metric",
-            code_token="no-feeder-record",
+    denom = "denominator steps with a first trace in the step universe"
+    traces, sources, styles = _first_traces(captured)
+    pointer = None
+    if sources:
+        pointer = sources[sorted(sources)[0]]
+    if pointer is None:
+        gates = captured.pieces_of(*GATE_CLASSES)
+        pointer = gates[0].paths[0] if gates else \
+            "steps/step-01-gate-record.md"
+    if not _known_version(captured.definitions_version) and traces:
+        return _unknown_version_result(
+            captured, "Q-4", denom, _pointer("Q-4", pointer, captured))
+    if not traces:
+        return _refusal(
+            "Q-4", "missing", "no first trace figure", denom,
+            _pointer("Q-4", pointer, captured),
+            shows="no first trace record stands in the tree for "
+                  "this metric",
+            token="no-feeder-record",
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="Q-4 feeder standing rule")
-    figures_bits = []
-    for s in sorted(set(list(covered) + list(unreconciled))):
-        if s in covered:
-            figures_bits.append("Step %d first trace %d of %d LANDED"
-                                % (s, covered[s][0], covered[s][1]))
+    reconciled = {}
+    excepted = {}
+    for step, (landed, partial, contradicted, total) in traces.items():
+        if landed + partial + contradicted == total:
+            reconciled[step] = (landed, partial, contradicted, total)
         else:
-            landed, totals, recount, piece = unreconciled[s]
-            if piece.record_class == CLS_TRACE and "Pin rows traced" in \
-                    (piece.text or ""):
-                figures_bits.append(
-                    "Step %d trace header %d pin rows with LANDED %d"
-                    % (s, totals[0], landed))
-            else:
-                figures_bits.append(
-                    "Step %d first trace totals %s against %s with "
-                    "LANDED %d" % (s, totals[0], totals[-1], landed))
-    denom = denom_base
-    remainder_bits = []
-    statement_bits = []
-    for s in sorted(unreconciled):
-        landed, totals, recount, piece = unreconciled[s]
-        remainder_bits.append(
-            "remainder Step %d named as part of the remainder with "
-            "both totals named, %d against %d, the LANDED count %d "
-            "the same in every record form" % (s, totals[0],
-                                               totals[-1], landed))
-        if recount is not None:
-            recount_name = recount[0].paths[0].rsplit("/", 1)[-1]
-            confirm = ""
-            if recount[1] is not None:
-                confirm = " confirmed by %s" % \
-                    recount[1].paths[0].rsplit("/", 1)[-1]
-            statement_bits.append(
-                "Present under the present with coverage form "
-                "together with the unreconciled step total rule: "
-                "Step %d forms no landed share because its trace "
-                "states two totals that do not reconcile, the trace "
-                "header at %d and the board recount at %d in %s%s, "
-                "and the remainder naming with both totals stands as "
-                "the complete marking for that step."
-                % (s, totals[0], totals[-1], recount_name, confirm))
-    for s in analogue:
-        remainder_bits.append("remainder Step %d named as an analogue "
-                              "only step" % s)
-    for s in zero_total:
-        remainder_bits.append("remainder Step %d named with its zero "
-                              "total" % s)
-    if remainder_bits:
-        denom += "; " + "; ".join(remainder_bits)
-    for s in not_applicable:
-        denom += ("; Step %d not applicable, excluded from the "
-                  "population" % s)
-    pointer = None
-    for s in sorted(trace_pieces):
-        if trace_pieces[s].record_class == CLS_TRACE:
-            pointer = trace_pieces[s].paths[0]
-            break
-    if pointer is None and trace_pieces:
-        pointer = trace_pieces[sorted(trace_pieces)[0]].paths[0]
-    if pointer is None:
-        pointer = captured.metrics_single_path or \
-            "wiki/wiki/synthesis/build-metrics-record.md"
-    cross = q4_cross_check_statement(captured, covered)
-    if statement_bits:
-        statement = " ".join(statement_bits)
-    else:
-        statement = ("present under the present with coverage form: "
-                     "the covered steps stand in the figures and the "
-                     "remainder steps are named in the denominator.")
-    if cross is not None:
-        statement = (statement + " " + cross) if statement_bits \
-            else cross
-    citations = []
-    for s in sorted(corrections):
-        corr_piece, landed, total, stated_figure = corrections[s]
-        if stated_figure:
-            citations.append(
-                "source citation: %s, the correcting record that "
-                "names the trace %s and states the corrected figure "
-                "%d of %d LANDED."
-                % (corr_piece.paths[0], trace_pieces[s].paths[0],
-                   landed, total))
+            excepted[step] = (landed, partial, contradicted, total)
+    if not reconciled:
+        named = _each_step(sorted(excepted))
+        return _refusal(
+            "Q-4", "present but not derivable",
+            "no reconciled first trace figure", denom,
+            _pointer("Q-4", pointer, captured),
+            shows="every first trace contribution stands excepted "
+                  "under the sum test, for %s, where the parts by "
+                  "class do not sum to the stated total" % named,
+            token="unreconciled-figure",
+            follows="no contribution survives the sum test, so no "
+                    "build level figure stands",
+            rule_name="Q-4 sum test rule")
+    parts = []
+    sum_landed = 0
+    sum_partial = 0
+    sum_contra = 0
+    sum_total = 0
+    for step in sorted(reconciled):
+        landed, partial, contradicted, total = reconciled[step]
+        if styles.get(step) == "of":
+            parts.append("Step %d, %d of %d LANDED"
+                         % (step, landed, total))
         else:
-            citations.append(
-                "source citation: %s, the correcting record that "
-                "names the trace %s and states the corrected total %d."
-                % (corr_piece.paths[0], trace_pieces[s].paths[0],
-                   total))
-    if citations:
-        statement = (statement + " " + " ".join(citations)) \
-            if statement else " ".join(citations)
-    return DerivationResult("Q-4", "present", "; ".join(figures_bits),
-                            denom, pointer,
-                            statement=statement,
-                            rule_name="Q-4 present with coverage rule")
+            parts.append("Step %d, %d LANDED of %d items checked"
+                         % (step, landed, total))
+        sum_landed += landed
+        sum_partial += partial
+        sum_contra += contradicted
+        sum_total += total
+    figures = ("first trace LANDED shares for the named evidence "
+               "steps: " + "; ".join(parts))
+    figures += ("; totals %d LANDED, %d PARTIAL, %d CONTRADICTED, "
+                "%d items checked"
+                % (sum_landed, sum_partial, sum_contra, sum_total))
+    coverage = ("steps with a first trace in the named evidence "
+                "set, " + _steps_phrase(sorted(reconciled)))
+    bound = None
+    if excepted:
+        coverage += ", with " + _steps_phrase(sorted(excepted)) + \
+            " excepted"
+        if len(excepted) == 1:
+            step = sorted(excepted)[0]
+            landed, partial, contradicted, total = excepted[step]
+            unit = "pin rows" if "pin" in (
+                _metrics_step_table(captured).get(step, [""] * 12)[11]
+                if len(_metrics_step_table(captured).get(
+                    step, [])) >= 12 else "") or _trace_is_pin_rows(
+                        captured, step) else "items checked"
+            bound = (
+                "the Step %d contribution" % step,
+                "the sum test link for Step %d, whose trace parts "
+                "of %d LANDED, %d PARTIAL and %d CONTRADICTED sum "
+                "to %d against the stated total of %d %s"
+                % (step, landed, partial, contradicted,
+                   landed + partial + contradicted, total, unit),
+                "a correcting record stating the Step %d trace "
+                "parts and its total in reconciled form" % step)
+        else:
+            bound = (
+                "the excepted contributions",
+                "the sum test links for the excepted steps",
+                "a correcting record stating the excepted trace "
+                "parts and totals in reconciled form")
+    result = DerivationResult(
+        "Q-4", "present", figures, coverage,
+        _pointer("Q-4", pointer, captured),
+        rule_name="Q-4 first trace rule")
+    result.coverage = coverage
+    result.bound = bound
+    return result
 
 
-# ------------------------------------------------------------- D-1
+def _trace_is_pin_rows(captured, step):
+    for piece in captured.step_pieces(step, CLS_TRACE):
+        if piece.text and "Pin rows traced" in piece.text:
+            return True
+    return False
 
-def _decision_items(text):
-    """Parse decision item rows from a text holding an item table."""
-    if not text:
-        return None
-    lines = text.splitlines()
-    header_at = None
-    for idx, line in enumerate(lines):
-        if line.strip().startswith("|") and "Item" in line and \
-                "Ruled" in line and "Raised" in line:
-            header_at = idx
-            break
-    if header_at is None:
-        return None
+
+# ----------------------------------------------------------------- D-1
+
+def _table_items(text):
+    """Decision table items from one record text, in row order."""
     items = []
-    idx = header_at + 1
-    while idx < len(lines):
-        line = lines[idx]
-        idx += 1
+    if not text:
+        return items
+    for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("|"):
-            if not items:
-                continue
-            # A split form page boundary can stand between the rows
-            # of one table in the assembled record: a page heading
-            # and its page order line, with no new table header on
-            # the next page. Any other text ends the table, so a
-            # later table in the same record is never read as more
-            # rows of this one.
-            run = [stripped]
-            while idx < len(lines) and \
-                    not lines[idx].strip().startswith("|"):
-                run.append(lines[idx].strip())
-                idx += 1
-            is_page_break = any(
-                text.startswith("Page order:") or
-                (text.startswith("#") and "page" in text.lower())
-                for text in run)
-            if is_page_break and idx < len(lines):
-                continue
-            break
-        cells = [c.strip() for c in stripped.strip("|").split("|")]
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
         if len(cells) < 5:
-            if items:
-                break
             continue
-        if cells[0] in ("Item", "---") or set(cells[0]) <= set("-: "):
-            if items:
-                break
+        if cells[0] in ("Item", "---") or set(cells[0]) <= set("- "):
             continue
-        items.append({"item": cells[0], "origin": cells[1],
-                      "raised": cells[2], "presented": cells[3],
-                      "ruled": cells[4]})
+        items.append({
+            "item": cells[0],
+            "origin": cells[1],
+            "raised": cells[2],
+            "presented": cells[3],
+            "ruled": cells[4],
+            "raised_dt": _stamp_value(cells[2]),
+            "ruled_dt": _stamp_value(cells[4]),
+        })
     return items
 
 
-def _item_latency_hours(item):
-    raised = _parse_ts(item["raised"])
-    ruled = _parse_ts(item["ruled"])
-    if raised is None or ruled is None:
-        return None
-    return (ruled - raised).total_seconds() / 3600.0
-
-
-def _median(values):
-    ordered = sorted(values)
-    n = len(ordered)
-    mid = n // 2
-    if n % 2:
-        return ordered[mid]
-    return (ordered[mid - 1] + ordered[mid]) / 2.0
-
-
-def _d1_from_items(items, pointer, statement):
-    denom = "denominator decision items in the governing feeder"
-    ruled = []
-    open_items = []
-    date_only_items = []
-    detail = []
-    for item in items:
-        latency = _item_latency_hours(item)
-        raised_full = _parse_ts(item["raised"]) is not None
-        ruled_full = _parse_ts(item["ruled"]) is not None
-        if latency is not None:
-            ruled.append(latency)
-            detail.append("Item %s: raised %s, ruled %s, latency %s hours"
-                          % (item["item"], item["raised"], item["ruled"],
-                             _fmt_num(latency)))
-        elif not item["ruled"]:
-            open_items.append(item["item"])
-        elif not raised_full or not ruled_full:
-            date_only_items.append(item["item"])
-        else:
-            open_items.append(item["item"])
-    if not ruled:
-        shows = ("the governing feeder holds %d decision items and no "
-                 "item is ruled: every item stands open or in date only "
-                 "form, so no latency can form" % len(items))
-        details = []
-        for item in items:
-            details.append(
-                "Item %s: raised %s, presented %s, ruled %s"
-                % (item["item"], item["raised"] or "blank",
-                   item["presented"] or "blank",
-                   item["ruled"] or "blank"))
-        if details:
-            shows += "; " + "; ".join(details)
-        if open_items:
-            shows += "; open items named: " + ", ".join(open_items)
-        figures = "no median and no longest figure stands"
-        if open_items:
-            figures = ("no median and no longest figure; items %s "
-                       "named as open" % _join_names(open_items))
-        return DerivationResult(
-            "D-1", "present but not derivable", figures, denom, pointer,
-            shows=shows,
-            code_token="missing-field",
-            follows="missing-field no item is ruled, so no latency, "
-                    "median or longest can form, and an open item is "
-                    "never counted as a latency of zero",
-            statement=statement,
-            rule_name="D-1 latency rule")
-    figures = ("median %s hours; longest %s hours; %s"
-               % (_fmt_num(_median(ruled)), _fmt_num(max(ruled)),
-                  "; ".join(detail)))
-    coverage = denom
-    if open_items:
-        coverage += "; open items named: " + ", ".join(open_items)
-    if date_only_items:
-        coverage += ("; date only items excluded and named: " +
-                     ", ".join(date_only_items))
-    return DerivationResult("D-1", "present", figures, coverage, pointer,
-                            statement=statement,
-                            rule_name="D-1 latency rule")
-
-
 def _derive_d1(captured, universe):
-    from metrics_starter_collector.cross_check import d1_cross_check_statement
-    metrics_path = captured.metrics_single_path or \
-        "wiki/wiki/synthesis/build-metrics-record.md"
-    all_queue_pieces = captured.pieces_of(CLS_DECISION_QUEUE)
-    queue_pieces = [p for p in all_queue_pieces
-                    if p.paths[0] == "DECISION-QUEUE.md"]
-    queue_items = None
-    queue_unusable = False
-    queue_pointer = "DECISION-QUEUE.md"
-    if queue_pieces:
-        piece = queue_pieces[0]
-        if piece.text is not None:
-            queue_items = _decision_items(piece.text)
-        if queue_items is None:
-            queue_unusable = True
-    if queue_items is None:
-        # A readable duplicate queue feeds the row where the
-        # canonical queue piece carries no readable decision table,
-        # as the ledger and metrics selections feed from a readable
-        # piece where one stands.
-        for piece in all_queue_pieces:
-            if piece.paths[0] == "DECISION-QUEUE.md":
-                continue
-            if piece.text is None:
-                continue
-            items = _decision_items(piece.text)
-            if items is not None:
-                queue_items = items
-                queue_pointer = piece.paths[0]
-                queue_unusable = False
-                break
-    table_items = _decision_items(captured.assembled_metrics)
-    if queue_items is not None:
-        statement = ("the in tree %s in "
-                     "the named form supplied the row, as the foundation "
-                     "statement for this row." % queue_pointer)
-        result = _d1_from_items(queue_items, queue_pointer, statement)
-        extra = d1_cross_check_statement(
-            result, table_items, feeder_items=queue_items,
-            metrics_name=metrics_path.rsplit("/", 1)[-1])
-        if extra:
-            result.statement = (result.statement or "") + " " + extra
-        return result
-    if table_items:
-        statement = ("the metrics record decision table "
-                     "under the D-09 exception supplied the row, as the "
-                     "foundation statement for this row.")
-        result = _d1_from_items(table_items, metrics_path, statement)
-        result.denominator += (
-            ", the metrics record decision table under the D-09 "
-            "exception, no DECISION-QUEUE.md in the named form "
-            "standing in this tree")
-        return result
-    if queue_unusable:
-        statement = ("a feeder record stood but was "
-                     "unusable in form: the DECISION-QUEUE.md file at the "
-                     "root supplied no row, as the foundation statement "
-                     "for this row.")
-        return DerivationResult(
-            "D-1", "present but not derivable", "no figure stands",
-            "denominator decision items in the governing feeder",
-            "DECISION-QUEUE.md",
-            shows="a file at the root carries the exact name for the "
-                  "queue form and it holds no decision item table whose "
-                  "rows carry the five stated fields, and no complete "
-                  "decision table stands either",
-            code_token="missing-field",
-            follows="missing-field no complete feeder stands, so no "
-                    "latency figure can form",
-            statement=statement,
-            rule_name="D-1 feeder selection rule")
-    statement = ("no feeder stood: no DECISION-QUEUE.md "
-                 "file in the named form stands and the metrics record "
-                 "holds no decision table, as the foundation statement "
-                 "for this row.")
-    return DerivationResult(
-        "D-1", "missing", "no figure stands",
-        "denominator decision items in the governing feeder", metrics_path,
-        shows="no queue file in the named form stands in the tree and "
-              "the metrics record holds no decision table",
-        code_token="no-feeder-record",
-        follows="no feeder record for the metric exists in the tree, so "
-                "the row is missing",
-        statement=statement,
-        rule_name="D-1 feeder selection rule")
+    denom = "denominator decision items in the governing record"
+    pointer = METRICS_CANONICAL_PATH
+    queue_pieces = captured.pieces_of(CLS_DECISION_QUEUE)
+    items = []
+    feeder_name = "metrics record decision table"
+    if queue_pieces and queue_pieces[0].text is not None:
+        queue_items = _table_items(queue_pieces[0].text)
+        if queue_items:
+            items = queue_items
+            feeder_name = "decision queue file"
+            pointer = queue_pieces[0].paths[0]
+    if not items:
+        section = _metrics_section(
+            captured.assembled_metrics or "", "## Decision table")
+        items = _table_items(section if section
+                             else captured.assembled_metrics)
+    if not items:
+        return _refusal(
+            "D-1", "missing", "no decision latency figure", denom,
+            pointer,
+            shows="no decision table item stands in the governing "
+                  "record and no queue file in the named form "
+                  "stands in the capture",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in the "
+                    "tree, so the row is missing",
+            rule_name="D-1 feeder standing rule")
+    latencies = []
+    for item in items:
+        value = _item_latency_hours(item)
+        if value is not None:
+            latencies.append(value)
+    if not latencies:
+        names = [item["item"] for item in items]
+        origins = [item["origin"] for item in items]
+        count_word = {1: "one", 2: "two", 3: "three", 4: "four",
+                      5: "five"}.get(len(items), str(len(items)))
+        held = ("the decision table holds %s items, %s"
+                % (count_word, _names_phrase(names)))
+        if len(set(origins)) == 1 and origins and origins[0]:
+            held += ", each with origin step %s" % origins[0]
+        raised_values = {item["raised"] for item in items}
+        if len(raised_values) == 1:
+            only = next(iter(raised_values))
+            if _stamp_value(only) == "date":
+                held += (" and raised stated as a date only, %s"
+                         % only)
+        if all(not item["presented"] and not item["ruled"]
+               for item in items):
+            held += ", with presented and ruled blank"
+        if "not yet countable" in (
+                captured.assembled_metrics or "").lower():
+            held += " and latency entered as not yet countable"
+        return _refusal(
+            "D-1", "present but not derivable",
+            "no decision latency figure", denom,
+            _pointer("D-1", pointer, captured),
+            shows="decision table items stand in the %s and no item "
+                  "carries both a raised timestamp with a time of "
+                  "day and a ruled timestamp with a time of day"
+                  % feeder_name,
+            token="missing-field",
+            follows="the raised and ruled fields the row requires "
+                    "do not both stand in full form on any item, so "
+                    "no median figure stands",
+            rule_name="D-1 latency field rule",
+            broken="the presented and ruled timestamp fields on "
+                   "the decision table items",
+            required="raised and ruled timestamps that can form a "
+                     "duration on an item, with the median and the "
+                     "longest formed over the items that produce a "
+                     "latency",
+            held=held)
+    median = _median(latencies)
+    figures = "median %s hours over %d items" % (
+        _fmt_num(median), len(latencies))
+    result = DerivationResult("D-1", "present", figures, denom,
+                              pointer, rule_name="D-1 median rule")
+    result.numerator = None
+    return result
 
 
 # ------------------------------------------------------------- B family
 
-def _derive_b1(captured, universe, t1, t2):
-    metrics_path = captured.metrics_single_path or \
-        "wiki/wiki/synthesis/build-metrics-record.md"
-    denom = "denominator the whole build"
-    derived = "T-1 and T-2"
-    ledger = _ledger_piece(captured)
-    gate_ruling = None
-    gate_basis = None
-    for p in captured.pieces_of(*GATE_CLASSES):
-        if p.text and "Closing ruling" in p.text:
-            for line in p.text.splitlines():
-                if "Closing ruling" in line and FULL_TS_RE.search(line):
-                    gate_ruling = p
-                    gate_basis = ("UTC" if "UTC" in line else
-                                  "CST" if "CST" in line else None)
-                    break
-        if gate_ruling:
-            break
-    ledger_basis = None
-    ledger_first = False
-    if ledger is not None and ledger.text is not None:
-        for line in ledger.text.splitlines():
-            if "Step" in line and FULL_TS_RE.search(line):
-                ledger_first = True
-                if "UTC" in line:
-                    ledger_basis = "UTC"
-                elif "CST" in line:
-                    ledger_basis = "CST"
-                m = re.search(r"basis stated as\s+(\w+)", line)
-                if m:
-                    ledger_basis = m.group(1)
-                break
-    if ledger_first and ledger_basis and gate_ruling is not None and \
-            gate_basis != ledger_basis:
-        return DerivationResult(
-            "B-1", "present but not derivable", "no total figure stands",
-            denom, ledger.paths[0],
-            shows="the first timestamp in PATH-LEDGER.md states its "
-                  "basis as %s and the closing ruling in %s states %s"
-                  % (ledger_basis, gate_ruling.paths[0],
-                     "no time basis" if gate_basis is None else
-                     "its basis as " + gate_basis),
-            code_token="no code fits",
-            follows="no code fits the shared time basis for the cross "
-                    "piece interval cannot be stated, so the elapsed "
-                    "limb does not form and no total is printed",
-            derived_from=derived,
-            rule_name="B-1 shared time basis rule")
-    if t1.verdict == "missing" and t2.verdict == "missing":
-        closing_clause = ""
-        for p in captured.pieces_of(*GATE_CLASSES):
-            if p.text and re.search(
-                    r"closing the build|build is complete|"
-                    r"build stands complete", p.text, re.I):
-                if p.step is not None:
-                    closing_clause = (
-                        " beside the Step %d %s closing the build"
-                        % (p.step, p.record_class))
-                break
-        return DerivationResult(
-            "B-1", "missing", "no elapsed or active figure", denom,
-            metrics_path,
-            shows="both inputs T-1 and T-2 are missing, no feeder "
-                  "record holds a B-1 figure, and the build summary "
-                  "states the whole build figures are not computed "
-                  "yet" + closing_clause,
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists and a "
-                    "never computed figure whose inputs are missing "
-                    "is missing",
-            derived_from=derived,
-            rule_name="B-1 composition rule")
-    if t1.verdict != "present" or t2.verdict != "present":
-        blocker = "T-1" if t1.verdict != "present" else "T-2"
-        code = t1.code_token if blocker == "T-1" else t2.code_token
-        code = code or "missing-field"
-        if code == "no code fits":
-            code = "missing-field"
-        return DerivationResult(
-            "B-1", "present but not derivable", "no total figure stands",
-            denom, metrics_path,
-            shows="the input row %s does not stand present, so the "
-                  "composed total cannot form" % blocker,
-            code_token=code,
-            follows=code + " the input that blocks the row is named in "
-                    "the record shows part, and no total is printed "
-                    "until both limbs form",
-            derived_from=derived,
-            rule_name="B-1 composition rule")
-    intervals = _step_intervals(captured)
-    total_active = sum(intervals.values())
-    figures = ("total active %s hours; elapsed limb stands from the "
-               "transition log" % _fmt_num(total_active))
-    return DerivationResult("B-1", "present", figures, denom,
-                            ledger.paths[0] if ledger else metrics_path,
-                            derived_from=derived,
-                            rule_name="B-1 composition rule")
+_BASIS_WORD = re.compile(
+    r"\d{2}:\d{2}(?::\d{2})?\s*(UTC|CST|CDT|EST|EDT|GMT)\b")
+_STAMP_WITH_WORDS = re.compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}")
 
 
-def _b2_proxy_position(captured):
-    """The documented units position at build close, or None.
+def _basis_split(captured):
+    """Whether the B family feeder timestamps split on time basis.
 
-    The position is the figure the latest step record states as
-    its final or closing budget in documented units. It stands on
-    a labelled proxy basis only: it is never a money or token
-    figure, and this helper returns it only so the B-2 row can
-    name it as a proxy, in that labelled form.
+    A split stands where one feeder timestamp states a basis word
+    and another feeder timestamp in a gate record states no basis,
+    in words or by carrying a time of day with no basis word.
     """
-    best = None
-    for s in sorted({p.step for p in captured.pieces_of(CLS_STEP_RECORD)
-                     if p.step is not None}):
-        for p in captured.step_pieces(s, CLS_STEP_RECORD):
-            if p.text is None:
-                continue
-            m = re.search(r"Final budget:\s*(\d+) of (\d+) documented "
-                          r"units", p.text)
-            if m is None:
-                m = re.search(r"Budget at closure:\s*(\d+) of (\d+) "
-                              r"documented units", p.text)
-            if m:
-                best = (int(m.group(1)), int(m.group(2)))
-    return best
+    labelled = False
+    ledger = _ledger_piece(captured)
+    if ledger is not None and ledger.text and \
+            _BASIS_WORD.search(ledger.text):
+        labelled = True
+    if not labelled:
+        return False
+    for piece in captured.pieces_of(*GATE_CLASSES):
+        if piece.text is None:
+            continue
+        if "no time basis" in piece.text.lower():
+            return True
+        for hit in _STAMP_WITH_WORDS.finditer(piece.text):
+            tail = piece.text[hit.end():hit.end() + 6]
+            if not re.match(r"\s*(UTC|CST|CDT|EST|EDT|GMT)\b", tail):
+                return True
+    return False
 
 
-def _b2_tokens_not_recorded_clause(captured, universe):
-    """The tokens NOT RECORDED clause for the B-2 reason, from the
-    closing step records that state it in that form."""
-    stated = [s for s in universe.evidenced
-              if any(p.text and "tokens NOT RECORDED" in p.text
-                     for p in captured.step_pieces(s, CLS_STEP_RECORD))]
-    if not stated:
-        return "with tokens stated as not recorded"
-    if len(stated) >= 2 and stated[-1] == universe.evidenced[-1]:
-        return ("with tokens NOT RECORDED in Steps %d and %d"
-                % (stated[-2], stated[-1]))
-    return "with tokens NOT RECORDED in " + _step_list_text(stated)
+def _derive_b1(captured, universe, t1_result):
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    pointer = "PATH-LEDGER.md"
+    ledger = _ledger_piece(captured)
+    if ledger is not None:
+        pointer = ledger.paths[0]
+    if _basis_split(captured):
+        return _refusal(
+            "B-1", "present but not derivable", "no B-1 figure",
+            denom, _pointer("B-1", pointer, captured),
+            shows="the timestamps feeding this row stand on split "
+                  "time bases: one transition timestamp states its "
+                  "basis in words and a gate record timestamp "
+                  "states no basis for its time of day",
+            token="no code fits",
+            follows="the shared time basis the row requires does "
+                    "not stand across its feeder timestamps, so no "
+                    "figure is derived",
+            rule_name="B-1 shared time basis rule")
+    if t1_result.verdict == "missing":
+        summary = _metrics_section(
+            captured.assembled_metrics or "", "## Build summary")
+        if "not computed yet" in summary.lower():
+            held = ("both inputs are missing on the date only "
+                    "ground, and the build summary in the metrics "
+                    "record stands as not computed yet and supplies "
+                    "no figure")
+        else:
+            held = "both inputs are missing on the date only ground"
+        return _refusal(
+            "B-1", "missing", "no B-1 figure", denom,
+            _pointer("B-1", pointer, captured),
+            shows="the T-1 and T-2 rows the row ranks from are "
+                  "missing, with the timestamp field and its form "
+                  "named on those rows",
+            token="no-feeder-record",
+            follows="both ranking inputs are missing, so no split "
+                    "or ranking figure exists for this row",
+            rule_name="B-1 ranking input rule",
+            broken="the step elapsed and step active figures that "
+                   "are this row's only inputs",
+            required="a formed elapsed figure and a formed active "
+                     "figure for the steps, from which the build "
+                     "totals are arithmetic",
+            held=held)
+    return _refusal(
+        "B-1", "present but not derivable", "no B-1 figure", denom,
+        pointer,
+        shows="the T-1 series stands in the tracer form and the "
+              "ranking the row states is not formed in this form",
+        token="partial-span",
+        follows="the row stands refused in the tracer form, with "
+                "its ranking inputs named on the T-1 and T-2 rows",
+        rule_name="B-1 tracer refusal rule")
+
+
+def _derive_b_ranking(captured, universe, t1_result, code):
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    pointer = "PATH-LEDGER.md"
+    ledger = _ledger_piece(captured)
+    if ledger is not None:
+        pointer = ledger.paths[0]
+    label = "slowest ranking" if code == "B-3" else "fastest ranking"
+    if t1_result.verdict == "missing":
+        summary = _metrics_section(
+            captured.assembled_metrics or "", "## Build summary")
+        never = "never computed" in (
+            captured.assembled_metrics or "").lower() or \
+            "not computed yet" in summary.lower() or \
+            "not computed yet" in (
+                captured.assembled_metrics or "").lower()
+        if code == "B-3":
+            broken = "the ranked list and its ranking inputs"
+            required = ("step elapsed and step active figures for "
+                        "the steps, ranked with each ranked step's "
+                        "wait share")
+            held = ("no ranked list stands in any feeder, both "
+                    "inputs are missing on the date only ground")
+            if never:
+                held += ", and the build summary was never computed"
+        else:
+            broken = "the ranked list and its ranking input"
+            required = ("step active figures for the steps, ranked "
+                        "with the step elapsed figure beside each")
+            held = ("no ranked list stands in any feeder, the "
+                    "active input is missing on the date only "
+                    "ground, with the elapsed input missing on the "
+                    "same ground")
+            if never:
+                held += ", and the build summary was never computed"
+        return _refusal(
+            code, "missing", "no ranking figure", denom,
+            _pointer(code, pointer, captured),
+            shows="the T-1 and T-2 derivations the row ranks from "
+                  "are missing, and no inputs exist",
+            token="no-feeder-record",
+            follows="no %s can be formed where both inputs are "
+                    "missing" % label,
+            rule_name=code + " ranking input rule",
+            broken=broken, required=required, held=held)
+    return _refusal(
+        code, "present but not derivable", "no ranking figure",
+        denom, pointer,
+        shows="the T-1 series stands in the tracer form and the "
+              "%s the row states is not formed in this form" % label,
+        token="partial-span",
+        follows="the row stands refused in the tracer form, with "
+                "its ranking inputs named on the T-1 and T-2 rows",
+        rule_name=code + " tracer refusal rule")
 
 
 def _derive_b2(captured, universe):
-    denom = "denominator the whole build budget in two limbs, money and tokens"
-    led = _cost_ledger(captured)
-    whole_piece, whole_value = _whole_build_money(captured)
-    money_stand = bool(led["money"]) or led["budget_money"] is not None
-    token_stand = bool(led["tokens"]) or led["budget_token"] is not None
-    if led["pieces"] and (money_stand or token_stand):
-        pointer = led["pieces"][0].paths[0]
-        spent_money = sum(led["money"].values()) if led["money"] else None
-        spent_token = sum(led["tokens"].values()) if led["tokens"] \
-            else None
-        if led["stated_money"] is not None and spent_money is not None \
-                and spent_money != led["stated_money"]:
-            return DerivationResult(
-                "B-2", "present but not derivable",
-                "money figures sum to %s against a stated build "
-                "total of %s; no percentage stands"
-                % (_fmt_num(spent_money),
-                   _fmt_num(led["stated_money"])), denom, pointer,
-                shows="the cost ledger states per step money figures "
-                      "which sum to %s, and states a build total of "
-                      "%s, and the two figures do not reconcile"
-                      % (_fmt_num(spent_money),
-                         _fmt_num(led["stated_money"])),
-                code_token="unreconciled-figure",
-                follows="unreconciled-figure the per step money "
-                        "figures and the stated build total do not "
-                        "reconcile, so no limb yields its percentage",
-                rule_name="B-2 unreconciled figure rule")
-        limbs = {}
-        for limb, spent, budget, figures_map in (
-                ("money", spent_money, led["budget_money"], led["money"]),
-                ("token", spent_token, led["budget_token"], led["tokens"])):
-            covered_steps = [s for s in universe.evidenced
-                             if s in figures_map]
-            partial = bool(figures_map) and universe.evidenced and \
-                len(covered_steps) != len(universe.evidenced)
-            if budget is not None and budget == 0 and \
-                    (spent is not None or figures_map or
-                     limb == "money"):
-                limbs[limb] = ("undefined-zero", spent, budget,
-                               covered_steps)
-            elif budget is None and spent is not None:
-                limbs[limb] = ("undefined-absent", spent, budget,
-                               covered_steps)
-            elif budget is not None and spent is not None and \
-                    not partial:
-                limbs[limb] = ("yields", spent, budget, covered_steps)
-            elif not figures_map and budget is None:
-                limbs[limb] = ("absent", spent, budget, covered_steps)
-            else:
-                limbs[limb] = ("blocked", spent, budget, covered_steps)
-        if all(state == "yields" for state, _, _, _ in limbs.values()):
-            figures = "; ".join(
-                "%s spent %s against a %s budget of %s, %s percent"
-                % (limb, _fmt_num(spent), limb, _fmt_num(budget),
-                   _fmt_num(spent * 100.0 / budget))
-                for limb, (state, spent, budget, _) in
-                (("money", limbs["money"]), ("token", limbs["token"])))
-            return DerivationResult("B-2", "present", figures, denom,
-                                    pointer,
-                                    rule_name="B-2 limb composition rule")
-        segments = []
-        shows_parts = []
-        coverage_extra = []
-        zero_limb = False
-        partial_limb = False
-        for limb, (state, spent, budget, covered_steps) in (
-                ("money", limbs["money"]), ("token", limbs["token"])):
-            label = "money" if limb == "money" else "token"
-            if state == "yields":
-                segments.append(
-                    "%s spent %s against a %s budget of %s, %s percent"
-                    % (label, _fmt_num(spent), label, _fmt_num(budget),
-                       _fmt_num(spent * 100.0 / budget)))
-                coverage_extra.append(
-                    "%s limb yields its percentage: %s spent %s "
-                    "against a %s budget of %s, %s percent"
-                    % (label, label, _fmt_num(spent), label,
-                       _fmt_num(budget),
-                       _fmt_num(spent * 100.0 / budget)))
-            elif state == "undefined-zero":
-                zero_limb = True
-                segments.append(
-                    "%s spent %s against a %s budget of 0"
-                    % (label,
-                       _fmt_num(spent) if spent is not None else "nil",
-                       label))
-                shows_parts.append(
-                    "a percentage against a budget of zero is "
-                    "undefined for the %s limb" % label)
-                if covered_steps and len(covered_steps) != \
-                        len(universe.evidenced):
-                    coverage_extra.append(
-                        "%s covered span %s"
-                        % (label, _step_list_text(covered_steps)))
-            elif state == "undefined-absent":
-                segments.append(
-                    "%s spent %s stands and no %s budget figure stands"
-                    % (label, _fmt_num(spent), label))
-                shows_parts.append(
-                    "a percentage against an absent budget is "
-                    "undefined for the %s limb" % label)
-            elif state == "absent":
-                segments.append(
-                    "%s spent and %s budget figures absent"
-                    % (label, label))
-                shows_parts.append(
-                    "both the spent figure and the budget figure are "
-                    "absent for the %s limb" % label)
-            else:
-                if covered_steps and len(covered_steps) != \
-                        len(universe.evidenced):
-                    partial_limb = True
-                if covered_steps:
-                    segments.append(
-                        "%s figures stand for %s, no %s percentage "
-                        "stands" % (label,
-                                    _step_list_text(covered_steps),
-                                    label))
-                    shows_parts.append(
-                        "the %s limb rests on a partial span, with "
-                        "the covered span named in the coverage"
-                        % label)
-                    coverage_extra.append(
-                        "%s covered span %s"
-                        % (label, _step_list_text(covered_steps)))
-                else:
-                    segments.append("no %s percentage stands" % label)
-                    shows_parts.append(
-                        "the %s limb does not yield its percentage"
-                        % label)
-        if coverage_extra:
-            denom += "; " + "; ".join(coverage_extra)
-        if zero_limb:
-            return DerivationResult(
-                "B-2", "present but not derivable", "; ".join(segments),
-                denom, pointer,
-                shows="; ".join(shows_parts),
-                code_token="no code fits",
-                follows="no code fits a percentage against a budget of "
-                        "zero is undefined, and no limb yields its "
-                        "percentage in full, the undefined state is "
-                        "reported as undefined and never as 0 and "
-                        "never as 100, and no fitting code on the "
-                        "closed list covers the zero budget limb ground",
-                rule_name="B-2 zero budget rule")
-        if partial_limb:
-            return DerivationResult(
-                "B-2", "present but not derivable", "; ".join(segments),
-                denom, pointer,
-                shows="; ".join(shows_parts),
-                code_token="partial-span",
-                follows="partial-span the row verdict follows the "
-                        "weaker limb, with the covered span named in "
-                        "the coverage and steps outside it not "
-                        "reported as zero",
-                rule_name="B-2 limb composition rule")
-        return DerivationResult(
-            "B-2", "present but not derivable", "; ".join(segments),
-            denom, pointer,
-            shows="; ".join(shows_parts),
-            code_token="missing-field",
-            follows="missing-field the row verdict follows the weaker "
-                    "limb, and the blocking limb is named in the "
-                    "record shows part",
-            rule_name="B-2 limb composition rule")
-    if whole_value == 0:
-        figures = ("money spent nil against a money budget of 0; "
-                   "token spent and token budget figures absent")
-        proxy = _b2_proxy_position(captured)
+    denom = "denominator step universe %d steps" % len(universe.evidenced)
+    ledgers = captured.pieces_of(CLS_COST_LEDGER)
+    pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
+    joined = _money_mentions(captured)
+    if ledgers:
+        return _refusal(
+            "B-2", "present but not derivable", "no budget share "
+            "figure", denom, pointer,
+            shows="a cost ledger piece stands and the budget "
+                  "figures the row forms its shares from do not "
+                  "stand in a measured form",
+            token="no-measurement-basis",
+            follows="a share formed from figures with no "
+                    "measurement basis does not stand, so no figure "
+                    "stands",
+            rule_name="B-2 measurement basis rule")
+    proxy = None
+    rulings = [piece for piece in captured.pieces_of(CLS_GATE_RULING)
+               if piece.text is not None]
+    rulings.sort(key=lambda piece: piece.step or 0, reverse=True)
+    for piece in rulings:
+        m = re.search(r"Final figure[^:\n]*: (\d+) of (\d+) "
+                      r"documented units", piece.text)
+        if m:
+            proxy = (m.group(1), m.group(2))
+            break
+    if proxy is None:
+        for piece in rulings:
+            m = re.search(r"(\d+) of (\d+) documented units",
+                          piece.text)
+            if m:
+                proxy = (m.group(1), m.group(2))
+                break
+    if proxy is None:
+        for piece in captured.pieces:
+            if piece.text is None:
+                continue
+            m = re.search(r"(\d+) of (\d+) documented units",
+                          piece.text)
+            if m:
+                proxy = (m.group(1), m.group(2))
+                break
+    if "documented units" in joined or "proxy" in joined.lower() \
+            or proxy is not None:
+        step_pointer = captured.first_path(CLS_STEP_RECORD) or pointer
+        held = ("no cost ledger stands in the tree, so no spent or "
+                "budget figure is taken from a ledger feeder for "
+                "either side, the money budget position is absent "
+                "and not zero, and no percentage is formed for "
+                "either side, with step record positions standing "
+                "as context only")
         if proxy is not None:
-            figures += ("; agent count position %d of %d documented "
-                        "units stands on a labelled proxy basis and "
-                        "is not entered as a money or token figure"
-                        % proxy)
-        return DerivationResult(
-            "B-2", "present but not derivable", figures, denom,
-            whole_piece.paths[0],
-            shows="a percentage against a budget of zero is undefined "
-                  "for the money limb, and both the spent figure and "
-                  "the budget figure are absent for the token limb, "
-                  + _b2_tokens_not_recorded_clause(captured, universe),
-            code_token="no code fits",
-            follows="no code fits a percentage against a budget of "
-                    "zero is undefined, and no limb yields its "
-                    "percentage in full, the undefined state is "
-                    "reported as undefined and never as 0 and never "
-                    "as 100, and no fitting code on the closed list "
-                    "covers the zero budget limb ground",
-            rule_name="B-2 zero budget rule")
-    step_records = captured.pieces_of(CLS_STEP_RECORD)
-    if step_records:
-        return DerivationResult(
-            "B-2", "present but not derivable", "no percentage stands",
-            denom, step_records[0].paths[0],
-            shows="no cost ledger stands in the tree, and neither "
-                  "limb, money or tokens, yields its percentage from "
-                  "the records that stand: no spent figure and no "
-                  "budget figure stands for either limb",
-            code_token="missing-field",
-            follows="missing-field the row verdict follows the "
-                    "weaker limb, and no limb yields its percentage "
-                    "in full",
-            rule_name="B-2 limb composition rule")
-    return DerivationResult(
-        "B-2", "missing", "no figure stands", denom,
-        captured.first_path(CLS_STEP_RECORD) or "steps/step-01-record.md",
-        shows="no cost ledger stands in the tree and neither limb, "
-              "money or tokens, has any feeder record",
-        code_token="no-feeder-record",
-        follows="no feeder record for either limb exists in the "
+            held += (" and the labelled proxy figure of %s of %s "
+                     "documented units reported as a proxy only "
+                     "and never as a token or money figure" % proxy)
+        return _refusal(
+            "B-2", "present but not derivable", "no budget share "
+            "figure", denom, _pointer("B-2", step_pointer, captured),
+            shows="a labelled proxy statement stands in the step "
+                  "records, stating documented units on a proxy "
+                  "basis, and no measured budget figure stands",
+            token="no-measurement-basis",
+            follows="a proxy statement is not a measurement, so no "
+                    "budget share figure stands",
+            rule_name="B-2 measurement basis rule",
+            broken="the ledger figure fields for spent and budget, "
+                   "on the token side and on the money budget side",
+            required="spent and budget figures taken from ledger "
+                     "feeders inside the root only, on both sides, "
+                     "with a percentage formed only against a "
+                     "standing budget",
+            held=held)
+    return _refusal(
+        "B-2", "missing", "no budget share figure", denom, pointer,
+        shows="no cost ledger piece and no budget figure stands in "
+              "the capture for this metric",
+        token="no-feeder-record",
+        follows="no feeder record for the metric exists in the "
                 "tree, so the row is missing",
-        rule_name="B-2 limb composition rule")
+        rule_name="B-2 feeder standing rule")
 
 
-def _derive_b3_b4(captured, universe, t1, t2, code):
-    metrics_path = captured.metrics_single_path or \
-        "wiki/wiki/synthesis/build-metrics-record.md"
-    denom = "denominator steps eligible for ranking"
-    derived = "T-1 and T-2"
-    label = "Slowest three steps" if code == "B-3" else "Fastest three steps"
-    if t1.verdict == "missing" or t2.verdict == "missing":
-        if code == "B-4" and t2.verdict == "missing":
-            missing_text = "the input T-2 is missing"
-        elif t1.verdict == "missing" and t2.verdict == "missing":
-            missing_text = "both inputs T-1 and T-2 are missing"
-        elif t1.verdict == "missing":
-            missing_text = "the input T-1 is missing"
-        else:
-            missing_text = "the input T-2 is missing"
-        return DerivationResult(
-            code, "missing", "no ranking figure", denom, metrics_path,
-            shows="no ranked list stands in the feeders and " +
-                  missing_text,
-            code_token="no-feeder-record",
-            follows="no feeder record for the metric exists and the "
-                    "composed metric is missing where an input metric "
-                    "is missing",
-            derived_from=derived,
-            rule_name=code + " composition rule")
-    if t1.verdict != "present" or t2.verdict != "present":
-        blocker = "T-1" if t1.verdict != "present" else "T-2"
-        return DerivationResult(
-            code, "present but not derivable", "no ranking figure", denom,
-            metrics_path,
-            shows="the input row %s does not stand present, so the "
-                  "ranking cannot form" % blocker,
-            code_token="missing-field",
-            follows="missing-field the input that blocks the row is "
-                    "named in the record shows part, so no ranking stands",
-            derived_from=derived,
-            rule_name=code + " composition rule")
-    intervals = _step_intervals(captured)
-    if code == "B-3":
-        ordered = sorted(intervals.items(), key=lambda kv: (-kv[1], kv[0]))
-    else:
-        ordered = sorted(intervals.items(), key=lambda kv: (kv[1], kv[0]))
-    top = ordered[:3]
-    tied_steps = []
-    if len(ordered) > 3:
-        threshold = ordered[2][1]
-        if any(value == threshold for _, value in ordered[3:]):
-            top = ordered[:3] + [item for item in ordered[3:]
-                                 if item[1] == threshold]
-            tied_steps = [s for s, v in top if v == threshold]
-    figures = label + ": " + "; ".join(
-        "Step %d at %s hours" % (s, _fmt_num(v)) for s, v in top)
-    if tied_steps:
-        figures += ("; tied at %s hours: %s"
-                    % (_fmt_num(ordered[2][1]), _each_step(tied_steps)))
-    return DerivationResult(code, "present", figures,
-                            denom + "; eligible steps %d" % len(intervals),
-                            metrics_path, derived_from=derived,
-                            rule_name=code + " ranking rule")
+# --------------------------------------------------------- report model
 
-
-# ------------------------------------------------------------- assembly
-
-_COMPOSED = ("B-1", "B-3", "B-4")
-
-
-def _build_state(captured):
-    """Return (state, piece) for the tree as a whole, under WV-5.
-
-    A tree is halted only where a recognised piece states the halt in
-    its own words in a single statement naming the build or the work:
-    a statement carrying the word halted beside the word build or the
-    word work. A tree is closed only where a recognised piece states
-    a closing of the whole build. Every other tree stands in
-    progress, and absence alone is never halt evidence.
-    """
-    for p in captured.pieces:
-        if p.text is None:
-            continue
-        for segment in re.split(r"[.\n]", p.text):
-            low = segment.lower()
-            if "halted" in low and (re.search(r"\bbuild\b", low) or
-                                    re.search(r"\bwork\b", low)):
-                return "halted", p
-    for p in captured.pieces:
-        if p.text and re.search(r"closing the build|build is complete|"
-                                r"build stands complete", p.text, re.I):
-            return "closed", p
-    return "in progress", None
-
-
-def _t2_interval_duration_stands(captured):
-    """Whether an interval duration stands in the transition log."""
-    ledger = _ledger_piece(captured)
-    if ledger is None or ledger.text is None:
-        return False
-    return _interval_duration_mentions_stand(ledger.text)
-
-
-def _apply_version_refusal(captured, results):
-    version = captured.definitions_version
-    if version is None or _known_version(version):
-        return
-    by_code = {r.code: r for r in results}
-    t2 = by_code["T-2"]
-    if t2.verdict != "missing" and \
-            not _t2_interval_duration_stands(captured):
-        # On the Slice 4 variant no feeder record stands for T-2: the
-        # transition log holds no interval duration from which an
-        # active figure for T-2 could form, so the row stays missing
-        # under the refusal, ahead of the generic limb below.
-        t2.verdict = "missing"
-        t2.figures = "no interval figure"
-        t2.shows = ("no interval duration stands in the transition "
-                    "log from which an active figure for this row "
-                    "could form, and the tree states a definitions "
-                    "version the tool does not know, named here as %s"
-                    % version)
-        t2.code_token = "no-feeder-record"
-        t2.follows = ("no feeder record for the metric stands on "
-                      "this tree, so the row is missing")
-        t2.rule_name = t2.rule_name + "; WV-2 unknown version refusal"
-    t7 = by_code["T-7"]
-    if t7.verdict == "missing" and \
-            captured.pieces_of(*GATE_CLASSES):
-        # Gate verdict records stand for T-7 even where no loop step
-        # is identified in the tree, so the row falls under the
-        # refusal like every other metric whose feeder records stand.
-        t7.verdict = "present but not derivable"
-        t7.figures = "no figure stands"
-        t7.shows = ("the tree states a definitions version the tool "
-                    "does not know, named here as %s, in the build "
-                    "header of the metrics record" % version)
-        t7.code_token = "unknown-definitions-version"
-        t7.follows = ("unknown-definitions-version every metric "
-                      "whose feeder records stand falls to present "
-                      "but not derivable, with the unknown version "
-                      "named, and no value is guessed")
-        t7.rule_name = t7.rule_name + "; WV-2 unknown version refusal"
-    q4 = by_code["Q-4"]
-    if q4.verdict == "missing" and \
-            captured.pieces_of(*GATE_CLASSES):
-        # Gate records are a named feeder kind for Q-4, so where
-        # they stand the row falls under the refusal like every
-        # other metric whose feeder records stand, even where no
-        # first trace record stands for the row itself, in the
-        # same form as the T-7 limb above.
-        q4.verdict = "present but not derivable"
-        q4.figures = "no figure stands"
-        q4.shows = ("the tree states a definitions version the tool "
-                    "does not know, named here as %s, in the build "
-                    "header of the metrics record" % version)
-        q4.code_token = "unknown-definitions-version"
-        q4.follows = ("unknown-definitions-version every metric "
-                      "whose feeder records stand falls to present "
-                      "but not derivable, with the unknown version "
-                      "named, and no value is guessed")
-        q4.rule_name = q4.rule_name + "; WV-2 unknown version refusal"
-    for result in results:
-        if result.code in _COMPOSED:
-            continue
-        if result.verdict == "missing":
-            continue
-        if not _feeder_stands(captured, result.code):
-            continue
-        result.verdict = "present but not derivable"
-        result.figures = "no figure stands"
-        result.shows = ("the tree states a definitions version the tool "
-                        "does not know, named here as %s, in the build "
-                        "header of the metrics record" % version)
-        result.code_token = "unknown-definitions-version"
-        result.follows = ("unknown-definitions-version every metric "
-                          "whose feeder records stand falls to present "
-                          "but not derivable, with the unknown version "
-                          "named, and no value is guessed")
-        result.rule_name = result.rule_name + "; WV-2 unknown version refusal"
-    for code in _COMPOSED:
-        result = by_code[code]
-        inputs = [by_code["T-1"], by_code["T-2"]]
-        missing_inputs = [r.code for r in inputs
-                          if r.verdict == "missing"]
-        if missing_inputs and result.verdict != "missing":
-            result.verdict = "missing"
-            result.figures = "no elapsed or active figure" \
-                if code == "B-1" else "no ranking figure"
-            result.shows = ("the input row %s is missing, so the "
-                            "composed row is missing"
-                            % " and ".join(missing_inputs))
-            result.code_token = "no-feeder-record"
-            result.follows = ("the composed metric is missing where "
-                              "an input metric is missing")
-            result.rule_name = result.rule_name + \
-                "; composition rule under WV-2"
-        elif any(r.verdict == "present but not derivable" for r in inputs) \
-                and result.verdict == "present":
-            result.verdict = "present but not derivable"
-            result.figures = "no figure stands"
+def _data_quality_entries(captured):
+    entries = []
+    has_correcting = any("correcting" in path
+                         for piece in captured.pieces
+                         for path in piece.paths)
+    for piece in captured.pieces:
+        name = piece.paths[0]
+        if piece.text is None:
+            token = _quality_code(piece)
+            state_word = piece.quality_state or "not read in full"
+            entries.append(
+                "%s: What the record shows: the piece stands %s in "
+                "the capture and no text from it stands in the "
+                "capture What follows: %s the piece supplies no "
+                "figure to any derivation"
+                % (name, state_word, token))
+        elif "TRUNCATED" in piece.text and not has_correcting:
+            entries.append(
+                "%s: What the record shows: the piece carries a "
+                "truncation marker in its text and no correcting "
+                "record for it stands in the capture What follows: "
+                "truncated-no-correcting-record the visible part of "
+                "the piece is never counted as a complete record"
+                % name)
+    if not _known_version(captured.definitions_version):
+        entries.append(
+            "build-metrics-record.md: What the record shows: the "
+            "metrics record states definitions version %s, which "
+            "is not a version the settled definitions recognise "
+            "What follows: unknown-definitions-version derivations "
+            "whose feeder records stand are refused on that ground"
+            % captured.definitions_version)
+    if _basis_split(captured):
+        entries.append(
+            "time basis: What the record shows: the timestamps "
+            "feeding the B family rows stand on split time bases, "
+            "one stating its basis in words and one stating no "
+            "basis What follows: no code fits the shared time "
+            "basis those rows require does not stand")
+    return entries
 
 
 def derive_report(captured):
-    """Derive one ReportModel from one CapturedRead and nothing else."""
-    if not captured.pieces:
-        header = [
-            "# Metrics starter set report",
-            "Root: " + str(captured.root),
-            "Build identity: no build identity was found in the tree",
-            "Step universe: 0 steps",
-            "0 pieces recognised",
-            "Live line: latest record timestamp: " +
-            (captured.latest_timestamp or "no timestamp was found"),
-            "Coverage statement: no usable records stand in the tree, "
-            "so the report carries no metric rows",
-        ]
-        return ReportModel(header, header[-1], ["## Piece inventory",
-                                                "No piece stands."],
-                           [], ["Datum line: the tree stated none for "
-                                "the definitions version; form basis: "
-                                "the settled forms of this version of "
-                                "the tool."], no_usable=True)
+    """Derive the one ReportModel from the one CapturedRead.
+
+    The StepUniverse the derivations read is the one construction
+    in this module, build_step_universe, built from this same
+    capture. No second construction stands anywhere else.
+    """
     universe = build_step_universe(captured)
-    results = {}
-    results["T-1"] = _derive_t1(captured, universe)
-    results["T-2"] = _derive_t2(captured, universe, results["T-1"])
-    results["T-4"] = _derive_t4(captured, universe)
-    results["T-7"] = _derive_t7(captured, universe)
-    results["E-1"] = _derive_e1(captured, universe)
-    results["E-2"] = _derive_e2(captured, universe)
-    results["E-3"] = _derive_e3(captured, universe)
-    results["E-4"] = _derive_e4(captured, universe)
-    results["F-2"] = _derive_f2(captured, universe)
-    results["Q-1"] = _derive_q1(captured, universe)
-    results["Q-3"] = _derive_q3(captured, universe)
-    results["Q-4"] = _derive_q4(captured, universe)
-    results["D-1"] = _derive_d1(captured, universe)
-    results["B-1"] = _derive_b1(captured, universe, results["T-1"],
-                                results["T-2"])
-    results["B-2"] = _derive_b2(captured, universe)
-    results["B-3"] = _derive_b3_b4(captured, universe, results["T-1"],
-                                  results["T-2"], "B-3")
-    results["B-4"] = _derive_b3_b4(captured, universe, results["T-1"],
-                                  results["T-2"], "B-4")
-    ordered = [results[code] for code in STARTER_ORDER]
-    from metrics_starter_collector.cross_check import \
-        staffing_cross_check_statements
-    covered_map = {}
-    totals_map = {}
-    for s in universe.evidenced:
-        pair = _parse_staffed_base(captured, s)
-        if pair:
-            covered_map[s] = pair
-        total = _parse_total_spins(captured, s)
-        if total is not None:
-            totals_map[s] = total
-    f2_counted = set()
-    for s in universe.evidenced:
-        ranked = _f2_ranked_pieces(captured, s)
-        if not ranked:
-            continue
-        # The counted test is the F-2 counting test itself, the
-        # F15-14 base closure conflict guard included, so the cross
-        # check statement claims only steps the counting counted.
-        if len(_f2_base_closures(ranked)) > 1:
-            continue
-        _, counted_closure = _f2_first_closure(ranked)
-        if counted_closure:
-            f2_counted.add(s)
-    for code, texts in staffing_cross_check_statements(
-            captured, universe, covered_map, totals_map,
-            f2_counted).items():
-        result = results[code]
-        joined = " ".join(texts)
-        result.statement = (result.statement + " " + joined) \
-            if result.statement else joined
-    from metrics_starter_collector.cross_check import \
-        cost_cross_check_statements
-    cost_led = _cost_ledger(captured)
-    cost_e4_money = dict(cost_led["money"])
-    for step in _step_money_nil(captured):
-        cost_e4_money.setdefault(step, 0.0)
-    cost_b2_money = sum(cost_led["money"].values()) \
-        if cost_led["money"] else None
-    if cost_b2_money is None:
-        _, cost_whole_value = _whole_build_money(captured)
-        cost_b2_money = cost_whole_value
-    cost_b2_token = sum(cost_led["tokens"].values()) \
-        if cost_led["tokens"] else None
-    for code, texts in cost_cross_check_statements(
-            captured, dict(cost_led["tokens"]), cost_e4_money,
-            cost_b2_money, cost_b2_token).items():
-        result = results[code]
-        joined = " ".join(texts)
-        result.statement = (result.statement + " " + joined) \
-            if result.statement else joined
-    _apply_version_refusal(captured, ordered)
-
-    build_state, halt_piece = _build_state(captured)
-    if build_state != "closed":
-        if build_state == "halted":
-            state_note = ("the build stands halted, as the halt "
-                          "naming for this row, stated in its own "
-                          "words in %s."
-                          % (halt_piece.paths[0] if halt_piece
-                             else "a recognised piece"))
-        else:
-            state_note = ("the build stands in progress, as the open "
-                          "state naming for this row.")
-        for code in ("B-1", "B-2", "B-3", "B-4"):
-            result = results[code]
-            result.statement = (result.statement + " " + state_note) \
-                if result.statement else state_note
-
-    identity = captured.build_identity or \
-        "no build identity was found in the tree"
-    if universe.metrics_count_claim is not None and \
-            universe.metrics_count_claim != len(universe.evidenced):
-        metrics_name = "build-metrics-record.md"
-        if captured.metrics_single_path:
-            metrics_name = captured.metrics_single_path.rsplit("/", 1)[-1]
-        universe_line = (
-            "Step universe: disputed, %d steps stated in %s and %d "
-            "steps evidenced by step records and gate files, neither "
-            "count picked (%s)"
-            % (universe.metrics_count_claim, metrics_name,
-               len(universe.evidenced),
-               _step_list_text(universe.evidenced)))
-    else:
-        universe_line = "Step universe: %d steps (%s)" % (
-            len(universe.evidenced), _step_list_text(universe.evidenced))
-    header = [
-        "# Metrics starter set report",
-        "Root: " + str(captured.root),
-        "Build identity: " + identity,
-        universe_line,
-        "%d pieces recognised" % len(captured.pieces),
-        "Live line: latest record timestamp: " +
-        (captured.latest_timestamp or "no timestamp was found"),
-    ]
-    not_read = [p for p in captured.pieces if p.text is None]
-    coverage_bits = []
-    if build_state == "halted":
-        coverage_bits.append(
-            "the build stands halted: a recognised piece, %s, states "
-            "the halt in its own words, and missing closing pieces "
-            "count as missing pieces"
-            % (halt_piece.paths[0] if halt_piece
-               else "a recognised piece"))
-    elif build_state == "in progress":
-        missing_gate_steps = [
-            s for s in universe.evidenced
-            if not captured.step_pieces(s, *GATE_CLASSES)]
-        state_bit = ("the build stands in progress: the closing "
-                     "ruling for the build is absent, a missing piece")
-        for s in missing_gate_steps:
-            state_bit += ("; the closing ruling piece for Step %d "
-                          "(step-%02d gate record) is a missing piece"
-                          % (s, s))
-        coverage_bits.append(state_bit)
+    t1 = _derive_t1(captured, universe)
+    results_by_code = {
+        "T-1": t1,
+        "T-2": _derive_t2(captured, universe),
+        "T-4": _derive_t4(captured, universe),
+        "T-7": _derive_t7(captured, universe),
+        "E-1": _derive_e1(captured, universe),
+        "E-2": _derive_e2(captured, universe),
+        "E-3": _derive_e3(captured, universe),
+        "E-4": _derive_e4(captured, universe),
+        "F-2": _derive_f2(captured, universe),
+        "Q-1": _derive_q1(captured, universe),
+        "Q-3": _derive_q3(captured, universe),
+        "Q-4": _derive_q4(captured, universe),
+        "D-1": _derive_d1(captured, universe),
+        "B-1": _derive_b1(captured, universe, t1),
+        "B-2": _derive_b2(captured, universe),
+        "B-3": _derive_b_ranking(captured, universe, t1, "B-3"),
+        "B-4": _derive_b_ranking(captured, universe, t1, "B-4"),
+    }
+    results = [results_by_code[code] for code in STARTER_ORDER]
+    latest = captured.latest_timestamp
+    latest_text = latest if latest else "none found in the capture"
+    coverage = (
+        "Coverage statement: step universe %d steps evidenced (%s); "
+        "%d pieces in the capture; 17 rows in starter set order"
+        % (len(universe.evidenced), _each_step(universe.evidenced),
+           len(captured.pieces)))
     if universe.disagreements:
-        coverage_bits.append("step universe disagreement stands: " +
-                             "; ".join(universe.disagreements))
-    if not_read:
-        coverage_bits.append(
-            "partial coverage: pieces not read in full: " + "; ".join(
-                "%s (%d bytes, %s)" % (p.paths[0], p.size,
-                                       p.not_read_reason or "not read in full")
-                for p in not_read))
+        coverage += "; disagreements: " + "; ".join(
+            universe.disagreements)
     if captured.walk_note:
-        coverage_bits.append(captured.walk_note)
-    if captured.tree_cut_paths:
-        coverage_bits.append(
-            "tree limit cut: the record part total of %d bytes in "
-            "%d files crossed the %s, and the pieces past the limit "
-            "were not read: %s"
-            % (captured.tree_bytes, captured.tree_files,
-               captured.tree_cut_kind or "tree limit",
-               "; ".join(captured.tree_cut_paths)))
-    if not coverage_bits:
-        coverage_bits.append("the capture stands complete for the "
-                             "pieces recognised")
-    coverage = "Coverage statement: " + "; ".join(coverage_bits) + "."
-    if build_state != "closed":
-        header.append("Captured read statement: the verdicts in this "
-                      "report are verdicts on the captured read.")
+        coverage += "; walk note: " + captured.walk_note
+    header_lines = ["# Metrics starter set report",
+                    "Root: " + str(captured.root)]
+    if captured.build_identity:
+        header_lines.append("Build: " + str(captured.build_identity))
+    header_lines.append("Latest record timestamp: " + str(latest_text))
+    header_lines.append(coverage)
+    inventory_lines = ["## Piece inventory"]
+    for piece in captured.pieces:
+        state = piece.quality_state if piece.quality_state else \
+            "read in full"
+        inventory_lines.append(
+            "Piece %s | %s | %d bytes | %s"
+            % (", ".join(piece.paths), piece.record_class,
+               piece.size, state))
     for cls in sorted(captured.inventory_totals):
         totals = captured.inventory_totals[cls]
-        header.append(
-            "Class %s: expected %d, found %d"
-            % (cls, totals["expected"], totals["found"]))
-        header.append(
-            "Class %s: not found %d" % (cls, totals["not_found"]))
-        header.append(
-            "Class %s: not yet recordable %d"
-            % (cls, totals["not_yet_recordable"]))
-    header.append(coverage)
-
-    inventory_lines = ["## Piece inventory"]
-    if captured.tree_cut_paths:
         inventory_lines.append(
-            "- Record part total: %d bytes in %d files | tree limits: "
-            "%d bytes and %d files | over limit"
-            % (captured.tree_bytes, captured.tree_files,
-               captured.tree_byte_limit, captured.tree_file_limit))
-    for p in captured.pieces:
-        state = p.quality_state or "read in full"
-        if p.text is None and p.quality_state is None:
-            state = "not read in full"
-        if p.form_state:
-            state = state + " | form: " + p.form_state
-        if _repair_cited(p):
-            state = state + (" | repair cited: the Completion section "
-                             "in this piece supplies the missing "
-                             "content in place")
-        for path in p.paths:
-            inventory_lines.append("- %s | %s | %d bytes | %s"
-                                   % (path, p.record_class, p.size, state))
-    for path, note in captured.near_matches:
-        line = "- %s | unrecognised near match | not read" % path
-        if note:
-            line += " | nearest closed pattern: " + note
-        inventory_lines.append(line)
+            "Inventory totals: %s expected %d found %d not found %d"
+            % (cls, totals.get("expected", 0), totals.get("found", 0),
+               totals.get("not_found", 0)))
+    entries = _data_quality_entries(captured)
+    if not entries:
+        entries = ["No data quality entries: every piece in the "
+                   "capture was read in full."]
+    return ReportModel(header_lines=header_lines, coverage=coverage,
+                       inventory_lines=inventory_lines, results=results,
+                       data_quality=entries,
+                       no_usable=not captured.pieces)
 
-    data_quality = []
-    code_for_quality = {"malformed": "malformed-piece",
-                        "over limit": "over-limit-piece",
-                        "unreadable": "unreadable-piece",
-                        "truncated": "truncated-no-correcting-record"}
-    for p in captured.pieces:
-        if p.text is None:
-            code = code_for_quality.get(p.quality_state or "",
-                                        "unreadable-piece")
-            if p.not_read_reason and "duplicate" in p.not_read_reason:
-                code = "record-disagrees"
-            name = p.paths[0].split("/")[-1]
-            data_quality.append(
-                "Piece %s (%s): What the record shows: the piece at %s "
-                "stands %s and was not read in full. What follows: %s "
-                "the piece is marked not read in full in the inventory "
-                "and derivations that need it follow the not read in "
-                "full rule." % (name, p.paths[0], p.paths[0],
-                                p.quality_state or "unreadable", code))
-    for path in captured.size_unknown_paths:
-        name = path.split("/")[-1]
-        data_quality.append(
-            "Piece %s (%s): What the record shows: the piece at %s "
-            "could not be measured when the tree was read, so its "
-            "size stands unknown in the capture. What follows: "
-            "unreadable-piece the piece is carried in the inventory "
-            "with its size unknown, and no tree total rests on a "
-            "measured size for it." % (name, path, path))
-    for p in captured.pieces:
-        if _repair_cited(p):
-            name = p.paths[0].split("/")[-1]
-            data_quality.append(
-                "Piece %s (%s): What the record shows: the piece was "
-                "found truncated and its Completion section supplies "
-                "the missing content in place, a repair cited in the "
-                "piece itself. What follows: the repair stands, so "
-                "the piece is read in full and is not listed as a "
-                "truncation without repair."
-                % (name, p.paths[0]))
-    sample_paths = sorted(
-        [path for p in captured.pieces for path in p.paths] +
-        [path for path, note in captured.near_matches])
-    sample_text = ", ".join(sample_paths[:12])
-    if len(sample_paths) > 12:
-        sample_text += ", and further entries in that same order"
-    bias_text = (
-        "pieces are missing by walk order position, in sorted "
-        "relative path order, not spread evenly across the tree, so "
-        "pieces whose paths sort after the cut point are cut whole "
-        "and pieces whose paths sort before it are kept whole; the "
-        "bias direction is that later walk order positions are the "
-        "ones cut")
-    over_pieces = [p for p in captured.pieces
-                   if p.text is None and p.quality_state == "over limit"
-                   and not (p.not_read_reason and
-                            "tree limit" in p.not_read_reason)]
-    if over_pieces:
-        first_over = over_pieces[0]
-        limit_text = first_over.not_read_reason or "over limit"
-        if limit_text.startswith("over limit: "):
-            limit_text = limit_text[len("over limit: "):]
-        data_quality.append(
-            "Walk order sample for %s: What the record shows: the "
-            "%s cut the capture at %s; sampled entries in sorted "
-            "relative path order: %s. What follows: "
-            "over-limit-piece %s."
-            % (first_over.paths[0], limit_text, first_over.paths[0],
-               sample_text, bias_text))
-    if captured.tree_cut_paths:
-        cut_at = captured.tree_cut_paths[0]
-        last_seen = captured.tree_last_visited or cut_at
-        data_quality.append(
-            "Walk order sample for %s: What the record shows: the "
-            "%s cut the capture, with the last visited path before "
-            "the cut at %s and the first piece past the limit at "
-            "%s; sampled entries in sorted relative path order: %s. "
-            "What follows: over-limit-piece %s."
-            % (cut_at, captured.tree_cut_kind or "tree limit",
-               last_seen, cut_at, sample_text, bias_text))
-    if captured.walk_note:
-        last_seen = sample_paths[-1] if sample_paths else "none"
-        data_quality.append(
-            "Walk order sample for the whole walk bound: What the "
-            "record shows: the whole walk bound of 10000 entries "
-            "cut the capture, with the last visited path at %s; "
-            "sampled entries in sorted relative path order: %s. "
-            "What follows: over-limit-piece %s."
-            % (last_seen, sample_text, bias_text))
-    if captured.definitions_version is None:
-        datum = ("Datum line: the tree stated none for the definitions "
-                 "version; form basis: the settled forms of this version "
-                 "of the tool.")
-    else:
-        datum = ("Datum line: definitions version %s; form basis: the "
-                 "settled forms of this version of the tool."
-                 % captured.definitions_version)
-    data_quality.append(datum)
-    for result in ordered:
-        if result.verdict != "present" and result.shows is not None:
-            data_quality.append("Row %s outcome: %s"
-                                % (result.code, result.reason_text()))
-    return ReportModel(header, coverage, inventory_lines, ordered,
-                       data_quality)
+
+# Compatibility aliases for the capture seam the suite probes.
+derive = derive_report
+build_report = derive_report
+derive_all = derive_report

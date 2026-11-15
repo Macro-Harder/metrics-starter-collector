@@ -1,25 +1,29 @@
 """Module 1: shell reader, the thin shell.
 
-Parses the command line arguments in __main__, validates the root,
-walks the root once in sorted relative path order, reads each
-discovered piece once, enforces the limits in minimal form, builds
-one CapturedRead, and delivers the finished report to stdout or to
-the one operator named file. This is the only module that touches
-the filesystem besides the Inventory classification it calls.
+This is the only module that touches the filesystem. It validates
+the root the operator names, walks that tree once in sorted
+relative path order, reads each discovered piece once, applies
+the capture limits in the minimal form this slice needs, and
+builds the one CapturedRead every later part of the run reads.
+It also delivers the finished report, to standard output or to
+the one operator named file. It holds no derivation rule.
 """
 import os
 import re
+import sys
 from pathlib import Path
 
 from metrics_starter_collector import inventory
 from metrics_starter_collector.derivation_core import (
     CLS_ADJUDICATION, CLS_AUDIT_PAPER, CLS_BOARD_MEMBER,
     CLS_DECISION_QUEUE, CLS_DEFECT_REGISTER, CLS_FIX_REGISTER,
-    CLS_GATE_ADJUDICATION, CLS_GATE_RECORD, CLS_GATE_RULING,
-    CLS_METRICS_PAGE, CLS_METRICS_SINGLE, CLS_OTHER_REGISTER,
-    CLS_PATH_LEDGER, CLS_REGATE_RECORD, CLS_STEP_RECORD, CLS_TIER_RECORD,
-    CLS_TRACE, GATE_CLASSES, CapturedRead, Piece)
+    CLS_GATE_RECORD, CLS_METRICS_PAGE, CLS_METRICS_SINGLE,
+    CLS_OTHER_REGISTER, CLS_PATH_LEDGER, CLS_STEP_RECORD,
+    CLS_TIER_RECORD, CLS_TRACE, GATE_CLASSES, CapturedRead, Piece)
 
+# The capture limits, as named constants in this module, where
+# limit enforcement stands. No operator option exists for any of
+# them.
 FILE_LIMIT = 1000000
 TREE_BYTE_LIMIT = 25000000
 TREE_FILE_LIMIT = 2000
@@ -28,295 +32,294 @@ WALK_BOUND = 10000
 
 
 class UnreadableInputError(Exception):
-    """The shell cannot produce a CapturedRead at all for this root."""
+    """The shell cannot produce a CapturedRead at all for the root."""
 
 
 class UsageError(Exception):
-    """A command line or delivery form the grammar refuses."""
+    """A delivery form the command grammar refuses."""
 
 
-_FULL_TS = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})"
-                      r"(?::(\d{2}))?(?:\s*(CST|UTC|EST|EDT|CDT))?")
-_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
+_FULL_STAMP = re.compile(
+    r"(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?"
+    r"(?:\s*(CST|UTC|EST|EDT|CDT))?")
+_DATE_ONLY = re.compile(r"(\d{4}-\d{2}-\d{2})")
+_VERSION_LINE = re.compile(r"Definitions version:\s*(.+)")
 
 
 def _latest_timestamp(texts):
-    best = None
-    best_key = None
+    """The latest record timestamp found inside the captured texts.
+
+    A timestamp with a time of day keys by its full value. A date
+    standing alone keys at the start of its day. The winning stamp
+    is returned in the form the record states it.
+    """
+    winner = None
+    winner_key = None
     for text in texts:
-        for m in _FULL_TS.finditer(text):
-            key = (m.group(1), m.group(2), m.group(3),
-                   m.group(4) or "00")
-            if best_key is None or key > best_key:
-                best_key = key
-                best = m.group(0)
-        for m in _DATE.finditer(text):
-            key = (m.group(1), "00", "00", "00")
-            if best_key is None or key > best_key:
-                best_key = key
-                best = m.group(1)
-    return best
+        for found in _FULL_STAMP.finditer(text):
+            key = (found.group(1), found.group(2), found.group(3),
+                   found.group(4) or "00")
+            if winner_key is None or key > winner_key:
+                winner_key = key
+                winner = found.group(0)
+        for found in _DATE_ONLY.finditer(text):
+            key = (found.group(1), "00", "00", "00")
+            if winner_key is None or key > winner_key:
+                winner_key = key
+                winner = found.group(1)
+    return winner
 
 
-def _read_piece_file(path):
-    """Read one file once. Return (size, text, quality, reason)."""
+def _read_once(path):
+    """Read one discovered file exactly once.
+
+    Returns (size, text, quality_state, not_read_reason). A file
+    that cannot be read, that crosses the file limit, that is not
+    valid UTF-8, or that holds a line over the line limit yields
+    no text and carries its state and reason instead.
+    """
     try:
         data = path.read_bytes()
     except OSError as exc:
         return 0, None, "unreadable", \
-            "unreadable-piece: unreadable: %s" % exc
+            "unreadable-piece: the piece could not be read: %s" % exc
     size = len(data)
     if size > FILE_LIMIT:
         return size, None, "over limit", \
-            "over limit: file limit %d bytes crossed" % FILE_LIMIT
+            "over-limit-piece: the file limit of %d bytes was " \
+            "crossed" % FILE_LIMIT
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
-        return size, None, "malformed", "malformed: not valid UTF-8"
+        return size, None, "malformed", \
+            "malformed-piece: the piece is not valid UTF-8 text"
     for line in text.splitlines():
         if len(line.encode("utf-8")) > LINE_LIMIT:
             return size, None, "over limit", \
-                "over limit: line limit %d bytes crossed" % LINE_LIMIT
+                "over-limit-piece: the line limit of %d bytes was " \
+                "crossed" % LINE_LIMIT
     return size, text, None, None
 
 
-def _split_page_order(text, rel):
-    if text:
-        m = re.search(r"Page order:\s*(\d+)", text)
-        if m:
-            return (0, int(m.group(1)), rel)
-    return (1, 0, rel)
-
-
-def _assemble_metrics(pieces):
-    """Assemble the metrics record in its governing physical form.
-
-    The single form feeds from the first piece carrying substantive
-    text, as the ledger selection does: an empty piece carries an
-    empty string as its text, so the first piece with any text at
-    all would let an empty canonical piece defeat a sound
-    duplicate. Where no single piece carries substantive text, the
-    standing selection, the first piece with a text, holds.
-    """
-    singles = [p for p in pieces if p.record_class == CLS_METRICS_SINGLE
-               and p.text is not None]
-    if singles:
-        for piece in singles:
-            if piece.text.strip():
-                return piece.text, piece.paths[0]
-        return singles[0].text, singles[0].paths[0]
-    pages = [p for p in pieces if p.record_class == CLS_METRICS_PAGE
-             and p.text is not None]
-    if not pages:
-        return None, None
-    pages.sort(key=lambda p: _split_page_order(p.text, p.paths[0]))
-    return "\n".join(p.text for p in pages), pages[0].paths[0]
-
-
 def _definitions_version(assembled):
+    """The definitions version the assembled record states, if any."""
     if not assembled:
         return None
-    m = re.search(r"Definitions version:\s*(.+)", assembled)
-    if m:
-        return m.group(1).strip()
+    found = _VERSION_LINE.search(assembled)
+    if found:
+        return found.group(1).strip()
     return None
 
 
 def _build_identity(pieces, assembled):
+    """The build identity the tree states, from its own records."""
     if assembled:
-        m = re.search(r"^#\s*Build metrics record:\s*(.+)$", assembled, re.M)
-        if m:
-            return m.group(1).strip()
-        m = re.search(r"^- Project:\s*(.+)$", assembled, re.M)
-        if m:
-            return m.group(1).strip()
-    for p in pieces:
-        if p.text and p.record_class == CLS_STEP_RECORD:
-            m = re.search(r"Build:\s*(.+)\.", p.text)
-            if m:
-                return m.group(1).strip()
+        found = re.search(r"^#\s*Build metrics record:\s*(.+)$",
+                          assembled, re.M)
+        if found:
+            return found.group(1).strip()
+        found = re.search(r"^- Project:\s*(.+)$", assembled, re.M)
+        if found:
+            return found.group(1).strip()
+    for piece in pieces:
+        if piece.text and piece.record_class == CLS_STEP_RECORD:
+            found = re.search(r"Build:\s*(.+)\.", piece.text)
+            if found:
+                return found.group(1).strip()
     return None
 
 
-def _evidenced_rounds(pieces, step):
-    """Rounds or passes evidenced for one step, in the CA-5 forms.
+def _rounds_evidenced(pieces, step):
+    """The round count one step evidences, for inventory totals.
 
-    The forms mirror the round evidence the core reads for T-7: a
-    pass count or rounds statement in the step own record, the
-    re-audit round headings of a loop record, an explicit verdict
-    record count in a verdict record, or the count of gate pieces
-    standing for the step. The largest evidenced count governs.
-    Returns 0 where no round is evidenced for the step.
+    The forms are a pass count or rounds statement in the step own
+    record, re-audit round headings in that record, an explicit
+    verdict record count in a gate piece, or the count of gate
+    pieces standing for the step. The largest evidenced count
+    governs, and 0 stands where no round is evidenced.
     """
     candidates = []
-    texts = [p.text for p in pieces
-             if p.step == step and p.record_class == CLS_STEP_RECORD
-             and p.text]
-    joined = "\n".join(texts)
-    if joined:
-        m = re.search(r"Pass count in this record:\s*(\d+)\s*passes",
-                      joined)
-        if m:
-            candidates.append(int(m.group(1)))
-        m = re.search(r"states\s+(\d+)\s+rounds for this step", joined)
-        if m:
-            candidates.append(int(m.group(1)))
-        head_rounds = [int(x) for x in re.findall(
-            r"^## Re-audit[^\n]*\(round (\d+)", joined, re.M)]
-        reaudit_heads = re.findall(r"^## Re-audit", joined, re.M)
-        if head_rounds and min(head_rounds) == 1:
-            candidates.append(max(head_rounds))
-        elif reaudit_heads:
-            candidates.append(1 + len(reaudit_heads))
+    record_text = "\n".join(
+        p.text for p in pieces
+        if p.step == step and p.record_class == CLS_STEP_RECORD
+        and p.text)
+    if record_text:
+        found = re.search(r"Pass count in this record:\s*(\d+)\s*passes",
+                          record_text)
+        if found:
+            candidates.append(int(found.group(1)))
+        found = re.search(r"states\s+(\d+)\s+rounds for this step",
+                          record_text)
+        if found:
+            candidates.append(int(found.group(1)))
+        numbered = [int(x) for x in re.findall(
+            r"^## Re-audit[^\n]*\(round (\d+)", record_text, re.M)]
+        headings = re.findall(r"^## Re-audit", record_text, re.M)
+        if numbered and min(numbered) == 1:
+            candidates.append(max(numbered))
+        elif headings:
+            candidates.append(1 + len(headings))
     gate_pieces = [p for p in pieces
-                   if p.step == step and p.record_class in GATE_CLASSES]
+                   if p.step == step
+                   and p.record_class in GATE_CLASSES]
     verdict = None
-    for p in gate_pieces:
-        if p.text:
-            m = re.search(r"Verdict record count for this step:\s*(\d+)",
-                          p.text)
-            if m:
-                verdict = int(m.group(1))
+    for piece in gate_pieces:
+        if piece.text:
+            found = re.search(
+                r"Verdict record count for this step:\s*(\d+)",
+                piece.text)
+            if found:
+                verdict = int(found.group(1))
                 break
     if verdict is None and gate_pieces:
-        # The count states records, not pieces: partitioned copies
-        # of one record are copies at one identity and count once,
-        # as in the core verdict record count.
         verdict = len({p.identity for p in gate_pieces})
     if verdict is not None:
         candidates.append(verdict)
     return max(candidates) if candidates else 0
 
 
-def capture_read(root):
-    """Walk the root once and build the one CapturedRead for the run."""
-    root_path = Path(root)
-    if not root_path.exists() or not root_path.is_dir():
-        raise UnreadableInputError(
-            "capture the record tree: root %s: not a readable directory"
-            % (root,))
-    root_resolved = root_path.resolve()
+def _walk_entries(root_path, root_resolved):
+    """Walk the root once, in sorted relative path order.
+
+    Returns (entries, damaged, walk_note). Entries are the relative
+    paths of files the capture may use, with link targets inside
+    the root followed at most once. Damaged maps a relative path to
+    its not read reason where the entry itself stands damaged: a
+    link out of the tree, a dangling link, a link loop, or a non
+    regular file standing at a recognised record name.
+    """
     entries = []
     damaged = {}
+    seen_targets = set()
+    visited = 0
     walk_note = None
-    count = 0
     for dirpath, dirnames, filenames in os.walk(str(root_path)):
         dirnames.sort()
+        stop = False
         for name in sorted(dirnames) + sorted(filenames):
-            count += 1
-            if count > WALK_BOUND:
-                walk_note = ("the whole walk bound of %d entries was "
-                             "reached and entries beyond it were not "
-                             "visited" % WALK_BOUND)
+            visited += 1
+            if visited > WALK_BOUND:
+                walk_note = (
+                    "the whole walk bound of %d entries was reached "
+                    "and entries beyond it were not visited"
+                    % WALK_BOUND)
+                stop = True
                 break
             full = Path(dirpath) / name
             rel = str(full.relative_to(root_path))
+            recognised = inventory.classify(rel) is not None
             if full.is_symlink():
                 try:
                     target = full.resolve()
                 except (OSError, RuntimeError) as exc:
-                    # A link loop or an unresolvable link target. The
-                    # entry is damage inside a readable tree, never a
-                    # run failure: where the name is a recognised
-                    # record name the entry stands as a damaged piece.
-                    if inventory.classify(rel) is not None:
+                    if recognised:
                         entries.append(rel)
                         damaged[rel] = (
-                            "unreadable-piece: unreadable: symlink "
-                            "loop or unresolvable link target: %s" % exc)
+                            "unreadable-piece: the link target could "
+                            "not be resolved: %s" % exc)
                     continue
                 if target != root_resolved and \
                         root_resolved not in target.parents:
-                    # A link whose target sits outside the root is not
-                    # followed. Where the name is a recognised record
-                    # name the entry still stands as a damaged piece,
-                    # so the refusal is never silent.
-                    if inventory.classify(rel) is not None:
+                    if recognised:
                         entries.append(rel)
                         if target.exists():
                             damaged[rel] = (
-                                "unreadable-piece: unreadable: link "
-                                "target outside the tree, not followed")
+                                "unreadable-piece: link target "
+                                "outside the tree, not followed")
                         else:
                             damaged[rel] = (
-                                "unreadable-piece: unreadable: dangling "
-                                "link, the link target does not stand")
+                                "unreadable-piece: dangling link, "
+                                "the link target does not stand")
                     elif not target.exists() and \
                             inventory.near_match_note(rel) is not None:
-                        # A dangling link at a near match name is not
-                        # a piece, but the name stands in the near
-                        # match listing, in the same form as a regular
-                        # file at that name.
                         entries.append(rel)
                     continue
+                target_key = str(target)
+                if target_key in seen_targets:
+                    continue
+                seen_targets.add(target_key)
                 if full.is_file():
                     entries.append(rel)
-                elif full.is_dir() and \
-                        inventory.classify(rel) is not None:
-                    entries.append(rel)
-                elif inventory.classify(rel) is not None:
+                elif recognised:
                     entries.append(rel)
                     if target.exists():
-                        # The target stands but is not a regular
-                        # file: a FIFO, a socket or a device at the
-                        # end of the link. The reason states that
-                        # true damage, in the same form the direct
-                        # case at a recognised name uses.
                         damaged[rel] = (
-                            "unreadable-piece: unreadable: not a "
-                            "regular file")
+                            "unreadable-piece: the link target is "
+                            "not a regular file")
                     else:
                         damaged[rel] = (
-                            "unreadable-piece: unreadable: dangling "
-                            "link, the link target does not stand")
+                            "unreadable-piece: dangling link, the "
+                            "link target does not stand")
                 elif not target.exists() and \
                         inventory.near_match_note(rel) is not None:
-                    # As in the outside target passage above: a
-                    # dangling link at a near match name stands in
-                    # the near match listing, in the same form as a
-                    # regular file at that name.
                     entries.append(rel)
                 continue
             if full.is_file():
                 entries.append(rel)
-            elif full.is_dir() and \
-                    inventory.classify(rel) is not None:
+            elif full.is_dir() and recognised:
                 entries.append(rel)
-            elif inventory.classify(rel) is not None:
-                # A non regular file (a FIFO, a socket, a device) at a
-                # recognised record name. It is never opened, because
-                # opening such a file can block, and it stands as a
-                # damaged piece instead of vanishing.
+            elif recognised:
                 entries.append(rel)
                 damaged[rel] = (
-                    "unreadable-piece: unreadable: not a regular file")
-        if walk_note:
+                    "unreadable-piece: not a regular file")
+        if stop:
             break
     entries.sort()
-    alias_map = {}
-    by_target = {}
+    return entries, damaged, walk_note
+
+
+def _canonical_paths(root_path, entries, damaged):
+    """Group entry paths by the file they reach.
+
+    Returns (canonical, aliases), where canonical lists one entry
+    per reached file, in sorted order, and aliases maps each
+    canonical entry to every path that reaches the same file. A
+    damaged entry is never merged with another path: its own path
+    is the piece that stands.
+    """
+    groups = {}
     for rel in entries:
         if rel in damaged:
-            # A damaged entry is never merged with another path by
-            # link target: its own path is the piece that stands.
             key = "damaged:" + rel
         else:
             try:
                 key = str((root_path / rel).resolve())
             except (OSError, RuntimeError):
                 key = rel
-        by_target.setdefault(key, []).append(rel)
-    canonical_entries = []
-    for key in by_target:
-        rels_sorted = sorted(by_target[key])
-        canonical = rels_sorted[0]
-        for candidate in rels_sorted:
+        groups.setdefault(key, []).append(rel)
+    aliases = {}
+    canonical = []
+    for key in groups:
+        paths = sorted(groups[key])
+        chosen = paths[0]
+        for candidate in paths:
             if not (root_path / candidate).is_symlink():
-                canonical = candidate
+                chosen = candidate
                 break
-        alias_map[canonical] = tuple(rels_sorted)
-        canonical_entries.append(canonical)
-    entries = sorted(canonical_entries)
+        aliases[chosen] = tuple(paths)
+        canonical.append(chosen)
+    canonical.sort()
+    return canonical, aliases
+
+
+def capture_read(root):
+    """Walk the root once and build the one CapturedRead of the run.
+
+    Raises UnreadableInputError where the shell cannot produce a
+    CapturedRead at all: the root does not stand, or does not stand
+    as a directory. Every failure after capture has begun is a
+    piece level failure, marked on its piece, and the run still
+    completes on the captured pieces.
+    """
+    root_path = Path(root)
+    if not root_path.exists() or not root_path.is_dir():
+        raise UnreadableInputError(
+            "capture the record tree: root %s: not a readable "
+            "directory" % (root,))
+    root_resolved = root_path.resolve()
+    entries, damaged, walk_note = _walk_entries(root_path,
+                                                root_resolved)
+    entries, aliases = _canonical_paths(root_path, entries, damaged)
     classified = []
     for rel in entries:
         found = inventory.classify(rel)
@@ -327,32 +330,31 @@ def capture_read(root):
 
     size_unknown = []
 
-    def stat_size(rel):
+    def measured_size(rel):
         full = root_path / rel
         try:
             if full.is_dir() and not full.is_symlink():
                 return 0
             return full.stat().st_size
         except OSError:
-            # A failed stat never stands silent: the path is carried
-            # on the CapturedRead and marked size unknown in the data
-            # quality section of the report.
             if rel not in size_unknown:
                 size_unknown.append(rel)
             return 0
 
+    # The record part totals, measured in walk order. The piece
+    # where a tree limit is crossed, and every piece after it in
+    # walk order, stands past the limit and is not read.
     tree_bytes = 0
     tree_files = 0
-    cut_rels = []
+    cut_paths = []
     cut_kind = None
     last_visited = None
     cutting = False
     for rel, found, note in classified:
         if found is None and note is None:
             continue
-        size = stat_size(rel)
         tree_files += 1
-        tree_bytes += size
+        tree_bytes += measured_size(rel)
         if not cutting and (tree_bytes > TREE_BYTE_LIMIT or
                             tree_files > TREE_FILE_LIMIT):
             cutting = True
@@ -365,252 +367,278 @@ def capture_read(root):
                                % TREE_FILE_LIMIT)
             cut_kind = " and ".join(crossed)
         if cutting:
-            cut_rels.append(rel)
+            cut_paths.append(rel)
         else:
             last_visited = rel
-    cut_set = set(cut_rels)
+    cut_set = set(cut_paths)
+
     raw = {}
-    near = []
+    near_matches = []
     for rel, found, note in classified:
         if found is None:
             if note is not None:
-                near.append((rel, note))
+                near_matches.append((rel, note))
             continue
-        cls, step = found
+        record_class, step = found
         if rel in damaged:
-            size = stat_size(rel)
+            size = measured_size(rel)
             text = None
             quality = "unreadable"
             reason = damaged[rel]
         elif rel in cut_set:
-            size = stat_size(rel)
+            size = measured_size(rel)
             text = None
             quality = "over limit"
-            reason = ("not read: the %s was crossed, with a record "
-                      "part total of %d bytes in %d files, and this "
-                      "piece stands past the limit in walk order"
+            reason = ("over-limit-piece: not read: the %s was "
+                      "crossed, with a record part total of %d bytes "
+                      "in %d files, and this piece stands past the "
+                      "limit in walk order"
                       % (cut_kind, tree_bytes, tree_files))
         else:
-            size, text, quality, reason = _read_piece_file(
-                root_path / rel)
-        ident = inventory.identity_for(cls, step, rel)
-        raw.setdefault(ident, []).append(
-            (rel, cls, step, size, text, quality, reason,
-             alias_map.get(rel, (rel,))))
+            size, text, quality, reason = _read_once(root_path / rel)
+        # Content classing, Step 22 only: a piece read in full is
+        # reclassed by its text under the Inventory content rule,
+        # so a Step 22 gate piece standing under no gate name
+        # counts in its content class, and a Step 22 piece named
+        # as a gate record with no Keeper content in its text
+        # does not. A piece with no text stands in its name class.
+        if text is not None:
+            content_found = inventory.classify(rel, text)
+            if content_found is not None:
+                record_class, step = content_found
+        identity = inventory.identity_for(record_class, step, rel,
+                                          text)
+        raw.setdefault(identity, []).append(
+            (rel, record_class, step, size, text, quality, reason,
+             aliases.get(rel, (rel,))))
+
+    pieces = _merge_identity_groups(raw)
+    assembled, single_path = inventory.assemble_metrics_record(pieces)
+    if single_path is None:
+        singles = [p for p in pieces
+                   if p.record_class == CLS_METRICS_SINGLE]
+        if singles:
+            single_path = singles[0].paths[0]
+    texts = [p.text for p in pieces if p.text is not None]
+    force = inventory.record_change_force(assembled)
+    totals = _inventory_totals(pieces, force)
+    return CapturedRead(
+        root=str(root), pieces=pieces, inventory_totals=totals,
+        latest_timestamp=_latest_timestamp(texts),
+        definitions_version=_definitions_version(assembled),
+        build_identity=_build_identity(pieces, assembled),
+        near_matches=near_matches, assembled_metrics=assembled,
+        metrics_single_path=single_path, walk_note=walk_note,
+        tree_bytes=tree_bytes, tree_files=tree_files,
+        tree_cut_paths=tuple(cut_paths), tree_cut_kind=cut_kind,
+        tree_last_visited=last_visited,
+        tree_byte_limit=TREE_BYTE_LIMIT,
+        tree_file_limit=TREE_FILE_LIMIT,
+        record_change_force=force,
+        size_unknown_paths=tuple(sorted(size_unknown)))
+
+
+def _merge_identity_groups(raw):
+    """Turn grouped walk entries into Piece values, one per identity.
+
+    An entry with no readable content never merges with another
+    entry at its identity and never displaces a sound one: it
+    stands as its own piece, marked with its true state. Entries
+    whose text carries no substantive content stand apart in the
+    same way where a substantive entry stands at the identity,
+    and merge by their identical empty form where none does.
+    Substantive entries at one identity merge into one piece
+    where their texts agree, and yield one piece with no content
+    and a disagreement reason where their texts differ.
+    """
     pieces = []
-    for ident in sorted(raw, key=lambda i: min(x[0] for x in raw[i])):
-        group = sorted(raw[ident], key=lambda x: x[0])
-        cls = group[0][1]
+    for identity in sorted(raw, key=lambda i: min(x[0] for x in raw[i])):
+        group = sorted(raw[identity], key=lambda x: x[0])
+        record_class = group[0][1]
         step = group[0][2]
         form = None
-        if cls == CLS_METRICS_SINGLE:
+        if record_class == CLS_METRICS_SINGLE:
             form = "single page form"
-        elif cls == CLS_METRICS_PAGE:
+        elif record_class == CLS_METRICS_PAGE:
             form = "split page form"
-        # An entry that yields no readable content never merges with
-        # another entry at the same identity and never displaces a
-        # sound one: there is no second content for it to disagree
-        # with, because the entry has no readable content at all.
-        # The partition rests on the read outcome, not on the walk
-        # damaged map alone, so it covers every no content form in
-        # the same way: the walk damaged forms (dangling links, FIFOs
-        # and loop links) and the read forms (a directory, a link to
-        # a directory, a malformed file, an over limit file and a
-        # piece past the tree limit). Each such entry stands as its
-        # own piece, marked with its true state, and the sound
-        # entries at the identity merge and read exactly as they do
-        # where no such entry stands.
-        broken = [x for x in group if x[4] is None]
+        for entry in [x for x in group if x[4] is None]:
+            pieces.append(Piece(identity, entry[7], entry[1], entry[2],
+                                entry[3], None, entry[6], entry[5],
+                                form_state=form))
         rest = [x for x in group if x[4] is not None]
-        for x in broken:
-            pieces.append(Piece(ident, x[7], x[1], x[2], x[3], None,
-                                x[6], x[5], form_state=form))
-        # An entry whose text carries no substantive content (an
-        # empty file: in the proven forms a zero byte file, or a
-        # file holding a single newline) stands in the same no
-        # content family. Where a substantive entry stands at the
-        # same identity, each such empty entry stands as its own
-        # piece, carrying its true read state (its empty text, its
-        # measured size, no quality fault and no not read reason),
-        # and never merges with or displaces the substantive piece:
-        # a disagreement requires two substantive differing texts,
-        # and an entry with no content has no content to disagree
-        # with. Where no substantive entry stands at the identity,
-        # the empty entries still never merge as a content
-        # disagreement, because neither carries content that could
-        # disagree: entries holding the identical empty form merge
-        # into one piece as today, and entries holding a different
-        # empty form stand grouped by their form, each piece
-        # carrying its true measured size, so no path is listed at
-        # a size it does not hold. Together the pieces at the
-        # identity hold nothing, are read in full, and carry no
-        # quality fault and no not read in full reason. A lone empty
-        # entry is the one form case of the same grouping and stands
-        # as it stands today.
         if any(x[4].strip() for x in rest):
-            empties = [x for x in rest if not x[4].strip()]
-            standing = [x for x in rest if x[4].strip()]
-            for x in empties:
-                pieces.append(Piece(ident, x[7], x[1], x[2], x[3],
-                                    x[4], x[6], x[5],
+            for entry in [x for x in rest if not x[4].strip()]:
+                pieces.append(Piece(identity, entry[7], entry[1],
+                                    entry[2], entry[3], entry[4],
+                                    entry[6], entry[5],
                                     form_state=form))
+            standing = [x for x in rest if x[4].strip()]
         elif rest:
-            forms = []
-            for x in rest:
-                if x[4] not in forms:
-                    forms.append(x[4])
-            for empty_text in forms:
+            seen_forms = []
+            for entry in rest:
+                if entry[4] not in seen_forms:
+                    seen_forms.append(entry[4])
+            for empty_text in seen_forms:
                 same = [x for x in rest if x[4] == empty_text]
                 paths = tuple(sorted({p for x in same for p in x[7]}))
                 first = same[0]
-                pieces.append(Piece(ident, paths, first[1], first[2],
-                                    first[3], first[4], None, first[5],
-                                    form_state=form))
+                pieces.append(Piece(identity, paths, first[1],
+                                    first[2], first[3], first[4],
+                                    None, first[5], form_state=form))
             standing = []
         else:
             standing = rest
         if not standing:
             continue
-        group = standing
-        rel0, cls, step, size0, text0, quality0, reason0 = group[0][:7]
-        paths = tuple(sorted({p for x in group for p in x[7]}))
-        if len(group) > 1:
-            texts = {x[4] for x in group}
-            if len(texts) == 1 and text0 is not None:
-                pieces.append(Piece(ident, paths, cls, step, size0, text0,
-                                    None, quality0, form_state=form))
+        paths = tuple(sorted({p for x in standing for p in x[7]}))
+        head = standing[0]
+        if len(standing) > 1:
+            texts = {x[4] for x in standing}
+            if len(texts) == 1:
+                pieces.append(Piece(identity, paths, record_class,
+                                    step, head[3], head[4], None,
+                                    head[5], form_state=form))
             else:
                 pieces.append(Piece(
-                    ident, paths, cls, step, size0, None,
+                    identity, paths, record_class, step, head[3], None,
                     "not read in full: duplicate content disagreement "
-                    "between the paths that yield this piece", quality0,
-                    form_state=form))
+                    "between the paths that yield this piece",
+                    head[5], form_state=form))
             continue
-        pieces.append(Piece(ident, paths, cls, step, size0, text0,
-                            reason0, quality0, form_state=form))
+        pieces.append(Piece(identity, paths, record_class, step,
+                            head[3], head[4], head[6], head[5],
+                            form_state=form))
     pieces.sort(key=lambda p: p.paths[0])
-    assembled, single_path = _assemble_metrics(pieces)
-    if single_path is None:
-        singles = [p for p in pieces if p.record_class == CLS_METRICS_SINGLE]
-        if singles:
-            single_path = singles[0].paths[0]
-    texts = [p.text for p in pieces if p.text is not None]
-    latest = _latest_timestamp(texts)
-    version = _definitions_version(assembled)
-    identity = _build_identity(pieces, assembled)
-    evidenced = sorted({p.step for p in pieces if p.step is not None and
-                        p.record_class in (CLS_STEP_RECORD, CLS_GATE_RECORD,
-                                           CLS_GATE_RULING,
-                                           CLS_REGATE_RECORD,
-                                           CLS_GATE_ADJUDICATION)})
-    # M-2: the Form A record change statement is parsed from the
-    # assembled metrics record text, through the Inventory, during
-    # this single walk, and the per change force state is recorded
-    # on the CapturedRead below.
-    force = inventory.record_change_force(assembled)
+    return pieces
+
+
+def _inventory_totals(pieces, force):
+    """The inventory totals, recorded during the single walk.
+
+    Expected, found, not found and not yet recordable counts stand
+    per record class. Step records are expected once per evidenced
+    step. The gate alias classes share one expectation of one gate
+    piece per evidenced step, with the steps holding no gate piece
+    counted once, on the gate record class. Per build classes are
+    expected once. Per round classes are expected at the round
+    count the steps evidence, where any round is evidenced.
+    """
     totals = {}
-    per_build = (CLS_PATH_LEDGER, CLS_TIER_RECORD, CLS_METRICS_SINGLE,
-                 CLS_DECISION_QUEUE)
-    per_round = (CLS_AUDIT_PAPER, CLS_BOARD_MEMBER, CLS_FIX_REGISTER,
-                 CLS_DEFECT_REGISTER, CLS_ADJUDICATION, CLS_TRACE,
-                 CLS_OTHER_REGISTER)
-    for p in pieces:
-        entry = totals.setdefault(p.record_class,
-                                  {"expected": 0, "found": 0,
-                                   "not_found": 0, "not_yet_recordable": 0})
-        entry["found"] += 1
 
-    def ensure(cls):
-        return totals.setdefault(cls, {"expected": 0, "found": 0,
-                                       "not_found": 0,
-                                       "not_yet_recordable": 0})
+    def ensure(record_class):
+        return totals.setdefault(
+            record_class, {"expected": 0, "found": 0, "not_found": 0,
+                           "not_yet_recordable": 0})
 
+    for piece in pieces:
+        ensure(piece.record_class)["found"] += 1
+    evidenced = sorted({p.step for p in pieces if p.step is not None
+                        and p.record_class in (
+                            CLS_STEP_RECORD,) + GATE_CLASSES})
     assigned = set()
     if evidenced:
-        # Per step class: one step record per step instance.
         entry = ensure(CLS_STEP_RECORD)
         entry["expected"] = len(evidenced)
         assigned.add(CLS_STEP_RECORD)
-        # Gate alias classes share the one CA-5 expectation of one
-        # first gate piece per step instance in any alias form. Each
-        # alias class states its own found count, and the count of
-        # steps holding no gate piece in any alias form stands once,
-        # on the gate record class line, never once per alias.
         steps_with_gate = {p.step for p in pieces
                            if p.record_class in GATE_CLASSES
                            and p.step is not None}
         gate_missing = len([s for s in evidenced
                             if s not in steps_with_gate])
-        for cls in GATE_CLASSES:
-            entry = ensure(cls)
+        for record_class in GATE_CLASSES:
+            entry = ensure(record_class)
             entry["expected"] = entry["found"]
-            assigned.add(cls)
+            assigned.add(record_class)
         carrier = ensure(CLS_GATE_RECORD)
         carrier["expected"] = carrier["found"] + gate_missing
-    # Per build classes: one per build. The metrics record counts as
-    # one in either physical form, so where split pages stand and no
-    # single page stands, the single page class carries no separate
-    # expectation and the pages are listed as found.
-    metrics_forms_stand = bool(
-        [p for p in pieces if p.record_class == CLS_METRICS_PAGE]) and \
+    split_only = bool([p for p in pieces
+                       if p.record_class == CLS_METRICS_PAGE]) and \
         not [p for p in pieces if p.record_class == CLS_METRICS_SINGLE]
-    for cls in per_build:
-        if cls == CLS_METRICS_SINGLE and metrics_forms_stand:
+    for record_class in (CLS_PATH_LEDGER, CLS_TIER_RECORD,
+                         CLS_METRICS_SINGLE, CLS_DECISION_QUEUE):
+        if record_class == CLS_METRICS_SINGLE and split_only:
             continue
-        entry = ensure(cls)
-        entry["expected"] = 1
-        assigned.add(cls)
-    # Per round classes: the expectation is the number of rounds or
-    # passes evidenced for the steps, in the step own records or in
-    # verdict records. Where no round is evidenced at all, found
-    # pieces alone are listed for these classes, by the fallback
-    # below, and not found is 0 by that rule.
-    total_rounds = sum(_evidenced_rounds(pieces, s) for s in evidenced)
+        ensure(record_class)["expected"] = 1
+        assigned.add(record_class)
+    per_round = (CLS_AUDIT_PAPER, CLS_BOARD_MEMBER, CLS_FIX_REGISTER,
+                 CLS_DEFECT_REGISTER, CLS_ADJUDICATION, CLS_TRACE,
+                 CLS_OTHER_REGISTER)
+    total_rounds = sum(_rounds_evidenced(pieces, s) for s in evidenced)
     if total_rounds:
-        for cls in per_round:
-            entry = ensure(cls)
-            entry["expected"] = total_rounds
-            assigned.add(cls)
-    for cls, entry in totals.items():
-        if cls not in assigned:
+        for record_class in per_round:
+            ensure(record_class)["expected"] = total_rounds
+            assigned.add(record_class)
+    for record_class, entry in totals.items():
+        if record_class not in assigned:
             entry["expected"] = entry["found"]
         entry["not_found"] = max(0, entry["expected"] - entry["found"])
-    # M-2 force application: a class whose creating record change
-    # stands NOT IN FORCE carries its expected count under not yet
-    # recordable and under no other state. Under the settled mapping
-    # in the Inventory every one of the five changes maps to no
-    # record class, so this passage moves no count; the force state
-    # above is parsed and recorded, not defaulted.
+    # A class whose creating record change stands NOT IN FORCE
+    # carries its expected count under not yet recordable and
+    # under no other state. Under the settled mapping in the
+    # Inventory every change maps to no record class, so this
+    # passage moves no count; the force state is recorded above,
+    # not defaulted.
     for number, state in sorted(force.items()):
         if state != "NOT IN FORCE":
             continue
-        for cls in inventory.RECORD_CHANGE_CLASSES.get(number, ()):
-            entry = totals.get(cls)
+        for record_class in inventory.RECORD_CHANGE_CLASSES.get(
+                number, ()):
+            entry = totals.get(record_class)
             if entry is None:
                 continue
             entry["not_yet_recordable"] += entry["expected"]
             entry["not_found"] = 0
             entry["expected"] = 0
-    return CapturedRead(root=str(root), pieces=pieces,
-                        inventory_totals=totals, latest_timestamp=latest,
-                        definitions_version=version,
-                        build_identity=identity, near_matches=near,
-                        assembled_metrics=assembled,
-                        metrics_single_path=single_path,
-                        walk_note=walk_note,
-                        tree_bytes=tree_bytes, tree_files=tree_files,
-                        tree_cut_paths=tuple(cut_rels),
-                        tree_cut_kind=cut_kind,
-                        tree_last_visited=last_visited,
-                        tree_byte_limit=TREE_BYTE_LIMIT,
-                        tree_file_limit=TREE_FILE_LIMIT,
-                        record_change_force=force,
-                        size_unknown_paths=tuple(sorted(size_unknown)))
+    return totals
+
+
+def _inside_tree(root, report_path):
+    """True where a report destination lies inside the tree read.
+
+    The test is decided on resolved forms, and on the named form,
+    and on every prefix of the named form resolved in turn, so a
+    relative spelling, a spelling with parent segments, a link
+    whose target stands inside the tree, an alias of the root, and
+    the root itself given as the destination all count as inside.
+    """
+    root_resolved = Path(root).resolve()
+    destination = Path(report_path)
+    try:
+        dest_resolved = destination.resolve()
+    except (OSError, RuntimeError) as exc:
+        raise UsageError("deliver the report: destination %s: %s"
+                         % (report_path, exc))
+    dest_named = Path(os.path.abspath(str(destination)))
+    root_named = Path(os.path.abspath(str(root)))
+    for base in (root_resolved, root_named):
+        for candidate in (dest_resolved, dest_named):
+            if candidate == base or base in candidate.parents:
+                return True
+    prefix = Path(dest_named.anchor)
+    for part in dest_named.parts[1:]:
+        prefix = prefix / part
+        try:
+            resolved_prefix = prefix.resolve()
+        except (OSError, RuntimeError) as exc:
+            raise UsageError("deliver the report: destination %s: %s"
+                             % (report_path, exc))
+        if resolved_prefix == root_resolved or \
+                root_resolved in resolved_prefix.parents:
+            return True
+    return False
 
 
 def deliver_report(text, root, report_path):
-    """Deliver the finished report to stdout or to the one named file."""
-    import sys
+    """Deliver the finished report to its one destination.
+
+    With no named file the destination is standard output. With a
+    named file the write is a single write of finished text,
+    encoded as UTF-8 with the LF line ending. A destination inside
+    the tree read is refused. A delivery failure raises UsageError
+    in the settled error form, falls back to no other destination,
+    leaves no partial file, and leaves a prior file at the
+    destination as it stood.
+    """
     if report_path is None:
         try:
             sys.stdout.write(text)
@@ -621,64 +649,16 @@ def deliver_report(text, root, report_path):
                 % (exc,))
         return
     destination = Path(report_path)
-    root_resolved = Path(root).resolve()
-    try:
-        dest_resolved = destination.resolve()
-    except (OSError, RuntimeError) as exc:
-        raise UsageError("deliver the report: destination %s: %s"
-                         % (report_path, exc))
-    # The resolved path governs, and the named path is checked with
-    # it: a destination is refused where either its resolved path or
-    # its named path lies inside the tree read. A link standing
-    # inside the tree and pointing outside it is therefore refused
-    # in this same form, because the destination as named lies
-    # inside the tree and the write would land outside it through
-    # the link, which the read only rule bars.
-    dest_named = Path(os.path.abspath(str(destination)))
-    root_named = Path(os.path.abspath(str(root)))
-    inside = False
-    for base in (root_resolved, root_named):
-        for candidate in (dest_resolved, dest_named):
-            if candidate == base or base in candidate.parents:
-                inside = True
-    if not inside:
-        # Every prefix of the named destination is checked in
-        # resolved form as well. A destination named through an
-        # alias of the root itself resolves into the tree at that
-        # prefix, even where neither the full named path nor the
-        # fully resolved path lies inside the tree, as with a report
-        # named through the root alias and then out through a link
-        # standing inside the tree. Such a destination is refused in
-        # the same form: the write would pass through the tree read.
-        prefix = Path(dest_named.anchor)
-        for part in dest_named.parts[1:]:
-            prefix = prefix / part
-            try:
-                resolved_prefix = prefix.resolve()
-            except (OSError, RuntimeError) as exc:
-                raise UsageError(
-                    "deliver the report: destination %s: %s"
-                    % (report_path, exc))
-            if resolved_prefix == root_resolved or \
-                    root_resolved in resolved_prefix.parents:
-                inside = True
-                break
-    if inside:
+    if _inside_tree(root, report_path):
         raise UsageError(
-            "deliver the report: destination %s: the destination lies "
-            "inside the tree read, which is refused" % (report_path,))
-    parent = destination.parent
-    if not parent.exists():
+            "deliver the report: destination %s: the destination "
+            "lies inside the tree read, which is refused"
+            % (report_path,))
+    if not destination.parent.exists():
         raise UsageError(
-            "deliver the report: destination %s: the parent directory "
-            "does not stand" % (report_path,))
-    # A destination that stands as something other than a plain file,
-    # or a link to something other than a plain file, is written
-    # through its own name, never replaced. Replacing such a name
-    # would destroy the name itself and could report success where
-    # the target cannot be written at all, as a link to a full device
-    # shows. Writing through the name lets the operating system
-    # failure stand, and the destination is left as it stood.
+            "deliver the report: destination %s: the parent "
+            "directory does not stand" % (report_path,))
+    dest_resolved = destination.resolve()
     write_through = False
     if destination.is_symlink():
         write_through = not dest_resolved.is_file()
@@ -693,20 +673,15 @@ def deliver_report(text, root, report_path):
             raise UsageError("deliver the report: destination %s: %s"
                              % (report_path, exc))
         return
-    # A link to a plain file delivers to the resolved file, so the
-    # link itself stands. Any other plain destination delivers to
-    # itself. Both go by way of a temporary file in the same
-    # directory and a replace, so a failure leaves no partial file
-    # and a prior file at the destination is left as it stood.
     target = dest_resolved if destination.is_symlink() else destination
-    tmp = target.parent / (target.name + ".tmp-msc")
+    staging = target.parent / (target.name + ".tmp-msc")
     try:
-        tmp.write_text(text, encoding="utf-8", newline="\n")
-        os.replace(str(tmp), str(target))
+        staging.write_text(text, encoding="utf-8", newline="\n")
+        os.replace(str(staging), str(target))
     except OSError as exc:
         try:
-            if tmp.exists():
-                tmp.unlink()
+            if staging.exists():
+                staging.unlink()
         except OSError:
             pass
         raise UsageError("deliver the report: destination %s: %s"
