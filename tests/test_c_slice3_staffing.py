@@ -123,7 +123,15 @@ class TestSlice3Staffing(FixtureTestCase):
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         assert_verdict(self, block, "present but not derivable", "F-2")
-        self.assertIn("adjudication", block.lower())
+        reason = _row_substance(block).get("Reason", "")
+        if not reason:
+            for chunk in block.splitlines()[0].split(" | "):
+                chunk = chunk.strip()
+                if chunk.lower().startswith("reason:"):
+                    reason = chunk.lower()
+        self.assertIn("adjudication", reason,
+                      "F-2 Reason part does not name the adjudication "
+                      "record kind: %r" % (reason,))
 
     def test_g02_step_record_gate_histories_never_read(self):
         """G-02. WV22 F-2 F1. Gate histories inside step records never count."""
@@ -497,7 +505,13 @@ class TestSlice3Staffing(FixtureTestCase):
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present", "E-1")
         self.assertIn("Step 2", block)
-        self.assertRegex(block, r"(of 2 steps\b|(?<!\d)2 steps\b)")
+        denominator = _row_substance(block).get("Denominator", "")
+        self.assertRegex(
+            denominator, r"covered step 1\s*;\s*remainder step 2\b",
+            "E-1 Denominator part does not stand in the remainder "
+            "form, covered Step 1 with remainder Step 2 named: %r"
+            % (denominator,))
+        self.assertNotIn("Step 2 staffed", block)
 
     def test_wv22_e1_f2_base_count_same_step(self):
         """WV22 E-1 F2. EC-28. List and base count must stand for the same step."""
