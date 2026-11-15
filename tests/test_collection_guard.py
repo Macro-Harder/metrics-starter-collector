@@ -21,7 +21,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.suite_inventory import INVENTORY
+from tests.suite_inventory import INVENTORY, TOTAL
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IN_COPY = os.environ.get("MSC_COPY_RUN") == "1"
@@ -87,7 +87,7 @@ class TestCollectionGuard(unittest.TestCase):
         collected = collected_ids()
         expected = sum(entry["count"] for entry in INVENTORY.values())
         self.assertEqual(len(collected), expected)
-        self.assertGreaterEqual(len(collected), expected)
+        self.assertEqual(len(collected), TOTAL)
         for module, entry in INVENTORY.items():
             mine = [i for i in collected if i.startswith("tests." + module + ".")]
             self.assertEqual(len(mine), entry["count"], module)
@@ -108,6 +108,7 @@ class TestCollectionGuard(unittest.TestCase):
                       + result.stderr[-500:])
 
     def test_collection_guard_rejects_empty_tree(self):
+        """Zero collection condition: an empty tests tree collects zero tests."""
         if IN_COPY:
             return
         handle = Path(tempfile.mkdtemp(prefix="msc_empty_copy_",

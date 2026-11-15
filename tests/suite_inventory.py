@@ -8,11 +8,16 @@ and the list of its full dotted case identities. The collection
 guard module test_collection_guard stands listed here with its
 own cases, and the guard counts its own cases in the collected
 set it checks. TOTAL stands as the sum of the per module counts.
+FIXTURE_CHECKS records, in the same form as INVENTORY, the stated
+fixture check subset: the identities of cases that check the
+fixture machinery itself and never invoke the product. Those cases
+stand in INVENTORY as well; FIXTURE_CHECKS adds no case and
+changes no count.
 """
 
 INVENTORY = {
     "test_a_slice1_tracer": {
-        "count": 42,
+        "count": 43,
         "cases": [
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_contract1_direct_minimal",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_contract2_direct_minimal",
@@ -27,6 +32,7 @@ INVENTORY = {
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_exit_zero_on_completed_report",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_f18_unknown_definitions_version_slice1_rows",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_f18_unknown_version_metric_without_feeder_stays_missing",
+            "tests.test_a_slice1_tracer.TestSlice1Tracer.test_f19_mapping_force_statement_refused_and_absent_file_figure",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_golden_identity_facts_in_tracer_form_on_f16_miniature",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_header_coverage_and_data_quality_sections_present",
             "tests.test_a_slice1_tracer.TestSlice1Tracer.test_no_score_grade_or_estimated_figure_in_report",
@@ -97,7 +103,7 @@ INVENTORY = {
         ],
     },
     "test_c_slice3_staffing": {
-        "count": 41,
+        "count": 45,
         "cases": [
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_partial_coverage_without_defined_form_is_not_present",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_row_cross_check_marking_in_statement_line",
@@ -111,7 +117,11 @@ INVENTORY = {
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_one",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_three",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_two",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f18_recycle_inside_one_record_f2_q4_visible",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f18_unknown_version_slice3_rows",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f22_no_degraded_marking_on_f2_row",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f26_ca2_06_case_form_recorded_by_step_name",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f27_figure_credited_to_described_step_pointer_names_source",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_g01_exact_closure_state_matching_two_subcounts",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_g02_adjudication_as_first_ruling_source",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_g02_step_record_gate_histories_never_read",
@@ -143,7 +153,7 @@ INVENTORY = {
         ],
     },
     "test_d_slice4_time_decision": {
-        "count": 61,
+        "count": 67,
         "cases": [
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_a7_9_b1_cross_piece_basis_mismatch_no_code_fits",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b1_both_derivation_outputs_stand_present",
@@ -154,12 +164,17 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_rankable_inputs_and_wait_share",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_ranking_tie_at_third_place_cut_runs_past_three",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_tie_order_is_step_universe_order",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_unreconciled_exclusion_leaves_fewer_than_three",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_unreconciled_exclusion_leaves_no_rankable_step",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b3_unreconciled_step_excluded_and_named",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_fewer_than_three_eligible_steps",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_measured_zero_elapsed_no_wait_share",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_no_rankable_step_takes_verdict_from_inputs",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_rankable_inputs_and_wait_share",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_ranking_tie_at_third_place_cut_runs_past_three",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_tie_order_is_step_universe_order",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_exclusion_leaves_fewer_than_three",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_exclusion_leaves_no_rankable_step",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_step_excluded_and_named",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d05_plain_form_without_seconds_or_zone_counts",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d05_text_duration_counts_for_t2",
@@ -193,6 +208,7 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f18_unknown_version_slice4_rows",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f19_non_naming_halt_wording_in_recognised_piece",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f19_unrecognised_halt_wording_read_as_in_progress",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f20_inside_feeders_govern_outside_file_changes_nothing",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_mixed_series_partial_span",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t1_closing_date_only_fails_both_transitions_condition",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t2_pairing_timestamps_of_two_steps_forms_no_interval",
@@ -209,7 +225,7 @@ INVENTORY = {
         ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 52,
+        "count": 53,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -227,6 +243,7 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_f14_mixed_scales_in_carrier_form",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_f14_mixed_severity_scales",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_f18_unknown_version_slice5_rows",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_f22_t7_counted_from_verdict_records_counted_not_marked",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_f23_other_metric_carries_no_sum_test_exception_form",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_g05_irreconcilable_counts_both_named",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_g06_pre_triage_breakdown_refused",
@@ -266,7 +283,7 @@ INVENTORY = {
         ],
     },
     "test_f_slice6_cost": {
-        "count": 32,
+        "count": 33,
         "cases": [
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_feeder_mapping_d1_is_only_metrics_record_feeder",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_non_d1_figure_in_metrics_record_never_present",
@@ -293,6 +310,7 @@ INVENTORY = {
             "tests.test_f_slice6_cost.TestSlice6Cost.test_f16_b2_open_state_row_reason",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_f17_b2_halt_row_reason",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_f18_unknown_version_slice6_rows",
+            "tests.test_f_slice6_cost.TestSlice6Cost.test_f21_estimator_figure_outside_ledger_no_input_e3_b2",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_no_untraced_figure_for_cost_rows",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv21_ledger_habit_equivalent_cost_rows",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv21_queue_habit_equivalent_content_same_rows",
@@ -303,8 +321,9 @@ INVENTORY = {
         ],
     },
     "test_g_slice7_report": {
-        "count": 71,
+        "count": 75,
         "cases": [
+            "tests.test_g_slice7_report.TestSlice7Report.test_ca2_12_adversarial_pair_all_17_rows_against_marks",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_completed_report_to_stdout_exits_0",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_extra_argument_is_usage_error_exit_2",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_help_form_barred_in_version_1",
@@ -341,6 +360,9 @@ INVENTORY = {
             "tests.test_g_slice7_report.TestSlice7Report.test_f09_one_recognisable_piece_full_set_partial_marking",
             "tests.test_g_slice7_report.TestSlice7Report.test_f15_single_page_precedence_where_both_forms_stand",
             "tests.test_g_slice7_report.TestSlice7Report.test_f15_split_record_same_rows_as_single_page",
+            "tests.test_g_slice7_report.TestSlice7Report.test_f16_done_condition_all_17_rows_on_miniature_copy",
+            "tests.test_g_slice7_report.TestSlice7Report.test_f21_report_search_no_estimated_figure_no_estimated_mark",
+            "tests.test_g_slice7_report.TestSlice7Report.test_f25_ca2_04_corrected_form_counts_on_miniature_copy",
             "tests.test_g_slice7_report.TestSlice7Report.test_f25_report_sections_present_on_clean_tree",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_bound_part_three_subparts_in_order",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_coverage_lines_before_rows_in_order",
@@ -396,4 +418,14 @@ INVENTORY = {
     },
 }
 
-TOTAL = 338
+FIXTURE_CHECKS = {
+    "test_b_slice2_capture": {
+        "count": 2,
+        "cases": [
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_f11_built_counts_match_the_stating_entry",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_f11_settings_carry_the_section7_numbers",
+        ],
+    },
+}
+
+TOTAL = 355

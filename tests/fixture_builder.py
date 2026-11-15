@@ -294,6 +294,13 @@ def _validate_switch(switch, files):
     if form is None:
         raise ValueError("malformation switch outside the closed set: "
                          "%r" % (switch.get("switch"),))
+    named_keys = {"switch", "target", "target_kind", "state"}
+    named_keys.update(form["required"])
+    named_keys.update(form["forbidden"])
+    for key in switch:
+        if key not in named_keys:
+            raise ValueError("switch key outside the named key set "
+                             "for %s: %r" % (switch["switch"], key))
     target = switch.get("target")
     if not isinstance(target, str) or target not in files:
         raise ValueError("a switch names its target piece among the "
@@ -695,8 +702,16 @@ def register_handle(handle):
 
 
 def tracked_tempdir(prefix):
-    """Create a temporary directory that is registered for removal."""
-    return Path(register_handle(tempfile.mkdtemp(prefix=prefix)))
+    """Create a temporary directory that is registered for removal.
+
+    The temporary root stands under the home .tmp directory, which
+    is created where absent, in place of the system temporary
+    directory default.
+    """
+    base = Path.home() / ".tmp"
+    base.mkdir(parents=True, exist_ok=True)
+    return Path(register_handle(
+        tempfile.mkdtemp(prefix=prefix, dir=str(base))))
 
 
 class FixtureTestCase(unittest.TestCase):
@@ -710,31 +725,6 @@ class FixtureTestCase(unittest.TestCase):
         del _CREATED_HANDLES[self._handle_mark:]
         for handle in created:
             _remove_handle(handle)
-
-
-def build_tree(case_table):
-    """Build one synthetic tree from a case table and return its root."""
-    handle = register_handle(tempfile.mkdtemp(prefix="msc_fixture_"))
-    root = Path(handle) / "design"
-    root.mkdir()
-    for rel, content in case_table.items():
-        target = root / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if isinstance(content, bytes):
-            target.write_bytes(content)
-        else:
-            target.write_text(content, encoding="utf-8")
-    return root
-
-
-def link_tree(case_table, links):
-    """Build a tree and then add the links a case table names."""
-    root = build_tree(case_table)
-    for rel, target_rel in links.items():
-        link = root / rel
-        link.parent.mkdir(parents=True, exist_ok=True)
-        os.symlink(str(root / target_rel), str(link))
-    return root
 
 
 def run_tool(root, extra=(), env_extra=None, cwd=None):
@@ -1176,18 +1166,272 @@ def queue_file(rows):
     return "\n".join(lines) + "\n"
 
 
-def base_case(steps=(1, 2, 3)):
-    """A small complete tree: one case table with no form fault."""
-    table = {}
+# ------------------------------------------------------------------
+# Builder passages for conditional case assembly.
+#
+# The conditional case assembly helpers of the authored modules
+# stand here as named builder passages, one passage per module
+# form, so no conditional that assembles a case stands in a test
+# module. Each passage reproduces the case tables its module form
+# assembled, byte for byte: the base file sets are rebuilt here
+# from the same texts the module forms used.
+# ------------------------------------------------------------------
+
+
+def make_case(name, files, features=(), malformations=()):
+    """Builder passage: one case table, Slice 4 and Slice 7 form."""
+    case = {"name": name, "features": tuple(features),
+            "files": dict(files)}
+    if malformations:
+        case["malformations"] = tuple(malformations)
+    return case
+
+
+def _slice2_step_record_text(step):
+    return ("# Step %d record\n\nBase: 2. Team staffed: 2 agents. "
+            "Total spins: 4.\n" % step)
+
+
+def _slice2_roster_artifact(step):
+    return ("# Step %d roster artifact\n\nNamed agents: 2. Base: 2.\n"
+            "Roster additions over base: 0.\n" % step)
+
+
+def _slice2_base_files():
+    files = {
+        "PATH-LEDGER.md": (
+            "# Path ledger\n\nSteps stated: 1, 2, 3.\n\n"
+            "## Transitions\n\n"
+            "Step 1 IN PROGRESS 2026-11-01 09:00, closed "
+            "2026-11-01 17:00.\n"
+            "Step 2 IN PROGRESS 2026-11-02 09:00, closed "
+            "2026-11-02 17:00.\n"
+            "Step 3 IN PROGRESS 2026-11-03 09:00, closed "
+            "2026-11-03 17:00.\n"),
+    }
+    for step in (1, 2, 3):
+        files["steps/step-%02d-record.md" % step] = (
+            _slice2_step_record_text(step))
+        files["steps/step-%02d-roster-artifact.md" % step] = (
+            _slice2_roster_artifact(step))
+    files["steps/step-01-gate-record.md"] = (
+        "# Step 1 gate record\n\nClosure state: CLOSED-PASS.\n")
+    return files
+
+
+def slice2_make_case(name, files=None, features=(), malformations=(),
+                     dirs=(), links=None, extra_files=None):
+    """Builder passage: one case table, Slice 2 form."""
+    merged = _slice2_base_files()
+    if files:
+        merged.update(files)
+    if extra_files:
+        merged.update(extra_files)
+    case = {"name": name, "features": tuple(features),
+            "files": merged}
+    if malformations:
+        case["malformations"] = tuple(malformations)
+    if dirs:
+        case["dirs"] = tuple(dirs)
+    if links:
+        case["links"] = dict(links)
+    return case
+
+
+def _slice5_base_files():
+    files = {}
+    transitions = []
+    for n in (1, 2, 3):
+        files["steps/step-%02d-record.md" % n] = step_record(n)
+        files["steps/step-%02d-gate-record.md" % n] = gate_record(n)
+        transitions.append(
+            "Step %d IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 "
+            "17:00." % n)
+    files["PATH-LEDGER.md"] = (
+        "# Path ledger\n\nSteps stated: 1, 2, 3.\n\n## Transitions\n\n"
+        + "\n".join(transitions) + "\n")
+    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
+    files.update(single_page_metrics_record_files(metrics_record(
+        body="Step table stands complete for the fixture steps.")))
+    return files
+
+
+def slice5_make_case(name, extra=None, features=(), malformations=()):
+    """Builder passage: one case table, Slice 5 form."""
+    files = _slice5_base_files()
+    if extra:
+        files.update(extra)
+    case = {"name": name, "features": tuple(features), "files": files}
+    if malformations:
+        case["malformations"] = tuple(malformations)
+    return case
+
+
+def _slice4_base_files(steps=(1, 2, 3)):
+    files = {}
     transitions = []
     for n in steps:
-        table["steps/step-%02d-record.md" % n] = step_record(n)
-        table["steps/step-%02d-gate-record.md" % n] = gate_record(n)
+        files["steps/step-%02d-record.md" % n] = step_record(n)
+        files["steps/step-%02d-gate-record.md" % n] = gate_record(n)
+        transitions.append(
+            "Step %d IN PROGRESS 2026-11-01 09:00, closed "
+            "2026-11-01 17:00." % n)
+    files["PATH-LEDGER.md"] = path_ledger(
+        "\n".join(transitions), ", ".join(str(s) for s in steps))
+    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
+    files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
+        body="Step table stands complete for the fixture steps.")
+    return files
+
+
+def d1_files(queue_rows=None, table_rows=None, split=False,
+             unusable_queue=False):
+    """Builder passage: files for a D-1 feeder state, Slice 4 form."""
+    files = _slice4_base_files()
+    if queue_rows is not None:
+        files["DECISION-QUEUE.md"] = queue_file(queue_rows)
+    if unusable_queue:
+        files["DECISION-QUEUE.md"] = "# Decision queue\n\nplaceholder\n"
+    if table_rows is not None:
+        table = decision_table(table_rows)
+        if split:
+            pages = split_metrics_record_files([
+                "# Build metrics record\n\nPage order: 1.\n\n"
+                "Step table stands.\n",
+                "# Build metrics record page 2\n\nPage order: 2.\n\n"
+                + table])
+            del files["wiki/wiki/synthesis/build-metrics-record.md"]
+            files.update(pages)
+        else:
+            files["wiki/wiki/synthesis/build-metrics-record.md"] = (
+                metrics_record(decision_table=table))
+    return files
+
+
+def d1_case(name, **kwargs):
+    """Builder passage: a D-1 case table, Slice 4 form."""
+    features = ["decision-items-full-timestamps",
+                "single-page-metrics-record"]
+    if kwargs.get("split"):
+        features = ["decision-items-full-timestamps",
+                    "split-metrics-record"]
+    if kwargs.get("queue_rows") is not None or kwargs.get("unusable_queue"):
+        features.append("queue-file-inside-root")
+    if kwargs.get("table_rows") is not None:
+        features.append("decision-table-inside-root")
+    malformations = ()
+    if kwargs.get("unusable_queue"):
+        malformations = ({
+            "switch": "M-01", "target": "DECISION-QUEUE.md",
+            "target_kind": "DQ", "state": "not-valid-text"},)
+    return make_case(name, d1_files(**kwargs), features, malformations)
+
+
+def _slice3_staffing_files(steps=(1, 2, 3), closure="CLOSED-PASS"):
+    files = {}
+    transitions = []
+    for n in steps:
+        files["steps/step-%02d-record.md" % n] = step_record(n)
+        files["steps/step-%02d-gate-record.md" % n] = gate_record(n, closure)
         transitions.append(
             "Step %d IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00." % n)
-    table["PATH-LEDGER.md"] = path_ledger("\n".join(transitions),
-                                          ", ".join(str(s) for s in steps))
-    table["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
-    table["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
+    files["PATH-LEDGER.md"] = path_ledger(
+        "\n".join(transitions), ", ".join(str(s) for s in steps))
+    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
+    files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
         body="Step table stands complete for the fixture steps.")
-    return table
+    return files
+
+
+def audit_paper_failed_signal(signal):
+    """Builder passage: an audit paper with one signal failed, Slice 3 form."""
+    if signal == "signal-one":
+        return ("# Step 1 audit paper\n\nFindings in number order.\n"
+                "Finding 1 stands.\nFinding 2 stands.\nFinding 4 stands.\n")
+    if signal == "signal-two":
+        return ("# Step 1 audit paper\n\nSeverity breakdown table. "
+                "Rows stated in header: 5.\n"
+                "| Severity | Count |\n| --- | --- |\n"
+                "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+    return ("# Step 1 audit paper\n\nContents list: Section Alpha, "
+            "Section Beta.\n\n## Section Alpha\n\nText stands.\n")
+
+
+def unmarked_case(name, family, signal, with_correcting):
+    """Builder passage: an unmarked truncation case, Slice 3 form."""
+    files = _slice3_staffing_files((1,))
+    files["audit/step-01-audit-paper.md"] = audit_paper_failed_signal(signal)
+    if with_correcting:
+        files["audit/step-01-correcting-record.md"] = (
+            "# Correcting record for step 1\n\n"
+            "The correcting record stands for the step 1 audit paper.\n")
+    case = {"name": name, "features": (), "files": files,
+            "malformations": (
+                {"switch": "M-05",
+                 "target": "audit/step-01-audit-paper.md",
+                 "target_kind": "AP",
+                 "state": "signal-failed",
+                 "signal": signal},)}
+    return case
+
+
+def _slice1_step_record_text(step, base=2, team=2, total_spins=4, extra=""):
+    return ("# Step %d record\n\nBuild: metrics fixture build.\n"
+            "Base: %d. Team staffed: %d agents. Total spins: %d.\n%s\n"
+            % (step, base, team, total_spins, extra))
+
+
+def _slice1_roster_text(step, base=2, additions=0):
+    return ("# Step %d roster\n\nNamed agents: 2. Base: %d.\n"
+            "Roster additions over base: %d.\n" % (step, base, additions))
+
+
+def _slice1_gate_record_text(step, trace="2 LANDED of 2 items checked, "
+                                 "0 PARTIAL, 0 CONTRADICTED"):
+    return ("# Step %d gate record\n\nClosure state: CLOSED-PASS.\n"
+            "First trace for step %d: %s.\n" % (step, step, trace))
+
+
+def _slice1_ledger_text(transitions, steps="1, 2, 3", extra=""):
+    return ("# Path ledger\n\nSteps stated: %s.\n\n## Transitions\n\n"
+            "%s\n%s\n" % (steps, transitions, extra))
+
+
+def _slice1_full_clock_transitions(steps=(1, 2, 3)):
+    return "\n".join(
+        "Step %d IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00."
+        % n for n in steps)
+
+
+def metrics_text(decision_rows=None, header_version=None, body_extra=""):
+    """Builder passage: the metrics record text, Slice 1 form."""
+    version_line = ""
+    if header_version is not None:
+        version_line = "Definitions version: %s\n" % header_version
+    rows = decision_rows
+    if rows is None:
+        rows = ("| Q-1 | 1 | 2026-11-01 09:00 | 2026-11-01 10:00 | "
+                "2026-11-01 13:00 |")
+    return ("# Build metrics record\n\nBuild: metrics fixture build.\n"
+            "%s\nStep table stands complete for the fixture steps.\n%s\n"
+            "## Decision table\n\n"
+            "| Item | Origin step | Raised | Presented | Ruled |\n"
+            "| --- | --- | --- | --- | --- |\n%s\n"
+            % (version_line, body_extra, rows))
+
+
+def clean_files(ledger=None, metrics=None):
+    """Builder passage: files for a small complete tree, Slice 1 form."""
+    files = {}
+    for n in (1, 2, 3):
+        files["steps/step-%02d-record.md" % n] = _slice1_step_record_text(n)
+        files["steps/step-%02d-roster.md" % n] = _slice1_roster_text(
+            n, additions=1 if n == 3 else 0)
+        files["steps/step-%02d-gate-record.md" % n] = (
+            _slice1_gate_record_text(n))
+    files["PATH-LEDGER.md"] = ledger or _slice1_ledger_text(
+        _slice1_full_clock_transitions())
+    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
+    files.update(single_page_metrics_record_files(
+        metrics if metrics is not None else metrics_text()))
+    return files

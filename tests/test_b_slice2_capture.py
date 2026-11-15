@@ -29,6 +29,7 @@ from tests.fixture_builder import (
     measure_tree,
     piece_entry_for,
     row_block,
+    slice2_make_case as make_case,
     tracked_tempdir,
 )
 
@@ -85,24 +86,6 @@ def base_files():
     files["steps/step-01-gate-record.md"] = (
         "# Step 1 gate record\n\nClosure state: CLOSED-PASS.\n")
     return files
-
-
-def make_case(name, files=None, features=(), malformations=(),
-              dirs=(), links=None, extra_files=None):
-    merged = base_files()
-    if files:
-        merged.update(files)
-    if extra_files:
-        merged.update(extra_files)
-    case = {"name": name, "features": tuple(features),
-            "files": merged}
-    if malformations:
-        case["malformations"] = tuple(malformations)
-    if dirs:
-        case["dirs"] = tuple(dirs)
-    if links:
-        case["links"] = dict(links)
-    return case
 
 
 def build(case):
@@ -291,7 +274,7 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertIn("date-only-form", block)
 
     def test_f11_settings_carry_the_section7_numbers(self):
-        """EC-21. The F-11 settings state the plan limits as numbers."""
+        """Fixture check, EC-21. The F-11 settings state the plan limits as numbers."""
         self.assertEqual(F11_SETTINGS["largest-file-bytes"],
                          FILE_LIMIT)
         self.assertEqual(F11_SETTINGS["tree-total-bytes"],
@@ -305,7 +288,7 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertEqual(len(F11_CASES), 10)
 
     def test_f11_built_counts_match_the_stating_entry(self):
-        """EC-21. Built counts, whole tree, filler only, per figure."""
+        """Fixture check, EC-21. Built counts, whole tree, filler only, per figure."""
         expected = {
             ("largest-file-bytes", "at-limit"):
                 {"files": 1, "total_bytes": 1000000},
