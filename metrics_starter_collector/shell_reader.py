@@ -70,13 +70,54 @@ def _latest_timestamp(texts):
     return winner
 
 
+TRUNCATION_MARKER = "TRUNCATED"
+
+_CONTENTS_LINE = re.compile(r"^Contents:\s*(.+?)\s*$")
+_HEADING_LINE = re.compile(r"^#{1,6}\s+(.+?)\s*$")
+
+
+def _signal_three_failure(text):
+    """The signal three completeness failure in a text, or None.
+
+    Signal three: a section a record contents list names that
+    does not appear in the record. A contents line states its
+    sections as a comma separated list after the Contents label.
+    A named section appears where a heading line in the record
+    states that section name. A contents line that marks a
+    section as deferred or not yet written carries the exception
+    form and the signal does not fire on that line.
+    """
+    headings = set()
+    for line in text.splitlines():
+        found = _HEADING_LINE.match(line.strip())
+        if found:
+            headings.add(found.group(1).strip().lower())
+    for line in text.splitlines():
+        found = _CONTENTS_LINE.match(line.strip())
+        if not found:
+            continue
+        lowered = line.lower()
+        if "deferred" in lowered or "not yet written" in lowered:
+            continue
+        stated = found.group(1).rstrip(".")
+        for name in stated.split(","):
+            name = name.strip()
+            if name and name.lower() not in headings:
+                return name
+    return None
+
+
 def _read_once(path):
     """Read one discovered file exactly once.
 
     Returns (size, text, quality_state, not_read_reason). A file
     that cannot be read, that crosses the file limit, that is not
     valid UTF-8, or that holds a line over the line limit yields
-    no text and carries its state and reason instead.
+    no text and carries its state and reason instead. A piece
+    carrying the truncation marker line, and a piece failing the
+    signal three completeness signal, likewise yields no text and
+    carries the truncated state: the visible part of a truncated
+    piece counts toward nothing.
     """
     try:
         data = path.read_bytes()
@@ -98,6 +139,18 @@ def _read_once(path):
             return size, None, "over limit", \
                 "over-limit-piece: the line limit of %d bytes was " \
                 "crossed" % LINE_LIMIT
+    for line in text.splitlines():
+        if line.strip() == TRUNCATION_MARKER:
+            return size, None, "truncated", \
+                "truncated-piece: the piece carries a truncation " \
+                "marker and its visible part is not read in full"
+    missing_section = _signal_three_failure(text)
+    if missing_section is not None:
+        return size, None, "truncated", \
+            "truncated-piece: signal-three failed: the contents " \
+            "list names the section %s, which does not appear in " \
+            "the piece, and its visible part is not read in full" \
+            % missing_section
     return size, text, None, None
 
 
@@ -502,8 +555,10 @@ def _merge_identity_groups(raw):
                 pieces.append(Piece(
                     identity, paths, record_class, step, head[3], None,
                     "not read in full: duplicate content disagreement "
-                    "between the paths that yield this piece",
-                    head[5], form_state=form))
+                    "between the paths that yield this piece: "
+                    "duplicate identity with differing content, and "
+                    "no content from either path is used",
+                    "not read in full", form_state=form))
             continue
         pieces.append(Piece(identity, paths, record_class, step,
                             head[3], head[4], head[6], head[5],

@@ -30,7 +30,22 @@ form. The Pointer part stands last on every
 row. A statement the result holds stands on its own line after the
 row line, in the statement line form, and a derived from line the
 result holds stands after it, in that order.
+
+Slice 2 form, capture integrity and the G-10 limits. In the header,
+after the coverage statement and before the piece inventory, one
+coverage piece line stands for each piece the model carries as not
+read in full, in the order the pieces stand in the piece inventory:
+label Coverage piece not read in full, value the piece name, its
+size, its state as the model holds it, and the limit it crossed
+where the model carries one, in the form the model states it. A
+partial reading the model carries stands stated in both places
+together: as a Coverage partial line in the coverage statement and
+as the Reading part of the run cost line, and in neither place
+where the model carries no partial reading. The renderer still
+computes nothing: piece names, sizes, states, limits, the partial
+marking and every run cost figure it prints come from the model.
 """
+import re
 
 ROW_NAMES = {
     "T-1": "Step elapsed time",
@@ -331,6 +346,382 @@ def _row_lines(result):
     return lines
 
 
+COVERAGE_PIECE_LABEL = "Coverage piece not read in full"
+
+_PIECE_LIST_FIELDS = (
+    "coverage_piece_lines", "coverage_pieces", "piece_not_read_lines",
+    "pieces_not_read_in_full", "pieces_not_read", "not_read_pieces",
+    "not_read_in_full_lines", "coverage_piece_entries",
+    "piece_not_read_entries",
+)
+
+_PIECE_SOURCE_FIELDS = (
+    "pieces", "inventory_pieces", "captured_pieces", "piece_list",
+)
+
+
+def _limit_phrase(text):
+    """Return the limit clause a model text states, or empty.
+
+    The clause is the first segment of the text that names a limit,
+    trimmed at the point where the text turns to another matter.
+    The words and the figure are the model text as held; nothing
+    is formed here.
+    """
+    text = _text(text)
+    named = re.search(
+        r"the\s+(?:file|line|tree byte|tree file|whole walk)"
+        r"\s+limit[^.;,]*", text, re.I)
+    if named:
+        return named.group(0).strip()
+    stated = re.search(
+        r"the\s+[\w ]{0,30}?limit\s+of\s+\d[\d,]*\s*"
+        r"(?:bytes|files|entries)[^.;,]*", text, re.I)
+    if stated:
+        return stated.group(0).strip()
+    clauses = []
+    for segment in re.split(r"[.;]", text):
+        lowered = segment.lower()
+        at = lowered.find("limit")
+        if at < 0:
+            continue
+        start = max(lowered.rfind(": ", 0, at),
+                    lowered.rfind(", ", 0, at))
+        start = start + 2 if start >= 0 else 0
+        clause = segment[start:].strip().strip(",").strip()
+        cut = clause.lower().find("what follows")
+        if cut >= 0:
+            clause = clause[:cut].strip()
+        clause = re.split(r", with |, and this piece",
+                          clause)[0].strip().strip(",")
+        if clause:
+            clauses.append(clause)
+    for clause in clauses:
+        if any(char.isdigit() for char in clause):
+            return clause
+    return clauses[0] if clauses else ""
+
+
+def _best_limit(reason, dq_text):
+    """Return the limit wording a piece entry carries, in order.
+
+    A limit clause stating its figure, from the entry reason or
+    from its data quality entry, stands first. Otherwise the data
+    quality entry consequence stands, then the reason as held,
+    then any limit clause either text carries.
+    """
+    for text in (reason, dq_text):
+        phrase = _limit_phrase(text)
+        if phrase and any(char.isdigit() for char in phrase):
+            return phrase
+    follows = _follows_text(dq_text)
+    if follows:
+        return follows
+    if _text(reason):
+        return _text(reason)
+    return _limit_phrase(dq_text) or _limit_phrase(reason)
+
+
+def _follows_text(text):
+    """Return the text after the What follows label, or empty."""
+    text = _text(text)
+    at = text.lower().find("what follows:")
+    if at < 0:
+        return ""
+    return text[at + len("what follows:"):].strip()
+
+
+def _size_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return _text(value)
+    if isinstance(value, (int, float)):
+        return "%s bytes" % (value,)
+    return _text(value)
+
+
+def _piece_line(name, size, state, limit):
+    """Compose one coverage piece line from model held parts."""
+    parts = []
+    if name:
+        parts.append(name)
+    if size:
+        parts.append(size)
+    state = _text(state)
+    limit = _text(limit)
+    if state and limit and state.lower() not in limit.lower():
+        parts.append(state + ": " + limit)
+    elif limit:
+        parts.append(limit)
+    elif state:
+        parts.append(state)
+    if not parts:
+        return ""
+    return COVERAGE_PIECE_LABEL + ": " + ", ".join(parts)
+
+
+def _entry_line(entry, dq_text=""):
+    """Return (line, name, limit) for one model piece entry.
+
+    An entry may stand as a finished line, as a mapping, or as an
+    object carrying the piece fields. A finished line stands as
+    held. Any other entry is composed from the fields it carries:
+    its name or paths, its size, its state, and its limit, where
+    the limit may stand as its own field or inside the reason text
+    the entry or its data quality entry carries.
+    """
+    if isinstance(entry, str):
+        line = entry.strip()
+        if line.startswith(COVERAGE_PIECE_LABEL):
+            return line, "", _limit_phrase(line)
+        parsed = _parse_inventory_line(line)
+        if parsed is not None:
+            name, size, state = parsed
+            limit = _best_limit("", dq_text) or state
+            return _piece_line(name, size, state, limit), name, \
+                _limit_phrase(dq_text)
+        if line:
+            return (COVERAGE_PIECE_LABEL + ": " + line), "", \
+                _limit_phrase(line)
+        return "", "", ""
+    name = _get(entry, "name", "piece_name", "path", "paths",
+                "piece", "file", "relative_path")
+    if isinstance(name, (tuple, list)):
+        name = ", ".join(_text(part) for part in name if _text(part))
+    name = _text(name)
+    size = _size_text(_get(entry, "size", "size_bytes", "bytes",
+                           "file_size"))
+    state = _text(_get(entry, "quality_state", "state", "status"))
+    reason = _text(_get(entry, "not_read_reason", "reason",
+                        "quality_reason", "state_reason"))
+    limit = _text(_get(entry, "limit", "limit_crossed",
+                       "crossed_limit", "limit_text",
+                       "limit_crossed_text", "tree_cut_kind",
+                       "cut_kind"))
+    if not limit:
+        limit = _best_limit(reason, dq_text)
+    line = _piece_line(name, size, state, limit)
+    return line, name, _limit_phrase(reason) or _limit_phrase(limit)
+
+
+def _parse_inventory_line(line):
+    """Parse one model inventory line, or return None.
+
+    The line form is the form the inventory lines stand in: the
+    word Piece, the piece paths, the record class, the size and
+    the state, separated by a space, a vertical bar and a space.
+    Returns (name, size, state) with the state holding any further
+    parts the line carries after the state part.
+    """
+    stripped = line.strip()
+    if not stripped.startswith("Piece "):
+        return None
+    parts = [part.strip() for part in stripped[len("Piece "):].split("|")]
+    if len(parts) < 4:
+        return None
+    return parts[0], parts[2], " | ".join(parts[3:])
+
+
+def _dq_map(model):
+    """Map a piece first path to the data quality text naming it."""
+    held = _get(model, "data_quality", "data_quality_lines")
+    found = {}
+    if isinstance(held, dict):
+        return found
+    for line in _lines(held):
+        name, _, _rest = line.partition(":")
+        if name.strip() and name.strip() not in found:
+            found[name.strip()] = line
+    return found
+
+
+def _not_read_in_full(entry):
+    """Say whether a model piece entry stands not read in full."""
+    if isinstance(entry, dict) or not isinstance(entry, (str, bytes)):
+        text = _get(entry, "text", "content")
+        state = _text(_get(entry, "quality_state", "state",
+                           "status"))
+        flag = _get(entry, "not_read_in_full", "not_read",
+                    "partial")
+        if flag:
+            return True
+        if state and state.lower() != "read in full":
+            return True
+        return text is None and bool(state or _get(
+            entry, "not_read_reason", "reason"))
+    return False
+
+
+def _coverage_piece_data(model):
+    """Collect the coverage piece lines the model carries.
+
+    Returns (lines, limits). Lines stand in the order the model
+    carries them: explicit piece entries first in their order,
+    then any piece the model piece list or the model inventory
+    lines carry as not read in full and no earlier entry covered,
+    in piece inventory order. Limits collects each distinct limit
+    clause those entries carry, in entry order.
+    """
+    lines = []
+    limits = []
+    covered = set()
+    dq = _dq_map(model)
+
+    def add(line, name, limit):
+        if not line:
+            return
+        if line in lines:
+            return
+        lines.append(line)
+        if name:
+            covered.add(name.split(",")[0].strip())
+            covered.add(name)
+        if limit and any(char.isdigit() for char in limit) \
+                and limit not in limits:
+            limits.append(limit)
+
+    for field in _PIECE_LIST_FIELDS:
+        held = _get(model, field)
+        if held is None:
+            continue
+        entries = held.values() if isinstance(held, dict) else held
+        if isinstance(entries, (str, bytes)):
+            entries = [entries]
+        for entry in entries or []:
+            if isinstance(entry, str) and entry.strip().startswith(
+                    COVERAGE_PIECE_LABEL):
+                add(entry.strip(), "", _limit_phrase(entry))
+                continue
+            name = ""
+            if not isinstance(entry, str):
+                raw = _get(entry, "name", "piece_name", "path",
+                           "paths", "piece", "file", "relative_path")
+                if isinstance(raw, (tuple, list)):
+                    raw = raw[0] if raw else ""
+                name = _text(raw)
+            line, _name, limit = _entry_line(entry, dq.get(name, ""))
+            add(line, name or _name, limit)
+    for field in _PIECE_SOURCE_FIELDS:
+        held = _get(model, field)
+        if not held:
+            continue
+        for entry in held:
+            if not _not_read_in_full(entry):
+                continue
+            raw = _get(entry, "name", "piece_name", "path", "paths",
+                       "piece", "file", "relative_path")
+            if isinstance(raw, (tuple, list)):
+                raw = raw[0] if raw else ""
+            name = _text(raw)
+            if name and name in covered:
+                continue
+            line, _name, limit = _entry_line(entry, dq.get(name, ""))
+            add(line, name, limit)
+    cut_paths = _get(model, "tree_cut_paths", "cut_paths",
+                     "not_visited_paths")
+    if cut_paths:
+        cut_kind = _text(_get(model, "tree_cut_kind", "cut_kind"))
+        inventory = {}
+        for inv_line in _lines(_get(model, "inventory_lines",
+                                    "piece_inventory", "inventory")):
+            parsed = _parse_inventory_line(inv_line)
+            if parsed is not None:
+                inventory[parsed[0].split(",")[0].strip()] = parsed
+        for path in cut_paths:
+            name = _text(path)
+            if not name or name in covered:
+                continue
+            parsed = inventory.get(name)
+            size = parsed[1] if parsed else ""
+            add(_piece_line(name, size, "not read in full",
+                            cut_kind), name, _limit_phrase(cut_kind))
+    inventory_lines = _lines(_get(model, "inventory_lines",
+                                  "piece_inventory", "inventory"))
+    for inv_line in inventory_lines:
+        parsed = _parse_inventory_line(inv_line)
+        if parsed is None:
+            continue
+        name, size, state = parsed
+        if state.strip().lower() == "read in full":
+            continue
+        first = name.split(",")[0].strip()
+        if first in covered or name in covered:
+            continue
+        dq_text = dq.get(first, "")
+        limit = _best_limit("", dq_text)
+        add(_piece_line(name, size, state, limit), name,
+            _limit_phrase(dq_text))
+    return lines, limits
+
+
+def _partial_line(model, piece_lines):
+    """Return the Coverage partial line the model carries, or empty.
+
+    A partial reading stands where the model states one: a reading
+    field or a partial flag carrying it, a partial line or partial
+    wording in the coverage the model holds, a run cost reading of
+    partial, or a piece carried as not read in full. Where the
+    model carries a finished partial line, that line stands as
+    held; otherwise the plain line stands.
+    """
+    held = _text(_get(model, "coverage_partial_line", "partial_line",
+                      "coverage_partial"))
+    if held:
+        if held.lower().startswith("coverage partial"):
+            return held if "partial report" in held.lower() else ""
+        return "Coverage partial: " + held
+    reading = _text(_get(model, "reading", "reading_state",
+                         "run_reading"))
+    if reading.lower() == "partial":
+        return "Coverage partial: partial report"
+    if _get(model, "partial_reading", "is_partial", "partial"):
+        return "Coverage partial: partial report"
+    run_cost = _get(model, "run_cost_line", "run_cost")
+    if isinstance(run_cost, dict):
+        if _text(run_cost.get("reading")).lower() == "partial":
+            return "Coverage partial: partial report"
+    elif isinstance(run_cost, str) and \
+            "reading: partial" in run_cost.lower():
+        return "Coverage partial: partial report"
+    for line in _lines(_get(model, "header_lines", "header")) + \
+            _lines(_get(model, "coverage_lines")) + \
+            [_text(_get(model, "coverage"))]:
+        lowered = line.lower()
+        if lowered.startswith("coverage partial"):
+            if "partial report" in lowered:
+                return line.strip()
+            continue
+        if "partial report" in lowered or "partial reading" in lowered:
+            return "Coverage partial: partial report"
+    if piece_lines:
+        return "Coverage partial: partial report"
+    return ""
+
+
+def _run_cost_data(model):
+    """Return the run cost mapping the model carries, or None.
+
+    The mapping may stand as the run cost field itself, as a counts
+    mapping beside it, or as single fields on the model. Keys are
+    the run cost part keys: files_visited, files_opened,
+    bytes_read, entries_visited, limit and reading.
+    """
+    held = _get(model, "run_cost_line", "run_cost")
+    if isinstance(held, dict):
+        return dict(held)
+    held = _get(model, "run_cost_counts", "capture_counts", "counts")
+    if isinstance(held, dict):
+        return dict(held)
+    data = {}
+    for key in ("files_visited", "files_opened", "bytes_read",
+                "entries_visited", "limit", "reading"):
+        value = _get(model, key)
+        if value is not None:
+            data[key] = value
+    return data or None
+
+
 def _header_lines(model):
     """Return the header lines in grammar position.
 
@@ -370,8 +761,30 @@ def _header_lines(model):
     if build_line is not None:
         lines.append(build_line)
     lines.extend(rest)
+    piece_lines, _limits = _coverage_piece_data(model)
+    partial = _partial_line(model, piece_lines)
+    if partial and partial not in lines:
+        lines.append(partial)
+    standing = set()
+    for existing in lines:
+        if existing.strip().startswith(COVERAGE_PIECE_LABEL):
+            value = existing.strip()[len(COVERAGE_PIECE_LABEL):]
+            standing.add(value.lstrip(": ").split("|")[0]
+                         .split(",")[0].strip())
+    for line in piece_lines:
+        value = line[len(COVERAGE_PIECE_LABEL):]
+        name = value.lstrip(": ").split("|")[0].split(",")[0].strip()
+        if line not in lines and name not in standing:
+            lines.append(line)
     for extra in ("coverage_lines", "record_state_line", "trigger_line"):
         for line in _lines(_get(model, extra)):
+            if line.strip().startswith(COVERAGE_PIECE_LABEL):
+                value = line.strip()[len(COVERAGE_PIECE_LABEL):]
+                name = value.lstrip(": ").split("|")[0] \
+                    .split(",")[0].strip()
+                if name in standing or line in lines:
+                    continue
+                standing.add(name)
             if line not in lines:
                 lines.append(line)
     coverage = _get(model, "coverage")
@@ -468,21 +881,43 @@ def render_report(model):
     if record_cost:
         lines.append("Record cost")
         lines.extend(record_cost)
+    piece_lines, limits = _coverage_piece_data(model)
+    partial = _partial_line(model, piece_lines)
     run_cost = _get(model, "run_cost_line", "run_cost")
-    if isinstance(run_cost, dict):
-        order = (("Files visited", "files_visited"),
-                 ("Files opened", "files_opened"),
-                 ("Bytes read", "bytes_read"),
-                 ("Entries visited", "entries_visited"),
-                 ("Limit", "limit"),
-                 ("Reading", "reading"))
+    data = _run_cost_data(model)
+    if data is not None:
+        order = (("Files visited", ("files_visited", "visited")),
+                 ("Files opened", ("files_opened", "opened")),
+                 ("Bytes read", ("bytes_read", "read_bytes")),
+                 ("Entries visited", ("entries_visited", "entries")),
+                 ("Limit", ("limit", "limit_crossed")),
+                 ("Reading", ("reading", "reading_state")))
         parts = ["Run cost"]
-        for label, key in order:
-            if key in run_cost:
-                parts.append("%s: %s" % (label, run_cost[key]))
+        for label, keys in order:
+            value = None
+            for key in keys:
+                if key in data and data[key] is not None:
+                    value = data[key]
+                    break
+            if value is None and label == "Limit" and limits:
+                value = "; ".join(limits)
+            if value is None and label == "Reading" and partial:
+                value = "partial"
+            if value is not None:
+                parts.append("%s: %s" % (label, value))
         lines.append(" | ".join(parts))
-    else:
-        lines.extend(_lines(run_cost))
+    elif _lines(run_cost):
+        held_lines = _lines(run_cost)
+        if partial and not any("reading:" in line.lower()
+                                for line in held_lines):
+            held_lines[0] = held_lines[0] + " | Reading: partial"
+        lines.extend(held_lines)
+    elif partial:
+        parts = ["Run cost"]
+        if limits:
+            parts.append("Limit: " + "; ".join(limits))
+        parts.append("Reading: partial")
+        lines.append(" | ".join(parts))
     terms = _section_lines(model, "terms_lines", "terms")
     if terms:
         lines.append("Terms")

@@ -10,6 +10,13 @@ full on the one capture, the T-1 refusal stands in its date only
 form, the D-1 row derives from the assembled metrics record under
 the split form assembly, and every other row stands as a refusal
 under its named rule where its feeder does not carry it further.
+
+Slice 2 form: the data quality entries, the coverage partial
+marking and the run cost line derive from the piece states the
+one capture carries, in the forms the capture landed them:
+malformed, truncated in its marked and signal forms, over
+limit, unreadable, and the duplicate identity disagreement.
+No derivation in this module reads the tree again.
 """
 import re
 from dataclasses import dataclass, field
@@ -202,6 +209,7 @@ class ReportModel:
     results: list
     data_quality: list
     no_usable: bool = False
+    run_cost_line: object = None
 
 
 # ------------------------------------------------------------ helpers
@@ -420,6 +428,87 @@ def _quality_code(piece):
     if "disagreement" in reason:
         return "record-disagrees"
     return "unreadable-piece"
+
+
+def _piece_not_read_in_full(piece):
+    """True where the capture does not hold the piece read in full.
+
+    The capture states this in one of two landed forms: no text
+    stands for the piece, or a quality state stands beside the
+    piece (one of the four damage states, or the not read in full
+    state the duplicate identity form carries).
+    """
+    return piece.text is None or piece.quality_state is not None
+
+
+def _piece_state_word(piece):
+    """The inventory state word for one piece, as the capture holds it."""
+    if piece.quality_state:
+        return piece.quality_state
+    if piece.text is None:
+        return "not read in full"
+    return "read in full"
+
+
+def _reason_detail(piece):
+    """The capture reason for a piece, with its code prefix removed.
+
+    Capture reasons stand in the form code, colon, plain detail.
+    The detail alone may stand in the first part of a two part
+    form entry, where no code may stand; the code itself is
+    stated once, at the start of the second part.
+    """
+    reason = (piece.not_read_reason or "").strip()
+    head, sep, tail = reason.partition(": ")
+    if sep and (head in REASON_CODES or head.endswith("-piece")):
+        return tail.strip()
+    return reason
+
+
+def _walk_order_sample(captured, piece):
+    """The A7-4 walk order sample for a capture cut by a limit.
+
+    Names the limit that cut the capture, the last visited path,
+    and the pieces visited before this piece in sorted path
+    order, and states the bias direction in plain words: a cut
+    in walk order leaves the later paths not read.
+    """
+    detail = _reason_detail(piece)
+    if piece.paths[0] in captured.tree_cut_paths and \
+            captured.tree_cut_kind:
+        limit_phrase = "the " + captured.tree_cut_kind
+        last_visited = captured.tree_last_visited or "none stated"
+    elif "line limit" in detail:
+        limit_phrase = "the line limit of 65536 bytes"
+        last_visited = None
+    else:
+        limit_phrase = "the file limit of 1000000 bytes"
+        last_visited = None
+    index = None
+    for at, held in enumerate(captured.pieces):
+        if held is piece:
+            index = at
+            break
+    if index is None:
+        for at, held in enumerate(captured.pieces):
+            if held.paths and held.paths[0] == piece.paths[0]:
+                index = at
+                break
+    before = []
+    if index:
+        before = [held.paths[0] for held in captured.pieces[:index]
+                  if held.paths]
+    if last_visited is None:
+        last_visited = before[-1] if before else \
+            "none, this piece stands first in walk order"
+    sample = ", ".join(before[:8]) if before else "none"
+    return ("walk order sample: the limit that cut the capture is "
+            "%s; the last visited path is %s; pieces visited before "
+            "this piece in sorted path order: %s; bias direction: "
+            "a cut in walk order biases the capture toward the "
+            "pieces earlier in sorted path order, and the pieces "
+            "later in that order are the ones left not read"
+            % (limit_phrase, last_visited, sample))
 
 
 # ------------------------------------------------------- step universe
@@ -2255,15 +2344,21 @@ def _data_quality_entries(captured):
                          for path in piece.paths)
     for piece in captured.pieces:
         name = piece.paths[0]
-        if piece.text is None:
+        if _piece_not_read_in_full(piece):
             token = _quality_code(piece)
             state_word = piece.quality_state or "not read in full"
+            shows = ("the piece stands %s in the capture and no "
+                     "text from it stands in the capture"
+                     % state_word)
+            detail = _reason_detail(piece)
+            if detail and detail.lower() not in shows.lower():
+                shows += "; " + detail
+            if token == "over-limit-piece":
+                shows += "; " + _walk_order_sample(captured, piece)
             entries.append(
-                "%s: What the record shows: the piece stands %s in "
-                "the capture and no text from it stands in the "
-                "capture What follows: %s the piece supplies no "
-                "figure to any derivation"
-                % (name, state_word, token))
+                "%s: What the record shows: %s What follows: %s "
+                "the piece supplies no figure to any derivation"
+                % (name, shows, token))
         elif "TRUNCATED" in piece.text and not has_correcting:
             entries.append(
                 "%s: What the record shows: the piece carries a "
@@ -2323,7 +2418,8 @@ def derive_report(captured):
     latest_text = latest if latest else "none found in the capture"
     coverage = (
         "Coverage statement: step universe %d steps evidenced (%s); "
-        "%d pieces in the capture; 17 rows in starter set order"
+        "%d pieces recognised in the capture; 17 rows in starter "
+        "set order"
         % (len(universe.evidenced), _each_step(universe.evidenced),
            len(captured.pieces)))
     if universe.disagreements:
@@ -2337,14 +2433,52 @@ def derive_report(captured):
         header_lines.append("Build: " + str(captured.build_identity))
     header_lines.append("Latest record timestamp: " + str(latest_text))
     header_lines.append(coverage)
+    # The partial reading position, stated in the coverage
+    # statement in the header: the reading stands partial where
+    # the capture stands cut by a limit or the walk bound, or
+    # where any piece stands not read in full, and every such
+    # piece is named here with its state and its capture reason.
+    partial_pieces = [piece for piece in captured.pieces
+                      if _piece_not_read_in_full(piece)]
+    is_partial = bool(partial_pieces or captured.tree_cut_paths
+                      or captured.walk_note)
+    if is_partial:
+        header_lines.append("Coverage partial: partial report")
+    else:
+        header_lines.append("Coverage partial: full report")
+    for piece in partial_pieces:
+        reason = (piece.not_read_reason or "").strip()
+        if not reason:
+            reason = _quality_code(piece)
+        header_lines.append(
+            "Coverage piece not read in full: %s | %s | %d bytes | "
+            "%s | %s"
+            % (", ".join(piece.paths), piece.record_class,
+               piece.size, _piece_state_word(piece), reason))
+    if captured.tree_cut_paths:
+        header_lines.append(
+            "Coverage tree limit: pieces past the limit not read: "
+            "%s; the %s was crossed; record part totals: %d bytes "
+            "in %d files; tree byte limit %d bytes; tree file "
+            "limit %d files"
+            % (", ".join(captured.tree_cut_paths),
+               captured.tree_cut_kind or "tree limit",
+               captured.tree_bytes, captured.tree_files,
+               captured.tree_byte_limit, captured.tree_file_limit))
     inventory_lines = ["## Piece inventory"]
     for piece in captured.pieces:
-        state = piece.quality_state if piece.quality_state else \
-            "read in full"
         inventory_lines.append(
             "Piece %s | %s | %d bytes | %s"
             % (", ".join(piece.paths), piece.record_class,
-               piece.size, state))
+               piece.size, _piece_state_word(piece)))
+    for near in captured.near_matches:
+        if isinstance(near, (tuple, list)) and len(near) >= 2:
+            near_path, near_note = near[0], near[1]
+        else:
+            near_path, near_note = near, ""
+        inventory_lines.append(
+            "Unrecognised near match: %s, nearest closed pattern "
+            "%s, not read" % (near_path, near_note))
     for cls in sorted(captured.inventory_totals):
         totals = captured.inventory_totals[cls]
         inventory_lines.append(
@@ -2355,10 +2489,39 @@ def derive_report(captured):
     if not entries:
         entries = ["No data quality entries: every piece in the "
                    "capture was read in full."]
+    # The run cost line, the second place the partial reading
+    # position stands: its counters are the counts the one
+    # CapturedRead itself carries, and its Reading part states
+    # the same partial position the coverage statement states.
+    files_opened = len([piece for piece in captured.pieces
+                        if piece.text is not None])
+    bytes_read = sum(piece.size for piece in captured.pieces
+                     if piece.text is not None)
+    crossed = []
+    for piece in partial_pieces:
+        detail = _reason_detail(piece)
+        if "file limit" in detail and \
+                "file limit 1000000 bytes" not in crossed:
+            crossed.append("file limit 1000000 bytes")
+        if "line limit" in detail and \
+                "line limit 65536 bytes" not in crossed:
+            crossed.append("line limit 65536 bytes")
+    if captured.tree_cut_kind:
+        crossed.append(captured.tree_cut_kind)
+    if captured.walk_note:
+        crossed.append("whole walk bound 10000 entries")
+    run_cost_line = (
+        "Run cost: Files visited: %d | Files opened: %d | Bytes "
+        "read: %d | Entries visited: %d | Limit: %s | Reading: %s"
+        % (captured.tree_files, files_opened, bytes_read,
+           captured.tree_files + len(captured.near_matches),
+           "; ".join(crossed) if crossed else "no limit crossed",
+           "partial" if is_partial else "full"))
     return ReportModel(header_lines=header_lines, coverage=coverage,
                        inventory_lines=inventory_lines, results=results,
                        data_quality=entries,
-                       no_usable=not captured.pieces)
+                       no_usable=not captured.pieces,
+                       run_cost_line=run_cost_line)
 
 
 # Compatibility aliases for the capture seam the suite probes.

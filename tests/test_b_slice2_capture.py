@@ -288,7 +288,7 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertEqual(len(F11_CASES), 10)
 
     def test_f11_built_counts_match_the_stating_entry(self):
-        """Fixture check, EC-21. Built counts, whole tree, filler only, per figure."""
+        """Fixture check, EC-21. Built counts, whole tree, filler only except for figures largest-file-bytes and longest-line-bytes, whose counts are carried by the one record piece, per figure."""
         expected = {
             ("largest-file-bytes", "at-limit"):
                 {"files": 1, "total_bytes": 1000000},
@@ -560,7 +560,7 @@ class TestSlice2Capture(FixtureTestCase):
         half = build(make_case(
             "w8r05-file-half",
             files={"steps/step-02-record.md":
-                   step_record(2, pad=500000)}))
+                   step_record(2) + ("x" * 50000 + "\n") * 10}))
         half_result = run_product(half)
         self.assertEqual(half_result.returncode, 0, half_result.stderr)
         half_entry = piece_entry_for(half_result.stdout,
@@ -613,7 +613,7 @@ class TestSlice2Capture(FixtureTestCase):
         half_files = {}
         for step in range(1, 26):
             half_files["steps/step-%02d-record.md" % step] = (
-                step_record(step, pad=500000))
+                step_record(step) + ("x" * 50000 + "\n") * 10)
         half = build(make_case("w8r05-tree-half", files=half_files))
         half_result = run_product(half)
         self.assertEqual(half_result.returncode, 0, half_result.stderr)

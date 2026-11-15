@@ -27,7 +27,9 @@ Case table form. A case is a dict with these keys:
   f11: an F-11 limit spec dict, present on F-11 cases only, naming
     one figure of F11_SETTINGS and one position, at-limit or
     one-over. An F-11 case carries no files: its tree holds filler
-    only, in the form the F-11 stating entry states.
+    only except for figures largest-file-bytes and
+    longest-line-bytes, whose counts are carried by the one record
+    piece the F-11 stating entry states.
   dirs: a tuple of tree relative paths of empty directories to make.
   links: a dict mapping a tree relative link path to the tree
     relative path it points at.
@@ -380,7 +382,13 @@ def _build_f11(root, spec):
     figure = spec["figure"]
     over = spec["position"] == "one-over"
     if figure == "largest-file-bytes":
-        _filler_line_file(root, _filler_stem(0), 1000, over)
+        target = root / "steps" / "step-02-record.md"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        text = "# Step 2 record" + ("x" * 984) + "\n"
+        text += ("x" * 999 + "\n") * 999
+        if over:
+            text += "x"
+        target.write_text(text, encoding="utf-8")
     elif figure == "tree-total-bytes":
         for index in range(25):
             _filler_line_file(root, _filler_stem(index), 1000, False)
@@ -391,9 +399,11 @@ def _build_f11(root, spec):
         for index in range(count):
             (root / _filler_stem(index)).write_bytes(b"")
     elif figure == "longest-line-bytes":
-        size = 65537 if over else 65536
-        (root / _filler_stem(0)).write_text("x" * size,
-                                            encoding="utf-8")
+        target = root / "steps" / "step-02-record.md"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        count = 65521 if over else 65520
+        target.write_text("# Step 2 record " + ("x" * count),
+                          encoding="utf-8")
     elif figure == "whole-walk-entries":
         count = 10001 if over else 10000
         for index in range(count):
@@ -502,7 +512,9 @@ def split_metrics_record_files(page_texts):
 
 # The ten F-11 case tables: five figures, each at its limit and at
 # one unit over it, in four settings, as the verified F-11 stating
-# entry states them. Built counts, whole tree, filler only:
+# entry states them. Built counts, whole tree, filler only except
+# for figures largest-file-bytes and longest-line-bytes, whose
+# counts are carried by the one record piece:
 # largest-file-bytes 1000000 and 1000001 bytes in one file;
 # tree-total-bytes 25000000 bytes in 25 files and 25000001 bytes in
 # 26 files; tree-file-count 2000 and 2001 empty files;
