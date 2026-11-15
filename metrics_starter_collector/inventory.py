@@ -56,7 +56,7 @@ _STEP_SUFFIXES = (
     ("record.md", CLS_STEP_RECORD),
 )
 
-_STEP_PREFIX = re.compile(r"^step-(\d{2})-(.+)$")
+_STEP_PREFIX = re.compile(r"^step-(\d{2})([a-z])?-(.+)$")
 _AUDIT_NAME = re.compile(r"^step(\d+)-?(.*)$")
 _METRICS_SINGLE_STEM = "build-metrics-record"
 _METRICS_PAGE_PREFIX = "build-metrics-record-part-"
@@ -81,7 +81,7 @@ def _step_file_class(base):
     if not found:
         return None
     step = int(found.group(1))
-    tail = found.group(2)
+    tail = found.group(3)
     if tail.startswith("gate-ruling"):
         return CLS_GATE_RULING, step
     for suffix, record_class in _STEP_SUFFIXES:
@@ -170,7 +170,7 @@ def _classify_by_name(rel_path):
     """
     parts = rel_path.split("/")
     base = parts[-1]
-    if re.match(r"^step-\d+-(gate-)?records\.md$", base):
+    if re.match(r"^step-\d+[a-z]?-(gate-)?records\.md$", base):
         return None
     if base in _EXACT_NAMES:
         return _EXACT_NAMES[base], None
@@ -349,3 +349,280 @@ def record_change_force(assembled_text):
 # each change maps to no class and no header count moves on force
 # grounds under this mapping.
 RECORD_CHANGE_CLASSES = {1: (), 2: (), 3: (), 4: (), 5: ()}
+
+
+# ---------------------------------------------------------- instance key
+#
+# The instance key, under the Spin 772 key rule. An instance is
+# named by its step number and, where the file name carries one,
+# the single letter instance marker that stands between the step
+# number and the rest of the name, as in step-02r-record.md for
+# the restart instance R of Step 2. The key is a name form only:
+# it is taken from the file name, never from record text, so a
+# recycle marker standing inside one record names no new key and
+# that record instance counts once, and a step record, a gate
+# file, the path ledger and the metrics record that give the same
+# step number and the same marker, or no marker, name one and the
+# same instance. Two different markers are never merged: figures
+# recorded under a replaced or restart marker stay under their
+# own key. The plain instance key is "step-N" and a marked
+# instance key is "step-N-m", with N the step number with no zero
+# padding and m the marker letter in lower case.
+
+_INSTANCE_NAME = re.compile(r"^step-(\d{2})([a-z])?-.+$")
+
+
+def instance_marker(rel_path):
+    """Return the instance marker letter in a step file name, or ""."""
+    base = rel_path.split("/")[-1]
+    found = _INSTANCE_NAME.match(base)
+    if found and found.group(2):
+        return found.group(2)
+    return ""
+
+
+def instance_key_for(step, rel_path=None, marker=None):
+    """Return the instance key for a step and marker, as a string."""
+    if marker is None:
+        marker = instance_marker(rel_path) if rel_path else ""
+    if marker:
+        return "step-%d-%s" % (step, marker.lower())
+    return "step-%d" % step
+
+
+def piece_instance_key(piece):
+    """Return the instance key a captured piece belongs to.
+
+    The key is read from the first of the piece paths, in sorted
+    order, that carries a step file name form. A piece whose paths
+    carry no such form, but which belongs to a step, keys on the
+    plain instance of that step. A piece belonging to no step has
+    no instance key and this function returns None.
+    """
+    if piece.step is None:
+        return None
+    for path in sorted(piece.paths):
+        if _INSTANCE_NAME.match(path.split("/")[-1]):
+            return instance_key_for(piece.step, path)
+    return instance_key_for(piece.step)
+
+
+def instance_keys(pieces, classes=None):
+    """Return the distinct instance keys of pieces, in first seen order.
+
+    Where classes stands, only pieces whose record class stands
+    in it are counted. Each distinct key stands once, however many
+    pieces or record kinds name it.
+    """
+    keys = []
+    for piece in pieces:
+        if classes is not None and piece.record_class not in classes:
+            continue
+        key = piece_instance_key(piece)
+        if key is not None and key not in keys:
+            keys.append(key)
+    return keys
+
+
+# --------------------------------------------------- gate outcome reading
+#
+# The gate outcome reading this slice delivers. It reads gate
+# files under the gate alias set above only: the gate record, the
+# gate ruling with its round and re-audit variants, and the regate
+# record are the counted sources; the gate adjudication is read
+# as evidence beside them and is never a counted source, never a
+# separate gate, and an outcome standing only in an adjudication
+# enters no count. The Step 22 content classing above applies to
+# the class each source stands in, in the same form as classify.
+# Step records and their gate histories are not gate files and
+# are never read here, and a name outside the alias set, however
+# near, is not read as a gate file: such a piece is reported in
+# the near match sources of its step instance only.
+#
+# The reading supplies facts and derives no metric. Its result,
+# from gate_outcome_facts, is a dict keyed by instance key in the
+# form above. Each value is a dict with these fields:
+#   step: the step number, as an int.
+#   instance: the instance marker letter, or "" for the plain
+#     instance.
+#   instance_key: the instance key string.
+#   sources: a tuple of source dicts, one per counted or evidence
+#     gate piece for the instance, in sorted path order. Each
+#     source dict carries record_class, path (the first path of
+#     the piece), closure_state (the exact token after the
+#     Closure state label, as recorded, or None where the piece
+#     states none), and first_ruling_outcome (the word after the
+#     First ruling outcome label, one of Go, Hold, Recycle or
+#     Kill, or None where the piece states none).
+#   counted_sources: the sources tuple with every adjudication
+#     source removed.
+#   adjudication_sources: the sources whose class is the gate
+#     adjudication.
+#   adjudication_only: True where an adjudication source stands
+#     and no counted source stands.
+#   closure_states: the distinct closure_state tokens of the
+#     counted sources, in source order, as recorded, with no
+#     token normalised or dropped: a token outside the settled
+#     closure vocabulary stands here in its recorded form.
+#   first_closure_state: the closure_state of the first counted
+#     source in sorted path order, or None.
+#   first_ruling_outcomes: the distinct first ruling outcome
+#     words of the counted sources, in source order.
+#   first_ruling_outcome: the first such word, or None.
+#   both_names: True where a gate record source and a gate
+#     ruling source both stand among the counted sources.
+#   disagreement: True where the gate record and gate ruling
+#     sources of the instance state different recorded forms,
+#     in closure_state or in first_ruling_outcome. The forms are
+#     stated and never silently resolved. A regate source states
+#     a later ruling in a sequence and never by itself makes a
+#     disagreement, and an adjudication source never does.
+#   disagreement_forms: the distinct recorded forms behind a
+#     disagreement, closure states first, in source order.
+#   recycled: True where a regate source stands for the instance
+#     or a counted source text carries a recycle marker. A
+#     recycled instance still yields this one key and one entry.
+#   near_match_sources: a tuple of source dicts for pieces of
+#     this step that are classed as step companions and whose
+#     names begin with the gate stem but stand outside the alias
+#     set, in the same source dict form, listed beside the
+#     counted sources and never counted themselves.
+#   missing_gate: True where no counted source and no
+#     adjudication source stands for the instance, which is the
+#     form an entry takes where only near match sources stand.
+
+GATE_COUNTED_CLASSES = (CLS_GATE_RECORD, CLS_GATE_RULING,
+                        CLS_REGATE_RECORD)
+
+_CLOSURE_STATE = re.compile(r"Closure state:\s*([A-Za-z0-9][A-Za-z0-9-]*)")
+_FIRST_RULING_OUTCOME = re.compile(
+    r"First ruling outcome:\s*(Go|Hold|Recycle|Kill)\b")
+_RECYCLE_MARKER = re.compile(r"\brecycl", re.I)
+
+
+def _gate_source(piece, record_class):
+    """One gate source dict, read from a piece in its held form."""
+    text = piece.text or ""
+    closure = _CLOSURE_STATE.search(text)
+    outcome = _FIRST_RULING_OUTCOME.search(text)
+    return {
+        "record_class": record_class,
+        "path": piece.paths[0] if piece.paths else "",
+        "closure_state": closure.group(1) if closure else None,
+        "first_ruling_outcome": outcome.group(1) if outcome else None,
+    }
+
+
+def gate_outcome_facts(pieces):
+    """Read the gate outcome facts of a capture, by instance key.
+
+    Pieces stand as the capture holds them: a piece with no text
+    supplies a source with no closure state and no outcome word.
+    Pieces belonging to no step, and pieces in no class this
+    reading names, supply no entry.
+    """
+    grouped = {}
+    order = []
+    for piece in pieces:
+        if piece.step is None:
+            continue
+        record_class, _step = _content_class(
+            piece.record_class, piece.step, piece.text)
+        is_gate = record_class in GATE_ALIAS_CLASSES
+        is_near = False
+        if not is_gate and record_class == CLS_STEP_COMPANION:
+            base = piece.paths[0].split("/")[-1] if piece.paths else ""
+            tail = _STEP_PREFIX.match(base)
+            if tail and tail.group(3).startswith("gate-"):
+                is_near = True
+        if not is_gate and not is_near:
+            continue
+        key = piece_instance_key(piece)
+        if key not in grouped:
+            grouped[key] = {"sources": [], "near": []}
+            order.append(key)
+        if is_gate:
+            grouped[key]["sources"].append(
+                (_gate_source(piece, record_class), piece))
+        else:
+            grouped[key]["near"].append(_gate_source(piece, record_class))
+    facts = {}
+    for key in order:
+        held = grouped[key]
+        held["sources"].sort(key=lambda item: item[0]["path"])
+        sources = tuple(source for source, _piece in held["sources"])
+        counted = tuple(s for s in sources
+                        if s["record_class"] != CLS_GATE_ADJUDICATION)
+        adjudication = tuple(s for s in sources
+                             if s["record_class"] == CLS_GATE_ADJUDICATION)
+        closure_states = []
+        for source in counted:
+            token = source["closure_state"]
+            if token is not None and token not in closure_states:
+                closure_states.append(token)
+        outcomes = []
+        for source in counted:
+            word = source["first_ruling_outcome"]
+            if word is not None and word not in outcomes:
+                outcomes.append(word)
+        named = [s for s in counted
+                 if s["record_class"] in (CLS_GATE_RECORD, CLS_GATE_RULING)]
+        named_closures = {s["closure_state"] for s in named
+                          if s["closure_state"] is not None}
+        named_outcomes = {s["first_ruling_outcome"] for s in named
+                          if s["first_ruling_outcome"] is not None}
+        disagreement = len(named_closures) > 1 or len(named_outcomes) > 1
+        disagreement_forms = []
+        if disagreement:
+            for source in named:
+                for value in (source["closure_state"],
+                              source["first_ruling_outcome"]):
+                    if value is not None and \
+                            value not in disagreement_forms:
+                        disagreement_forms.append(value)
+        recycled = any(s["record_class"] == CLS_REGATE_RECORD
+                       for s in counted) or any(
+            piece.text and _RECYCLE_MARKER.search(piece.text)
+            for _source, piece in held["sources"]
+            if piece.record_class != CLS_GATE_ADJUDICATION)
+        first_piece_step = None
+        marker = ""
+        if held["sources"]:
+            first_piece_step = held["sources"][0][1].step
+            marker = instance_marker(held["sources"][0][0]["path"])
+        elif held["near"]:
+            marker = instance_marker(held["near"][0]["path"])
+        step = first_piece_step
+        if step is None:
+            digits = re.search(r"step-(\d+)", key)
+            step = int(digits.group(1)) if digits else None
+        facts[key] = {
+            "step": step,
+            "instance": marker,
+            "instance_key": key,
+            "sources": sources,
+            "counted_sources": counted,
+            "adjudication_sources": adjudication,
+            "adjudication_only": bool(adjudication) and not counted,
+            "closure_states": tuple(closure_states),
+            "first_closure_state": counted[0]["closure_state"]
+                if counted else None,
+            "first_ruling_outcomes": tuple(outcomes),
+            "first_ruling_outcome": outcomes[0] if outcomes else None,
+            "both_names": any(
+                s["record_class"] == CLS_GATE_RECORD for s in counted)
+                and any(s["record_class"] == CLS_GATE_RULING
+                        for s in counted),
+            "disagreement": disagreement,
+            "disagreement_forms": tuple(disagreement_forms),
+            "recycled": recycled,
+            "near_match_sources": tuple(
+                sorted(held["near"], key=lambda s: s["path"])),
+            "missing_gate": not sources,
+        }
+    return facts
+
+
+# The same reading under its plain name, for callers that name
+# the operation rather than the facts it returns.
+read_gate_outcomes = gate_outcome_facts

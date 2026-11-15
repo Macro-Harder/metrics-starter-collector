@@ -505,12 +505,12 @@ class TestSlice3Staffing(FixtureTestCase):
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present", "E-1")
         self.assertIn("Step 2", block)
-        denominator = _row_substance(block).get("Denominator", "")
+        coverage = _row_substance(block).get("Row coverage", "")
         self.assertRegex(
-            denominator, r"covered step 1\s*;\s*remainder step 2\b",
-            "E-1 Denominator part does not stand in the remainder "
+            coverage, r"covered step 1\s*;\s*remainder step 2\b",
+            "E-1 Row coverage part does not stand in the remainder "
             "form, covered Step 1 with remainder Step 2 named: %r"
-            % (denominator,))
+            % (coverage,))
         self.assertNotIn("Step 2 staffed", block)
 
     def test_wv22_e1_f2_base_count_same_step(self):
@@ -735,33 +735,38 @@ def row_block_verdict(block):
 
 
 def _row_substance(block):
-    """Return the EC-04 compared parts of one row block.
+    """Return the EC-04 compared parts of one row block, by label.
 
-    Verdict, value or its stated absence, denominator position,
-    step coverage as printed in the value and denominator parts,
-    pointer in substance, and reason in substance where the block
-    carries one, normalised for the gate name, in the form the
-    Slice 7 _row_substance helper shows.
+    The parts are taken by label from the first line of the
+    block, in the parts_of form: verdict, then Value, Numerator,
+    Denominator, Row coverage, Reason, and Pointer, each under
+    its own label where the row carries it and absent where it
+    does not, with gate name normalisation applied to every
+    part, the four forms gate ruling, gate record, gate-ruling,
+    and gate-record each replaced by the words gate file.
     """
     from tests.fixture_builder import row_verdict
     lines = [ln for ln in block.splitlines() if ln.strip()]
     first = lines[0] if lines else ""
-    chunks = [chunk.strip() for chunk in first.split(" | ")]
+    parts = {}
+    for chunk in first.split(" | "):
+        chunk = chunk.strip()
+        if ": " in chunk:
+            label, value = chunk.split(": ", 1)
+            parts[label.strip()] = value.strip()
     substance = {"verdict": row_verdict(block)}
-    if len(chunks) > 2:
-        pointer = chunks[2].lower()
-        for form in ("gate ruling", "gate record",
-                     "gate-ruling", "gate-record"):
-            pointer = pointer.replace(form, "gate file")
-        substance["Pointer"] = pointer
-    if len(chunks) > 3:
-        substance["Value"] = re.sub(r"\s+", " ", chunks[3].lower()).strip()
-    if len(chunks) > 4:
-        substance["Denominator"] = re.sub(
-            r"\s+", " ", " | ".join(chunks[4:]).lower()).strip()
+    for label in ("Value", "Numerator", "Denominator",
+                  "Row coverage", "Reason", "Pointer"):
+        if label in parts:
+            value = parts[label].lower()
+            for form in ("gate ruling", "gate record",
+                         "gate-ruling", "gate-record"):
+                value = value.replace(form, "gate file")
+            substance[label] = re.sub(r"\s+", " ", value).strip()
+    has_row_reason = "Reason" in substance
     for line in lines[1:]:
         lowered = line.lower()
-        if lowered.startswith("reason:"):
+        if not has_row_reason and lowered.startswith("reason:"):
             reason = lowered
             for form in ("gate ruling", "gate record",
                          "gate-ruling", "gate-record"):

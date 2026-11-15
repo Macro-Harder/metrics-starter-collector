@@ -44,6 +44,34 @@ as the Reading part of the run cost line, and in neither place
 where the model carries no partial reading. The renderer still
 computes nothing: piece names, sizes, states, limits, the partial
 marking and every run cost figure it prints come from the model.
+
+Slice 3 form, staffing rows and the cross check marking. The
+statement line a result holds stands on its own line after the row
+line, for a row of any verdict, in the form above: where the core
+hands over a cross check marking for E-1, E-2 or F-2, that marking
+stands in the statement field of the affected row, and the renderer
+prints it as the statement line of that row, with the disagreeing
+record named and the fact or figure each side supports, as the
+model holds them, and with a derived from line the result holds
+standing after the statement line, in that order, as Slice 1
+established. The header coverage statement the model holds stands
+in the header before the piece inventory, in the disputed count
+form where the model carries one: the count each record supports
+stated, and neither count picked as the count, exactly as the
+model states it. On a present row whose result carries a single
+share, as separate numerator and denominator fields, the Numerator
+part and then the Denominator part follow the Value part, in that
+order, before the Row coverage part, as the COV-10 ruling states:
+a per step share set and a grouped share set carry each share
+inside the Value part and carry no such parts. The fields this
+renderer consumes for this form are named at their uses below:
+statement, statement line, statement text and cross check
+statement for the statement line; derived from and derived from
+line for the derived from line; numerator and share numerator,
+with denominator part, share denominator, single denominator, or
+the denominator field where row coverage stands separately, for
+the share parts; and coverage, coverage statement and header
+coverage statement for the header coverage statement.
 """
 import re
 
@@ -306,18 +334,32 @@ def _row_lines(result):
     head = (code + " " + name).strip()
     verdict = _text(_get(result, "verdict"))
     parts = [head, "Verdict: " + verdict]
+    statement_part = _text(_get(result, "statement_part",
+                                "statement_value"))
     if verdict == "present":
         value = _text(_get(result, "value", "figures", "figure"))
         if value:
             parts.append("Value: " + value)
         numerator = _get(result, "numerator", "share_numerator")
-        denominator = _get(result, "denominator_part", "share_denominator",
-                           "single_denominator")
-        if numerator is not None and denominator is not None:
+        share_denominator = _get(result, "denominator_part",
+                                 "share_denominator",
+                                 "single_denominator")
+        coverage = _text(_get(result, "row_coverage", "coverage"))
+        denominator_field = _get(result, "denominator")
+        if share_denominator is None and numerator is not None \
+                and denominator_field is not None:
+            if coverage and _text(denominator_field) != coverage:
+                share_denominator = denominator_field
+            elif not coverage:
+                share_denominator = denominator_field
+        if numerator is not None and share_denominator is not None:
             parts.append("Numerator: " + _text(numerator))
-            parts.append("Denominator: " + _text(denominator))
-        coverage = _text(_get(result, "row_coverage", "coverage",
-                              "denominator"))
+            parts.append("Denominator: " + _text(share_denominator))
+        if not coverage:
+            coverage = _text(denominator_field)
+            if share_denominator is not None and numerator is not None \
+                    and coverage == _text(share_denominator):
+                coverage = ""
         if coverage:
             parts.append("Row coverage: " + coverage)
         bound = _bound_value(result)
@@ -327,20 +369,24 @@ def _row_lines(result):
                                 "reconciliation", "reconciled"))
         if reconciled:
             parts.append("Reconciled against: " + reconciled)
-        statement_part = _text(_get(result, "statement_part"))
         if code == "D-1" and statement_part:
             parts.append("Statement: " + statement_part)
     else:
+        if code == "D-1" and statement_part:
+            parts.append("Statement: " + statement_part)
         reason = _reason_value(result)
         if reason:
             parts.append("Reason: " + reason)
     pointer = _text(_get(result, "pointer"))
     parts.append("Pointer: " + pointer)
     lines = [" | ".join(parts)]
-    statement = _text(_get(result, "statement"))
+    statement = _text(_get(result, "statement", "statement_line",
+                           "statement_text", "cross_check_statement",
+                           "cross_check_marking"))
     if statement:
         lines.append("Statement line: " + statement)
-    derived_from = _text(_get(result, "derived_from"))
+    derived_from = _text(_get(result, "derived_from",
+                              "derived_from_line"))
     if derived_from:
         lines.append("Derived from line: " + derived_from)
     return lines
@@ -761,6 +807,13 @@ def _header_lines(model):
     if build_line is not None:
         lines.append(build_line)
     lines.extend(rest)
+    for field in ("coverage", "coverage_statement",
+                  "header_coverage_statement"):
+        held_coverage = _get(model, field)
+        if isinstance(held_coverage, str) and held_coverage.strip():
+            line = held_coverage.strip()
+            if not any(existing.strip() == line for existing in lines):
+                lines.append(line)
     piece_lines, _limits = _coverage_piece_data(model)
     partial = _partial_line(model, piece_lines)
     if partial and partial not in lines:
@@ -787,11 +840,6 @@ def _header_lines(model):
                 standing.add(name)
             if line not in lines:
                 lines.append(line)
-    coverage = _get(model, "coverage")
-    if isinstance(coverage, str) and coverage.strip():
-        line = coverage.strip()
-        if not any(existing.strip() == line for existing in lines):
-            lines.append(line)
     return lines
 
 
