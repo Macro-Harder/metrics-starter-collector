@@ -13,6 +13,7 @@ import unittest
 
 from tests.fixture_builder import (
     FixtureTestCase, STARTER_ORDER, assert_reads_capture_only,
+    d1_case, d1_files, make_case,
     assert_verdict, build_case, build_cases, coverage_statement,
     data_quality_entry_for, decision_table, gate_record, metrics_record,
     path_ledger, queue_file, row_block, row_order, row_verdict,
@@ -47,63 +48,11 @@ def base_files(steps=(1, 2, 3)):
     return files
 
 
-def make_case(name, files, features=(), malformations=()):
-    """Return one case table in the fixture builder case table form."""
-    case = {"name": name, "features": tuple(features),
-            "files": dict(files)}
-    if malformations:
-        case["malformations"] = tuple(malformations)
-    return case
-
-
 def run_case(case):
     """Build one case under a tracked temporary root and run the tool."""
     root = tracked_tempdir("msc_slice4_")
     built = build_case(case, root)
     return run_tool(built), built
-
-
-def d1_files(queue_rows=None, table_rows=None, split=False,
-             unusable_queue=False):
-    """Return files for a D-1 feeder state, in single or split form."""
-    files = base_files()
-    if queue_rows is not None:
-        files["DECISION-QUEUE.md"] = queue_file(queue_rows)
-    if unusable_queue:
-        files["DECISION-QUEUE.md"] = "# Decision queue\n\nplaceholder\n"
-    if table_rows is not None:
-        table = decision_table(table_rows)
-        if split:
-            pages = split_metrics_record_files([
-                "# Build metrics record\n\nPage order: 1.\n\n"
-                "Step table stands.\n",
-                "# Build metrics record page 2\n\nPage order: 2.\n\n"
-                + table])
-            del files["wiki/wiki/synthesis/build-metrics-record.md"]
-            files.update(pages)
-        else:
-            files["wiki/wiki/synthesis/build-metrics-record.md"] = (
-                metrics_record(decision_table=table))
-    return files
-
-
-def d1_case(name, **kwargs):
-    """Return a D-1 case table, with the unusable switch where named."""
-    features = ["decision-items-full-timestamps",
-                "single-page-metrics-record"]
-    if kwargs.get("split"):
-        features = ["decision-items-full-timestamps",
-                    "split-metrics-record"]
-    if kwargs.get("queue_rows") is not None or kwargs.get("unusable_queue"):
-        features.append("queue-file-inside-root")
-    if kwargs.get("table_rows") is not None:
-        features.append("decision-table-inside-root")
-    malformations = ()
-    if kwargs.get("unusable_queue"):
-        malformations = ({
-            "switch": "M-01", "target": "DECISION-QUEUE.md",
-            "target_kind": "DQ", "state": "not-valid-text"},)
-    return make_case(name, d1_files(**kwargs), features, malformations)
 
 
 def assert_foundation(test, block, fragment):
@@ -115,6 +64,73 @@ def assert_median(test, block, hours):
     match = re.search(r"median[^\d]*(\d+(?:\.\d+)?)", block)
     test.assertIsNotNone(match, "median figure stands in the D-1 row")
     test.assertEqual(float(match.group(1)), float(hours))
+
+
+def parts_of(text):
+    """Split row or entry text into its labelled parts, label to value."""
+    parts = {}
+    for chunk in re.split(r"\s*\|\s*|\n", text):
+        chunk = chunk.strip()
+        if ": " in chunk:
+            label, value = chunk.split(": ", 1)
+            if label.strip() not in parts:
+                parts[label.strip()] = value.strip()
+    return parts
+
+
+def disagreements_block(report):
+    """Return the disagreements block text of a report, or empty."""
+    lines = report.splitlines()
+    heads = ("Disagreements", "Data quality", "Record cost", "Terms")
+    for idx, line in enumerate(lines):
+        if line.strip() == "Disagreements":
+            end = len(lines)
+            for later in range(idx + 1, len(lines)):
+                if lines[later].strip() in heads:
+                    end = later
+                    break
+            return "\n".join(lines[idx:end])
+    return ""
+
+
+def block_entries(report):
+    """Return entry line texts inside the disagreements block."""
+    entries = []
+    for line in disagreements_block(report).splitlines():
+        if line.startswith("Records:"):
+            entries.append(line)
+    return entries
+
+
+def row_substance(report, code):
+    """Return the EC-04 compared parts of one row, normalised.
+
+    In the form the Slice 7 _row_substance helper shows: verdict,
+    and each labelled part the row carries among Value, Numerator,
+    Denominator, Row coverage, Reason and Pointer, lowercased with
+    whitespace collapsed. The governing feeder file names are
+    normalised to one token, as the Slice 7 helper normalises the
+    gate file names the habit varies: DECISION-QUEUE.md and the
+    metrics record name both stand for the governing feeder here.
+    """
+    block = row_block(report, code)
+    parts = parts_of(block)
+    substance = {"verdict": row_verdict(block)}
+    for label in ("Value", "Numerator", "Denominator",
+                  "Row coverage", "Reason", "Pointer"):
+        if label in parts:
+            value = parts[label].lower()
+            value = value.replace(
+                "wiki/wiki/synthesis/build-metrics-record.md",
+                "governing feeder")
+            value = value.replace("decision-queue.md",
+                                  "governing feeder")
+            value = value.replace("build-metrics-record.md",
+                                  "governing feeder")
+            value = value.replace("gate ruling", "gate file")
+            value = value.replace("gate record", "gate file")
+            substance[label] = re.sub(r"\s+", " ", value).strip()
+    return substance
 
 
 def ranked_files(durations, steps=None):
@@ -406,6 +422,84 @@ class TestSlice4TimeDecision(FixtureTestCase):
         self.assertIn("without its queue cross check",
                       statement_segment(block))
 
+    # F-20 mapping test: feeders inside the root only, Slice 4 form.
+
+    def test_f20_inside_feeders_govern_outside_file_changes_nothing(self):
+        """F-20; EC-04, EC-08; WV22 T-4 F3, WV22 D-1 F1, F2. Inside only.
+
+        Plan Section 15 duty 2 supplement, F-20 mapping test: inside
+        the root a queue file and a decision table disagree on item
+        Q-1, the queue ruling at 13:00 against the table ruling at
+        19:00; outside the root a file carries a 99 hour figure for
+        T-4 and for D-1, whose inside feeders also stand. The verdicts
+        are the verdicts the inside feeders give, unchanged by the
+        outside file; the T-4 derivation follows the queue figure;
+        the table figure stands in the disagreements block under the
+        CA2-02 wording for that item; and no ungoverned wording
+        stands for that item.
+        """
+        files = base_files()
+        files["DECISION-QUEUE.md"] = queue_file([RULED_ROW])
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(decision_table=decision_table(
+                [RULED_ROW_LATE])))
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 BANKED duration 2 hours on Q-1.")
+        features = ["banked-entries-with-duration",
+                    "queue-file-inside-root",
+                    "decision-table-inside-root",
+                    "queue-governs-over-table"]
+        root = tracked_tempdir("msc_slice4_f20_")
+        built = build_cases(
+            [make_case("f20-control", dict(files), features),
+             make_case("f20-outside", dict(files), features)], root)
+        control = run_tool(built["f20-control"])
+        self.assertEqual(control.returncode, 0, control.stderr[:300])
+        outside_file = root / "outside-root-figure.md"
+        outside_file.write_text(
+            "Outside figure: T-4 wait stands at 99 hours. "
+            "D-1 median stands at 99 hours.\n", encoding="utf-8")
+        result = run_tool(built["f20-outside"])
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        for code in STARTER_ORDER:
+            self.assertEqual(
+                row_verdict(row_block(control.stdout, code)),
+                row_verdict(row_block(result.stdout, code)),
+                "verdict changed by the outside file: " + code)
+        d1 = row_block(result.stdout, "D-1")
+        assert_verdict(self, d1, "present", "D-1")
+        assert_foundation(self, d1, "DECISION-QUEUE.md")
+        assert_median(self, d1, 4)
+        self.assertNotIn("99", d1)
+        segment = statement_segment(d1)
+        self.assertIn("record disagrees", segment)
+        self.assertIn("13:00", segment)
+        self.assertIn("19:00", segment)
+        t4 = row_block(result.stdout, "T-4")
+        self.assertEqual(row_verdict(t4),
+                         row_verdict(row_block(control.stdout, "T-4")))
+        self.assertNotIn("99", t4)
+        block = disagreements_block(result.stdout)
+        self.assertTrue(block, "no disagreements block stands")
+        entries = block_entries(result.stdout)
+        self.assertTrue(entries, "no disagreements entry stands")
+        table_entries = []
+        for entry in entries:
+            entry_parts = parts_of(entry)
+            if "19:00" in entry_parts.get("Figures", ""):
+                table_entries.append(entry_parts)
+            if entry_parts.get("Governing position", "") == (
+                    "ungoverned with no verdict depending on it"):
+                self.assertNotIn("19:00",
+                                 entry_parts.get("Figures", ""), entry)
+                self.assertNotIn("Q-1", entry)
+        self.assertTrue(table_entries,
+                        "the table figure stands in no block entry")
+        for entry_parts in table_entries:
+            self.assertIn("13:00", entry_parts["Figures"])
+            self.assertEqual(entry_parts["Governing position"],
+                             "governed with the pattern named")
+
     # D-1 fields, split item sets, and the nine feeder cells.
 
     def test_d1_ruled_open_and_date_only_items(self):
@@ -494,6 +588,7 @@ class TestSlice4TimeDecision(FixtureTestCase):
         block = row_block(result.stdout, "D-1")
         assert_verdict(self, block, "present", "D-1")
         assert_foundation(self, block, "DECISION-QUEUE.md")
+        assert_median(self, block, 4)
 
     def test_d1_cell_no_queue_complete_single_page(self):
         """EC-36, EC-06; WV22 D-1 F1, F2. Cell 4 of 9, no queue, single."""
@@ -501,6 +596,7 @@ class TestSlice4TimeDecision(FixtureTestCase):
         block = row_block(result.stdout, "D-1")
         assert_verdict(self, block, "present", "D-1")
         assert_foundation(self, block, "decision table")
+        assert_median(self, block, 4)
 
     def test_d1_cell_no_queue_complete_split(self):
         """EC-36, EC-06; WV22 D-1 F1, F2. Cell 5 of 9, no queue, split."""
@@ -509,6 +605,7 @@ class TestSlice4TimeDecision(FixtureTestCase):
         block = row_block(result.stdout, "D-1")
         assert_verdict(self, block, "present", "D-1")
         assert_foundation(self, block, "decision table")
+        assert_median(self, block, 4)
 
     def test_d1_cell_no_queue_no_decision_table_missing(self):
         """EC-36; WV22 D-1 F7. Cell 6 of 9, no queue and no table, missing."""
@@ -685,6 +782,41 @@ class TestSlice4TimeDecision(FixtureTestCase):
         self.assertIn("unreconciled", block.lower())
         self.assertNotIn("negative", block.lower())
 
+    def test_b3_unreconciled_exclusion_leaves_fewer_than_three(self):
+        """EC-39; WV22 B-3 F8. Exclusion bound sub limb, fewer than three.
+
+        One unreconciled step excluded from three leaves two rankable
+        steps, and the ranking counts in the fewer than three bound
+        form, with the count of rankable steps as its coverage bound.
+        """
+        files = ranked_files({1: (10, 8), 2: (9, 9), 3: (8, 10)})
+        result, _ = run_case(make_case(
+            "b3-unreconciled-fewer", files,
+            ["full-clock-timestamps", "unreconciled-figure"]))
+        block = row_block(result.stdout, "B-3")
+        assert_verdict(self, block, "present", "B-3")
+        self.assertIn("Step 3", block)
+        self.assertIn("unreconciled", block.lower())
+        self.assertIn("fewer than three", block.lower())
+        self.assertRegex(block, r"eligible[^\d]*2(?!\d)(?!\.\d)")
+
+    def test_b3_unreconciled_exclusion_leaves_no_rankable_step(self):
+        """EC-39; WV22 B-3 F8. Exclusion bound sub limb, none rankable.
+
+        Every step unreconciled leaves no rankable step: the row
+        counts under no ranking form and takes its verdict from its
+        inputs, present but not derivable, with the unreconciled
+        figures named as its reason.
+        """
+        files = ranked_files({1: (8, 10), 2: (9, 11), 3: (7, 9)})
+        result, _ = run_case(make_case(
+            "b3-unreconciled-none", files,
+            ["full-clock-timestamps", "unreconciled-figure"]))
+        block = row_block(result.stdout, "B-3")
+        assert_verdict(self, block, "present but not derivable", "B-3")
+        self.assertIn("unreconciled", block.lower())
+        self.assertNotIn("fewer than three", block.lower())
+
     # B-4 ranking fields and edges, in the B-4 form.
 
     def test_b4_rankable_inputs_and_wait_share(self):
@@ -734,6 +866,24 @@ class TestSlice4TimeDecision(FixtureTestCase):
         self.assertIn("Step 2", block)
         self.assertRegex(block, r"eligible[^\d]*2(?!\d)(?!\.\d)")
 
+    def test_b4_no_rankable_step_takes_verdict_from_inputs(self):
+        """EC-40; WV22 B-4 F2, F6. No step rankable, no ranking stated.
+
+        The zero rankable limb of B-4 F6 and of B-4 F2: the active
+        input is missing for every step, with elapsed missing on the
+        same ground, so no ranking is stated and the row takes its
+        verdict from its inputs under the rule at gap DG-06, which
+        gives missing where every input is missing.
+        """
+        files = base_files()
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 IN PROGRESS 2026-11-01, closed 2026-11-02.")
+        result, _ = run_case(make_case(
+            "b4-none-rankable", files, ["date-only-timestamps"]))
+        block = row_block(result.stdout, "B-4")
+        assert_verdict(self, block, "missing", "B-4")
+        self.assertNotIn("fewer than three", block.lower())
+
     def test_b4_measured_zero_elapsed_no_wait_share(self):
         """EC-40; WV22 B-4 F7. Measured zero elapsed, in B-4 form."""
         files = ranked_files({1: (10, 8), 2: (9, 9), 3: (0, 0)})
@@ -756,6 +906,42 @@ class TestSlice4TimeDecision(FixtureTestCase):
         assert_verdict(self, block, "present", "B-4")
         self.assertIn("Step 3", block)
         self.assertIn("unreconciled", block.lower())
+
+    def test_b4_unreconciled_exclusion_leaves_fewer_than_three(self):
+        """EC-40; WV22 B-4 F8. Exclusion bound sub limb, fewer than three.
+
+        In the B-4 form: one unreconciled step excluded from three
+        leaves two rankable steps, and the ranking counts in the
+        fewer than three bound form, with the count of rankable
+        steps stated as its coverage bound.
+        """
+        files = ranked_files({1: (10, 8), 2: (9, 9), 3: (8, 10)})
+        result, _ = run_case(make_case(
+            "b4-unreconciled-fewer", files,
+            ["full-clock-timestamps", "unreconciled-figure"]))
+        block = row_block(result.stdout, "B-4")
+        assert_verdict(self, block, "present", "B-4")
+        self.assertIn("Step 3", block)
+        self.assertIn("unreconciled", block.lower())
+        self.assertIn("fewer than three", block.lower())
+        self.assertRegex(block, r"eligible[^\d]*2(?!\d)(?!\.\d)")
+
+    def test_b4_unreconciled_exclusion_leaves_no_rankable_step(self):
+        """EC-40; WV22 B-4 F8. Exclusion bound sub limb, none rankable.
+
+        In the B-4 form: every step unreconciled leaves no rankable
+        step, the row counts under no ranking form and takes its
+        verdict from its inputs, present but not derivable, with the
+        unreconciled figures named as its reason.
+        """
+        files = ranked_files({1: (8, 10), 2: (9, 11), 3: (7, 9)})
+        result, _ = run_case(make_case(
+            "b4-unreconciled-none", files,
+            ["full-clock-timestamps", "unreconciled-figure"]))
+        block = row_block(result.stdout, "B-4")
+        assert_verdict(self, block, "present but not derivable", "B-4")
+        self.assertIn("unreconciled", block.lower())
+        self.assertNotIn("fewer than three", block.lower())
 
     # Build state families F-16, F-17, F-19 and the F-18 variant.
 
@@ -868,11 +1054,14 @@ class TestSlice4TimeDecision(FixtureTestCase):
                             "queue-governs-over-table",
                             "single-page-metrics-record"])
         built = build_cases([first, second], root)
-        first_block = row_block(run_tool(built["wv21-first-shape"]).stdout,
-                                "D-1")
-        second_block = row_block(
-            run_tool(built["wv21-second-shape"]).stdout, "D-1")
-        self.assertEqual(row_verdict(first_block), row_verdict(second_block))
+        first_out = run_tool(built["wv21-first-shape"]).stdout
+        second_out = run_tool(built["wv21-second-shape"]).stdout
+        first_block = row_block(first_out, "D-1")
+        second_block = row_block(second_out, "D-1")
+        self.assertEqual(row_substance(first_out, "D-1"),
+                         row_substance(second_out, "D-1"),
+                         "D-1 row parts differ between shapes on "
+                         "equivalent content")
         assert_median(self, first_block, 4)
         assert_median(self, second_block, 4)
 
@@ -895,10 +1084,10 @@ class TestSlice4TimeDecision(FixtureTestCase):
         second_out = run_tool(built["wv21-rows-second"]).stdout
         for code in ("T-1", "T-2", "T-4", "D-1", "B-1", "B-3", "B-4"):
             self.assertEqual(
-                row_verdict(row_block(first_out, code)),
-                row_verdict(row_block(second_out, code)),
-                "verdict differs between shapes on equivalent content: "
-                + code)
+                row_substance(first_out, code),
+                row_substance(second_out, code),
+                "row parts differ between shapes on equivalent "
+                "content: " + code)
 
     # The one named reread test for Slice 4, from plan Section 5.
 

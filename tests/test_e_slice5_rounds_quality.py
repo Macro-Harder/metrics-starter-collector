@@ -19,6 +19,7 @@ from tests.fixture_builder import (FixtureTestCase, assert_verdict,
                                      gate_ruling, metrics_record, queue_file,
                                      row_block, row_verdict, run_tool,
                                      single_page_metrics_record_files,
+                                     slice5_make_case as make_case,
                                      split_metrics_record_files,
                                      statement_segment, step_record,
                                      tracked_tempdir)
@@ -46,16 +47,6 @@ def base_files():
     files.update(single_page_metrics_record_files(metrics_record(
         body="Step table stands complete for the fixture steps.")))
     return files
-
-
-def make_case(name, extra=None, features=(), malformations=()):
-    files = base_files()
-    if extra:
-        files.update(extra)
-    case = {"name": name, "features": tuple(features), "files": files}
-    if malformations:
-        case["malformations"] = tuple(malformations)
-    return case
 
 
 def run_case(case):
@@ -318,7 +309,7 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         result = run_case(case)
         block = row_block(result.stdout, "T-7")
         assert_verdict(self, block, "present", "T-7")
-        self.assertIn("1", block)
+        self.assertRegex(block, r"Step 1: 1 rounds counted")
         q1 = row_block(result.stdout, "Q-1")
         self.assertNotIn("board ruling", q1.lower())
         q4 = row_block(result.stdout, "Q-4")
@@ -377,6 +368,22 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         assert_verdict(self, block, "present but not derivable", "T-7")
         self.assertIn("unpaired", block.lower())
         self.assertIn("Step 1", block)
+
+    def test_f22_t7_counted_from_verdict_records_counted_not_marked(self):
+        """EC-27; F-22 degraded form, D4R-10, D4R-11. Counted, not marked."""
+        case = make_case("t7-f22-degraded", {
+            "steps/step-01-record.md": step_record(
+                1, extra="Loop step."),
+            "audit/step-01-work.md": (
+                "# Round 1 work record\n\nThe work Round 1 disposed "
+                "of stands stated here.\n")})
+        result = run_case(case)
+        block = row_block(result.stdout, "T-7")
+        assert_verdict(self, block, "present", "T-7")
+        self.assertRegex(block, r"Step 1: 1 rounds counted")
+        self.assertIn("counted from verdict records", block)
+        self.assertIn("marked as counted", block)
+        self.assertNotIn("1 rounds marked", block)
 
     def test_ca10_t7_population_and_exclusion_list(self):
         """EC-27. CA-10 population and exclusion list for T-7."""
@@ -477,7 +484,11 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         result = run_case(case)
         self.assertEqual(result.returncode, 0, result.stderr)
         block = row_block(result.stdout, "Q-1")
-        self.assertTrue(block)
+        assert_verdict(self, block, "present", "Q-1")
+        self.assertIn("Critical 1", block)
+        self.assertIn("High 2", block)
+        self.assertIn("Medium 0", block)
+        self.assertIn("Low 0", block)
         self.assertNotIn("governing-scale-conflict", block)
 
     def test_ca10_q1_population_and_exclusion_list_before_count(self):
