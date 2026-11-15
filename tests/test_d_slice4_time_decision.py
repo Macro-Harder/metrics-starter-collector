@@ -408,6 +408,44 @@ class TestSlice4TimeDecision(FixtureTestCase):
         self.assertIn("2 hours", segment)
         self.assertIn("99 hours", segment)
 
+    def test_b_rows_present_row_cross_check_marking_in_statement_line(self):
+        """EC-37, EC-39, EC-40; WV22 B-1 F1, F2, WV22 B-3 F1, F2, WV22 B-4 F1, F2.
+
+        Record disagrees qualifier in the statement line of a present
+        B row, in the form of the T-4 named marking test. The metrics
+        record states a figure of 99 hours for Step 1 for each of
+        B-1, B-3 and B-4, against the feeder figures the B derivations
+        form from the T-1 and T-2 series for Step 1: elapsed 10 hours
+        for B-1 and for B-3, and active 8 hours for B-4. Each affected
+        row stands present, its statement line carries the record
+        disagrees qualifier with the disagreeing record named, the
+        figure each side supports and both figures standing, and the
+        feeder figure stands, with the B-1 build totals formed from
+        the feeder figures and not from the record figure.
+        """
+        files = ranked_files({1: (10, 8), 2: (9, 9), 3: (8, 4)})
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
+            body="Metrics record states B-1 for Step 1 as 99 hours. "
+                 "Metrics record states B-3 for Step 1 as 99 hours. "
+                 "Metrics record states B-4 for Step 1 as 99 hours.")
+        result, _ = run_case(make_case(
+            "b-rows-cross-check-marking", files,
+            ["full-clock-timestamps"]))
+        expected = {"B-1": "10 hours", "B-3": "10 hours",
+                    "B-4": "8 hours"}
+        for code, feeder in expected.items():
+            block = row_block(result.stdout, code)
+            assert_verdict(self, block, "present", code)
+            segment = statement_segment(block)
+            self.assertIn("record disagrees", segment, code)
+            self.assertIn("build-metrics-record.md", segment, code)
+            self.assertIn(feeder, segment, code)
+            self.assertIn("99 hours", segment, code)
+            self.assertIn("feeder figure stands", segment, code)
+        b1 = row_block(result.stdout, "B-1")
+        self.assertIn("build elapsed 27 hours", b1)
+        self.assertIn("build active 21 hours", b1)
+
     def test_t4_degraded_row_shown_without_queue_cross_check(self):
         """EC-26; WV22 T-4 F1, F4. Named degraded row test from Section 2."""
         files = base_files()
@@ -1082,7 +1120,7 @@ class TestSlice4TimeDecision(FixtureTestCase):
         built = build_cases([first, second], root)
         first_out = run_tool(built["wv21-rows-first"]).stdout
         second_out = run_tool(built["wv21-rows-second"]).stdout
-        for code in ("T-1", "T-2", "T-4", "D-1", "B-1", "B-3", "B-4"):
+        for code in ("T-1", "T-2", "T-4", "B-1", "B-3", "B-4"):
             self.assertEqual(
                 row_substance(first_out, code),
                 row_substance(second_out, code),

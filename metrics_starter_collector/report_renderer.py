@@ -72,6 +72,36 @@ with denominator part, share denominator, single denominator, or
 the denominator field where row coverage stands separately, for
 the share parts; and coverage, coverage statement and header
 coverage statement for the header coverage statement.
+
+Slice 4 form, time and decision rows and the build state naming.
+The statement line form above stands for a row of any verdict in
+this slice as it stood for Slice 3: where the core hands over a
+cross check marking for T-1, T-2, T-4, D-1, B-1, B-3 or B-4, that
+marking stands in the statement field of the affected row and the
+renderer prints it as the statement line of that row, with the
+disagreeing record named and the fact or figure each side
+supports, as the model holds them. The T-4 degraded marking, that
+the row is shown without its queue cross check, stands in the
+same statement line form where the model holds it. The B family
+rows, B-1, B-3 and B-4, carry the build state naming the model
+holds, the open state naming on an in progress tree or the halt
+naming on a halted tree, in the same statement line form. For the
+D-1 row only, a foundation statement the model holds stands as a
+Statement part in the row line, in the part order the row form
+above states, after the Reconciled against part where one stands
+and before the Reason part where one stands, and the same
+foundation text stands together with any cross check marking in
+the statement line of that row, so both stand in the statement
+line that is part of the reason line field. The fields this
+renderer consumes for this form are named at their uses below:
+statement part, statement value, foundation, foundation
+statement and ca4 statement for the D-1 Statement part; and
+statement, statement line, statement text, cross check statement,
+cross check marking, marking, build state statement and state
+statement for the statement line. The header coverage statement
+the model holds stands as held, in the open state form or the
+halt form the model states, and the renderer forms no coverage
+wording of its own.
 """
 import re
 
@@ -325,6 +355,29 @@ def _bound_value(result):
     return _text(bound)
 
 
+def _statement_line_text(result, code, statement_part):
+    """Return the statement line text a result holds, or empty.
+
+    The text stands from the statement fields the result holds, in
+    field order, with a text that stands twice held once. For the
+    D-1 row, the foundation text the Statement part carries stands
+    first in the statement line, together with any cross check
+    marking the result holds, as the Slice 4 form states.
+    """
+    held = []
+    for name in ("statement", "statement_line", "statement_text",
+                 "cross_check_statement", "cross_check_marking",
+                 "marking", "build_state_statement",
+                 "state_statement"):
+        text = _text(_get(result, name))
+        if text and text not in held:
+            held.append(text)
+    if code == "D-1" and statement_part and \
+            statement_part not in held:
+        held.insert(0, statement_part)
+    return "; ".join(held)
+
+
 def _row_lines(result):
     """Return the lines of one verdict row, its row line first."""
     code = _text(_get(result, "code"))
@@ -335,7 +388,10 @@ def _row_lines(result):
     verdict = _text(_get(result, "verdict"))
     parts = [head, "Verdict: " + verdict]
     statement_part = _text(_get(result, "statement_part",
-                                "statement_value"))
+                                "statement_value", "foundation",
+                                "foundation_statement",
+                                "ca4_statement",
+                                "ca4_foundation_statement"))
     if verdict == "present":
         value = _text(_get(result, "value", "figures", "figure"))
         if value:
@@ -380,9 +436,7 @@ def _row_lines(result):
     pointer = _text(_get(result, "pointer"))
     parts.append("Pointer: " + pointer)
     lines = [" | ".join(parts)]
-    statement = _text(_get(result, "statement", "statement_line",
-                           "statement_text", "cross_check_statement",
-                           "cross_check_marking"))
+    statement = _statement_line_text(result, code, statement_part)
     if statement:
         lines.append("Statement line: " + statement)
     derived_from = _text(_get(result, "derived_from",

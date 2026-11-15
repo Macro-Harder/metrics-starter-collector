@@ -153,7 +153,7 @@ INVENTORY = {
         ],
     },
     "test_d_slice4_time_decision": {
-        "count": 67,
+        "count": 68,
         "cases": [
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_a7_9_b1_cross_piece_basis_mismatch_no_code_fits",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b1_both_derivation_outputs_stand_present",
@@ -176,6 +176,7 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_exclusion_leaves_fewer_than_three",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_exclusion_leaves_no_rankable_step",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b4_unreconciled_step_excluded_and_named",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b_rows_present_row_cross_check_marking_in_statement_line",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d05_plain_form_without_seconds_or_zone_counts",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d05_text_duration_counts_for_t2",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d05_text_without_amount_is_no_duration",
@@ -428,4 +429,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 355
+TOTAL = 356

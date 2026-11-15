@@ -554,7 +554,7 @@ class TestSlice1Tracer(FixtureTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         block = row_block(result.stdout, "D-1")
         assert_verdict(self, block, "present", "D-1")
-        self.assertRegex(block, r"median[^\d]*3(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"median[^\d]*2(?!\d)(?!\.\d)")
 
     def test_split_form_missing_page_tables_absent(self):
         """Split form assembly under D-08; EC-06: a missing page supplies no tables."""

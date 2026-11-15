@@ -60,6 +60,8 @@ _STEP_PREFIX = re.compile(r"^step-(\d{2})([a-z])?-(.+)$")
 _AUDIT_NAME = re.compile(r"^step(\d+)-?(.*)$")
 _METRICS_SINGLE_STEM = "build-metrics-record"
 _METRICS_PAGE_PREFIX = "build-metrics-record-part-"
+_METRICS_PAGE_PREFIXES = ("build-metrics-record-part-",
+                          "build-metrics-record-page-")
 
 
 def _audit_dir_class(base):
@@ -172,6 +174,12 @@ def _classify_by_name(rel_path):
     base = parts[-1]
     if re.match(r"^step-\d+[a-z]?-(gate-)?records\.md$", base):
         return None
+    # The decision queue file stands at the root of the tree with
+    # that exact name only, under Margin M4 List 1: a file with
+    # that name at another level is not the queue feeder and
+    # triggers no D-1 precedence.
+    if base == "DECISION-QUEUE.md" and len(parts) != 1:
+        return None
     if base in _EXACT_NAMES:
         return _EXACT_NAMES[base], None
     if "cost-ledger" in base or "cost_ledger" in base:
@@ -179,7 +187,7 @@ def _classify_by_name(rel_path):
     stem = base[:-3] if base.endswith(".md") else base
     if stem == _METRICS_SINGLE_STEM:
         return CLS_METRICS_SINGLE, None
-    if base.startswith(_METRICS_PAGE_PREFIX):
+    if base.startswith(_METRICS_PAGE_PREFIXES):
         return CLS_METRICS_PAGE, None
     if parts[0] == "audit":
         return _audit_dir_class(base)
@@ -263,6 +271,15 @@ def _page_sort_key(piece):
     return (1, 0, piece.paths[0])
 
 
+def _stated_page_order(piece):
+    """Return the page order a piece states for itself, or None."""
+    if piece.text:
+        stated = _PAGE_ORDER.search(piece.text)
+        if stated:
+            return int(stated.group(1))
+    return None
+
+
 def assemble_metrics_record(pieces):
     """Assemble the metrics record in its governing physical form.
 
@@ -279,14 +296,28 @@ def assemble_metrics_record(pieces):
     singles = [p for p in pieces
                if p.record_class == CLS_METRICS_SINGLE
                and p.text is not None]
+    pages = [p for p in pieces
+             if p.record_class == CLS_METRICS_PAGE
+             and p.text is not None]
+    if singles and pages and any(
+            _stated_page_order(piece) == 1 for piece in singles) \
+            and any((_stated_page_order(piece) or 0) > 1
+                    for piece in pages):
+        # A piece at the single page path that states itself as
+        # page one, with a later page standing beside it stating a
+        # later page order, is page one of a split record, not a
+        # standalone single page: it assembles with the other pages
+        # in page order. A piece at that path stating no page order,
+        # or stating a page order with no later page beside it, is
+        # the single page form and governs over split pages beside
+        # it.
+        ordered = sorted(singles + pages, key=_page_sort_key)
+        return "\n".join(p.text for p in ordered), ordered[0].paths[0]
     if singles:
         for piece in singles:
             if piece.text.strip():
                 return piece.text, piece.paths[0]
         return singles[0].text, singles[0].paths[0]
-    pages = [p for p in pieces
-             if p.record_class == CLS_METRICS_PAGE
-             and p.text is not None]
     if not pages:
         return None, None
     ordered = sorted(pages, key=_page_sort_key)
