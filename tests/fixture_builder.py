@@ -1,13 +1,51 @@
-"""Fixture construction and report harness for the suite.
+"""Fixture factory and report harness for the suite.
 
-One builder builds every synthetic tree. A case is a compact table that
-names the files to write and the text or bytes to place in each file.
-A case that needs a conditional gets its own builder passage instead.
+One builder builds every synthetic tree: build_case, driven by a
+compact case table for each fixture. A case table is plain data only:
+strings, bytes, tuples, and dicts. No callable and no conditional
+stands inside a case; a case that needs a conditional gets its own
+builder passage in this module instead, and a new subcase is a new
+table entry, not a new builder.
 
-Every tree and suite copy built through this module is registered for
-removal: FixtureTestCase removes, at the end of each test, every handle
-created since that test began, and an exit hook removes any handle a
-test class did not claim, so repeated full runs leave nothing behind.
+Case table form. A case is a dict with these keys:
+
+  name: the case name, a plain string. The built tree root is the
+    caller supplied root joined with this name, so a test names its
+    tree by the case name and reads the built root as the return
+    value of build_case or build_cases.
+  features: a tuple of feature tokens, each one a member of the
+    closed enumerated vocabulary in FEATURE_VOCABULARY below. A token
+    outside the vocabulary is refused.
+  files: a dict mapping a tree relative path to the text or bytes to
+    place in that file. Paths are relative to the built tree root,
+    which is the design root the tool is pointed at.
+  malformations: a tuple of malformation switch dicts, each naming
+    its switch, its target piece by path and by kind, and its state,
+    in the form MALFORMATION_SWITCHES states. Corrected and repaired
+    cases also name the correcting or repaired piece and the
+    citation the assertion checks.
+  f11: an F-11 limit spec dict, present on F-11 cases only, naming
+    one figure of F11_SETTINGS and one position, at-limit or
+    one-over. An F-11 case carries no files: its tree holds filler
+    only, in the form the F-11 stating entry states.
+  dirs: a tuple of tree relative paths of empty directories to make.
+  links: a dict mapping a tree relative link path to the tree
+    relative path it points at.
+
+How a test invokes a build. The test makes a temporary directory at
+run time, for example with tracked_tempdir from this module, passes
+it as the root, and calls build_case(case, root) for one tree or
+build_cases(cases, root) for a set of trees standing side by side.
+build_case returns the built tree root as a Path; build_cases
+returns a dict mapping each case name to its built tree root. The
+test then runs the tool or the capture seam against that root. Pair
+cases and invocation cases stand outside the factory in prose form
+in their test modules; the factory supports them only through
+build_cases building each tree of a pair from its own case table.
+
+The file writing passage, the run harness, and the report reading
+helpers that the standing suite modules import stand below the
+factory section of this module, unchanged in form.
 """
 import atexit
 import hashlib
@@ -19,6 +57,608 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+# ------------------------------------------------------------------
+# Factory section: the closed vocabulary, the switches, the limits.
+# ------------------------------------------------------------------
+
+# Piece kinds, in the shortened names the factory enumeration uses,
+# each mapped to the kind it names. GF and AD carry no completeness
+# signal as a malformation target in any family.
+PIECE_KINDS = {
+    "PL": "path ledger",
+    "MR": "metrics record",
+    "SR": "step record",
+    "GF": "gate file",
+    "AP": "audit paper",
+    "RG": "register",
+    "CL": "cost ledger",
+    "DQ": "decision queue file",
+    "TR": "trace record",
+    "CR": "correcting record",
+    "AD": "adjudication",
+}
+
+# The three internal completeness signals a valid text file with no
+# truncation marker is tested by, in the forms the plan states.
+COMPLETENESS_SIGNALS = ("signal-one", "signal-two", "signal-three")
+
+# Which signals each piece kind carries as a malformation target,
+# under the verified factory enumeration. Kinds absent from a tuple
+# carry that signal in no family.
+SIGNAL_TARGETS = {
+    "signal-one": ("PL", "MR", "SR", "AP", "RG", "CL", "DQ", "TR"),
+    "signal-two": ("MR", "SR", "AP", "RG", "CL", "DQ"),
+    "signal-three": ("MR", "SR", "AP", "RG"),
+}
+
+# The closed enumerated feature vocabulary, family by family in
+# scope: content settings stand beside tree shape settings. A case
+# names its features from this vocabulary only, and the vocabulary
+# grows only by a recorded design act, never inside a case.
+FEATURE_VOCABULARY = {
+    "content": (
+        "scale-naming",
+        "parts-fail-sum",
+        "unreconciled-figure",
+        "named-governing-correction",
+        "recycle-pointer",
+        "proxy-label",
+        "figure-credited-to-other-step",
+        "full-clock-timestamps",
+        "date-only-timestamps",
+        "flow-scale-breakdowns",
+        "commissioned-scale-breakdowns",
+        "decision-items-full-timestamps",
+        "decision-items-date-only-raised",
+        "origin-step-on-register-entries",
+        "first-ruling-outcome-per-step",
+        "first-trace-per-counted-step",
+        "placeholder-zero",
+        "measured-zero",
+        "printed-zero",
+        "whole-build-money-statement",
+        "per-step-money-figures",
+        "token-figures-in-ledger",
+        "unknown-definitions-version",
+        "halt-statement-recognised",
+        "halt-wording-unrecognised",
+        "additions-over-base-stated",
+        "total-only-step",
+        "banked-entries-with-duration",
+        "banked-entries-no-duration",
+    ),
+    "tree-shape": (
+        "single-page-metrics-record",
+        "split-metrics-record",
+        "cost-ledger-inside-root",
+        "queue-file-inside-root",
+        "decision-table-inside-root",
+        "queue-governs-over-table",
+        "gate-record-name",
+        "gate-ruling-name",
+        "gate-adjudication-evidence",
+        "near-match-name",
+        "duplicate-identity-two-paths",
+        "restart-instance",
+        "recycled-instance",
+        "open-build",
+        "closed-build",
+        "empty-round-tables",
+        "step-rows-to-step-18",
+        "second-shape-habits",
+    ),
+}
+FEATURES = frozenset(
+    token for group in FEATURE_VOCABULARY.values() for token in group)
+
+# Malformation switches, closed. Each switch names the target piece,
+# its state, and, where the form is a corrected or a repaired case,
+# the correcting or repaired piece and the citation the assertion
+# checks. required names the fields a switch dict must carry beside
+# switch, target, target_kind, and state; forbidden names the fields
+# it must not carry.
+MALFORMATION_SWITCHES = {
+    "M-01": {
+        "form": "malformed piece, not valid text",
+        "states": ("not-valid-text",),
+        "required": (),
+        "forbidden": ("correcting_piece", "repaired_piece", "citation",
+                      "signal"),
+    },
+    "M-02": {
+        "form": "marked truncated piece, no correcting record",
+        "states": ("marked-truncated",),
+        "required": (),
+        "forbidden": ("correcting_piece", "repaired_piece", "citation",
+                      "signal"),
+    },
+    "M-03": {
+        "form": "marked truncated piece, with a correcting record",
+        "states": ("marked-truncated",),
+        "required": ("correcting_piece", "citation"),
+        "forbidden": ("repaired_piece", "signal"),
+    },
+    "M-04": {
+        "form": "repaired truncation, repair cited in the piece",
+        "states": ("repaired-truncated",),
+        "required": ("repaired_piece", "citation"),
+        "forbidden": ("correcting_piece", "signal"),
+    },
+    "M-05": {
+        "form": "unmarked truncation, one completeness signal failed",
+        "states": ("signal-failed",),
+        "required": ("signal",),
+        "forbidden": ("correcting_piece", "repaired_piece", "citation"),
+    },
+    "M-06": {
+        "form": "correcting record itself failing or truncated",
+        "states": ("correcting-record-fails-signal",
+                   "correcting-record-truncated"),
+        "required": ("correcting_piece", "citation"),
+        "forbidden": ("repaired_piece",),
+    },
+}
+
+TRUNCATION_MARKER = "TRUNCATED"
+MALFORMED_BYTES = b"\xff\xfe\xfd malformed piece, not valid text\n"
+
+# The F-11 limits as separate settings with exact counts: four
+# settings carrying five figures. largest-file carries one figure;
+# the tree setting carries two figures, total bytes and file count,
+# stated as two settings here so each figure stands as its own exact
+# count; longest-line carries one figure; whole-walk carries one
+# figure. Filler used to reach a count carries no recognisable piece
+# and no figure: filler content is the letter x repeated, filler
+# names match no closed name pattern and stand as no near match.
+F11_SETTINGS = {
+    "largest-file-bytes": 1000000,
+    "tree-total-bytes": 25000000,
+    "tree-file-count": 2000,
+    "longest-line-bytes": 65536,
+    "whole-walk-entries": 10000,
+}
+F11_POSITIONS = ("at-limit", "one-over")
+
+# The F-10 pair position: the affected metric and the unaffected
+# metric for family F-10, as the verified stating entry states them.
+F10_AFFECTED_METRIC = "Q-1"
+F10_UNAFFECTED_METRIC = "E-1"
+
+
+def _filler_stem(index):
+    """Return the letters only sequence for filler entry index."""
+    letters = ""
+    n = index
+    while True:
+        letters = chr(ord("a") + (n % 26)) + letters
+        n = n // 26 - 1
+        if n < 0:
+            return "filler" + letters
+
+
+def _check_rel_path(rel):
+    path = Path(rel)
+    if path.is_absolute() or ".." in path.parts or not path.parts:
+        raise ValueError("case path is not a tree relative path: %r"
+                         % (rel,))
+    return path
+
+
+def _validate_case(case):
+    if not isinstance(case, dict):
+        raise ValueError("a case is a dict of plain data")
+    name = case.get("name")
+    if not isinstance(name, str) or not name or "/" in name \
+            or "\\" in name or name in (".", ".."):
+        raise ValueError("a case names its tree with a plain name")
+    for key in case:
+        if key not in ("name", "features", "files", "malformations",
+                       "f11", "dirs", "links"):
+            raise ValueError("case key outside the case form: %r"
+                             % (key,))
+    for token in case.get("features", ()):
+        if token not in FEATURES:
+            raise ValueError("feature outside the closed vocabulary: "
+                             "%r" % (token,))
+    files = case.get("files", {})
+    if not isinstance(files, dict):
+        raise ValueError("case files stand as a dict of path to content")
+    for rel, content in files.items():
+        _check_rel_path(rel)
+        if not isinstance(content, (str, bytes)):
+            raise ValueError("case file content is text or bytes only, "
+                             "with no callable inside a case: %r" % (rel,))
+    for rel in case.get("dirs", ()):
+        _check_rel_path(rel)
+    for rel, target in case.get("links", {}).items():
+        _check_rel_path(rel)
+        _check_rel_path(target)
+    if "f11" in case and files:
+        raise ValueError("an F-11 case holds filler only and no files")
+    if "f11" in case:
+        spec = case["f11"]
+        if spec.get("figure") not in F11_SETTINGS:
+            raise ValueError("F-11 figure outside the five figures: %r"
+                             % (spec.get("figure"),))
+        if spec.get("position") not in F11_POSITIONS:
+            raise ValueError("F-11 position is at-limit or one-over")
+    for switch in case.get("malformations", ()):
+        _validate_switch(switch, files)
+
+
+def _validate_switch(switch, files):
+    if not isinstance(switch, dict):
+        raise ValueError("a malformation switch stands as a dict")
+    form = MALFORMATION_SWITCHES.get(switch.get("switch"))
+    if form is None:
+        raise ValueError("malformation switch outside the closed set: "
+                         "%r" % (switch.get("switch"),))
+    target = switch.get("target")
+    if not isinstance(target, str) or target not in files:
+        raise ValueError("a switch names its target piece among the "
+                         "case files: %r" % (target,))
+    if switch.get("target_kind") not in PIECE_KINDS:
+        raise ValueError("a switch names its target kind: %r"
+                         % (switch.get("target_kind"),))
+    if switch.get("state") not in form["states"]:
+        raise ValueError("switch state outside its form: %r"
+                         % (switch.get("state"),))
+    for field in form["required"]:
+        if not switch.get(field):
+            raise ValueError("switch %s requires the field %s"
+                             % (switch["switch"], field))
+    for field in form["forbidden"]:
+        if switch.get(field):
+            raise ValueError("switch %s forbids the field %s"
+                             % (switch["switch"], field))
+    for field in ("correcting_piece", "repaired_piece"):
+        piece = switch.get(field)
+        if piece and piece not in files:
+            raise ValueError("the %s stands among the case files: %r"
+                             % (field, piece))
+    if switch["switch"] == "M-05":
+        signal = switch.get("signal")
+        if signal not in COMPLETENESS_SIGNALS:
+            raise ValueError("M-05 names one completeness signal")
+        if switch["target_kind"] not in SIGNAL_TARGETS[signal]:
+            raise ValueError("kind %s carries no %s as a target"
+                             % (switch["target_kind"], signal))
+        if switch.get("exception"):
+            raise ValueError("an M-05 row with an exception standing "
+                             "is not an unmarked truncation row")
+    if switch["switch"] in ("M-03", "M-04", "M-06"):
+        holder = switch.get("correcting_piece") \
+            or switch.get("repaired_piece")
+        content = files[holder]
+        if isinstance(content, bytes):
+            content = content.decode("utf-8", "replace")
+        if switch["citation"] not in content:
+            raise ValueError("the citation stands in the correcting "
+                             "or repaired piece it names")
+
+
+def _apply_switch(root, switch):
+    target = root / switch["target"]
+    kind = switch["switch"]
+    if kind == "M-01":
+        target.write_bytes(MALFORMED_BYTES)
+    elif kind in ("M-02", "M-03"):
+        text = target.read_text(encoding="utf-8")
+        if not text.endswith("\n"):
+            text += "\n"
+        target.write_text(text + TRUNCATION_MARKER + "\n",
+                          encoding="utf-8")
+    elif kind == "M-06" \
+            and switch["state"] == "correcting-record-truncated":
+        piece = root / switch["correcting_piece"]
+        text = piece.read_text(encoding="utf-8")
+        if not text.endswith("\n"):
+            text += "\n"
+        piece.write_text(text + TRUNCATION_MARKER + "\n",
+                         encoding="utf-8")
+    # M-04, M-05, and the M-06 signal form change no bytes: the case
+    # file content itself carries the repair citation, the failed
+    # signal, or the failing correcting record, in its stated form.
+
+
+def _filler_line_file(root, name, lines, extra_byte):
+    text = ("x" * 999 + "\n") * lines
+    if extra_byte:
+        text += "x"
+    (root / name).write_text(text, encoding="utf-8")
+
+
+def _build_f11(root, spec):
+    figure = spec["figure"]
+    over = spec["position"] == "one-over"
+    if figure == "largest-file-bytes":
+        _filler_line_file(root, _filler_stem(0), 1000, over)
+    elif figure == "tree-total-bytes":
+        for index in range(25):
+            _filler_line_file(root, _filler_stem(index), 1000, False)
+        if over:
+            (root / _filler_stem(25)).write_text("x", encoding="utf-8")
+    elif figure == "tree-file-count":
+        count = 2001 if over else 2000
+        for index in range(count):
+            (root / _filler_stem(index)).write_bytes(b"")
+    elif figure == "longest-line-bytes":
+        size = 65537 if over else 65536
+        (root / _filler_stem(0)).write_text("x" * size,
+                                            encoding="utf-8")
+    elif figure == "whole-walk-entries":
+        count = 10001 if over else 10000
+        for index in range(count):
+            (root / _filler_stem(index)).mkdir()
+
+
+def build_case(case, root):
+    """Build one fixture tree from a case table under a root.
+
+    root is the caller supplied directory, made by the caller in a
+    temporary directory at test run time. The built tree root is
+    root joined with the case name, and that Path is returned. The
+    build is deterministic: files stand in sorted path order, and
+    no timestamp, random value, or run fact enters any file.
+    """
+    _validate_case(case)
+    tree = Path(root) / case["name"]
+    if tree.exists():
+        raise ValueError("the case tree root already stands: %s"
+                         % (tree,))
+    tree.mkdir(parents=True)
+    files = case.get("files", {})
+    for rel in sorted(files):
+        target = tree / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        content = files[rel]
+        if isinstance(content, bytes):
+            target.write_bytes(content)
+        else:
+            target.write_text(content, encoding="utf-8")
+    for rel in case.get("dirs", ()):
+        (tree / rel).mkdir(parents=True, exist_ok=True)
+    for rel in sorted(case.get("links", {})):
+        link = tree / rel
+        link.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(str(tree / case["links"][rel]), str(link))
+    for switch in case.get("malformations", ()):
+        _apply_switch(tree, switch)
+    if "f11" in case:
+        _build_f11(tree, case["f11"])
+    return tree
+
+
+def build_cases(cases, root):
+    """Build a set of case tables side by side under one root.
+
+    Returns a dict mapping each case name to its built tree root.
+    Pair cases authored in prose in a test module build their two
+    trees through this entry, one case table per tree.
+    """
+    built = {}
+    for case in cases:
+        built[case["name"]] = build_case(case, root)
+    return built
+
+
+def measure_tree(root):
+    """Measure a built tree: counts a test or a check can assert.
+
+    Returns a dict with file count, directory count under the root,
+    entries in all (files plus directories under the root), total
+    bytes over files, and the longest line in bytes over files.
+    """
+    root = Path(root)
+    files = 0
+    dirs = 0
+    total = 0
+    longest = 0
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            continue
+        if path.is_dir():
+            dirs += 1
+        elif path.is_file():
+            files += 1
+            data = path.read_bytes()
+            total += len(data)
+            for line in data.split(b"\n"):
+                if len(line) > longest:
+                    longest = len(line)
+    return {"files": files, "dirs": dirs, "entries": files + dirs,
+            "total_bytes": total, "longest_line": longest}
+
+
+def single_page_metrics_record_files(text):
+    """Named case fragment: the metrics record in single page form."""
+    return {"wiki/wiki/synthesis/build-metrics-record.md": text}
+
+
+def split_metrics_record_files(page_texts):
+    """Named case fragment: the metrics record split across pages.
+
+    page_texts stands in page order; page one takes the single page
+    path and each later page takes the next page path beside it.
+    """
+    files = {}
+    for index, text in enumerate(page_texts):
+        if index == 0:
+            rel = "wiki/wiki/synthesis/build-metrics-record.md"
+        else:
+            rel = "wiki/wiki/synthesis/build-metrics-record-page-%d.md" \
+                % (index + 1)
+        files[rel] = text
+    return files
+
+
+# The ten F-11 case tables: five figures, each at its limit and at
+# one unit over it, in four settings, as the verified F-11 stating
+# entry states them. Built counts, whole tree, filler only:
+# largest-file-bytes 1000000 and 1000001 bytes in one file;
+# tree-total-bytes 25000000 bytes in 25 files and 25000001 bytes in
+# 26 files; tree-file-count 2000 and 2001 empty files;
+# longest-line-bytes 65536 and 65537 bytes in one single line file;
+# whole-walk-entries 10000 and 10001 empty directories.
+F11_CASES = tuple(
+    {"name": "f11-%s-%s" % (figure, position), "features": (),
+     "f11": {"figure": figure, "position": position}}
+    for figure in F11_SETTINGS for position in F11_POSITIONS)
+
+
+def _f10_files(malformed):
+    files = {
+        "steps/step-01-record.md": (
+            "# Step 1 record\n\nBuild: metrics fixture build.\n"
+            "Base: 2. Team staffed: 2 agents. Total spins: 4.\n"),
+        "steps/step-01-roster.md": (
+            "# Step 1 roster\n\nNamed agents: 2. Base: 2.\n"
+            "Roster additions over base: 0.\n"),
+        "audit/step-01-round-record.md": (
+            "# Round record, step 1\n\nPost triage severity breakdown, "
+            "flow scale: Critical 0, High 1, Medium 2, Low 3.\n"
+            "Citation: round record for step 1 stands as the Q-1 "
+            "feeder.\n"),
+        "PATH-LEDGER.md": (
+            "# Path ledger\n\nSteps stated: 1.\n\n## Transitions\n\n"
+            "Step 1 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 "
+            "17:00.\n"),
+    }
+    return files
+
+
+def f10_cases():
+    """Return the F-10 pair of case tables, sound and malformed.
+
+    The two trees differ only in the Q-1 feeder, the round record:
+    sound in the first, malformed under switch M-01 in the second.
+    The affected metric is Q-1 and the unaffected metric is E-1, as
+    F10_AFFECTED_METRIC and F10_UNAFFECTED_METRIC state; the E-1
+    feeders, the step record and the roster, stand identical in
+    both trees. The pair relation itself stands in prose in its
+    test module; this passage builds the two trees only.
+    """
+    sound = {"name": "f10-sound",
+             "features": ("flow-scale-breakdowns",),
+             "files": _f10_files(False)}
+    malformed = {"name": "f10-malformed",
+                 "features": ("flow-scale-breakdowns",),
+                 "files": _f10_files(True),
+                 "malformations": (
+                     {"switch": "M-01",
+                      "target": "audit/step-01-round-record.md",
+                      "target_kind": "AP",
+                      "state": "not-valid-text"},)}
+    return (sound, malformed)
+
+
+def f16_miniature_case():
+    """Return the F-16 miniature case table, at its stated counts.
+
+    The copy carries 57 files in all, in five groups: 1 path ledger
+    file in the root group; 23 step record files, 23 roster
+    artifacts, 4 gate variant files, and 1 trace record file in the
+    steps group; 2 audit papers in the audit group; 2 register
+    files in the registers group; and 1 metrics record page in the
+    synthesis group. Every count stands as the verified F-16
+    stating entry states it; the kept numbers stand at their
+    governed values and no count here shrinks one of them.
+    """
+    files = {}
+    transitions = []
+    for step in range(1, 19):
+        transitions.append("Step %d closed 2026-11-01." % step)
+    transitions.append("BANKED entry one, no duration stated.")
+    transitions.append("BANKED entry two, no duration stated.")
+    files["PATH-LEDGER.md"] = (
+        "# Path ledger\n\nSteps stated: 1 to 18.\n\n## Transitions\n\n"
+        + "\n".join(transitions) + "\n")
+    for step in range(1, 24):
+        body = "# Step %d record\n\nBuild: metrics fixture build.\n" \
+            % step
+        if step in (3, 5):
+            body += "Roster additions over base: 1.\n"
+        if step == 3:
+            body += ("Budget position: money 0 external spend for the "
+                     "whole build; agent count ceiling of 10 "
+                     "documented units on a labelled proxy basis; "
+                     "tokens NOT RECORDED.\n")
+        if step == 23:
+            body += ("Final position: 8 of 10 documented units on a "
+                     "labelled proxy basis; money nil; tokens NOT "
+                     "RECORDED.\n")
+        files["steps/step-%02d-record.md" % step] = body
+        roster = "# Step %d roster\n\nNamed agents: 2.\n" % step
+        if step <= 18:
+            roster += "Base: 2.\n"
+        files["steps/step-%02d-roster.md" % step] = roster
+    files["steps/step-06-gate-record.md"] = (
+        "# Step 6 gate record\n\nClosure state: CLOSED-PASS.\n"
+        "First trace for step 6: 2 LANDED of 2 items checked, "
+        "0 PARTIAL, 0 CONTRADICTED.\n")
+    files["steps/step-08-gate-record.md"] = (
+        "# Step 8 gate record\n\nClosure state: CLOSED-PASS.\n"
+        "First trace for step 8: 2 LANDED of 2 items checked, "
+        "0 PARTIAL, 0 CONTRADICTED.\n")
+    files["steps/step-08-gate-adjudication.md"] = (
+        "# Step 8 gate adjudication\n\nEvidence beside the step 8 "
+        "gate record; counted as a gate file in no count.\n")
+    files["steps/step-20-gate-ruling.md"] = (
+        "# Step 20 gate ruling\n\nClosure state: CLOSED-PASS.\n"
+        "First trace for step 20, summarised here: 2 LANDED of 2 "
+        "items checked, 0 PARTIAL, 0 CONTRADICTED.\n")
+    files["steps/step-13-trace-record.md"] = (
+        "# Step 13 first trace record\n\nParts: 2 LANDED, 1 PARTIAL, "
+        "0 CONTRADICTED. Stated total: 2 items checked.\n")
+    files["audit/step-17-audit-paper.md"] = (
+        "# Step 17 audit paper\n\nFindings stand in part.\n"
+        + TRUNCATION_MARKER + "\n")
+    files["audit/step-19-purple-audit-paper.md"] = (
+        "# Step 19 Purple audit paper\n\nFirst trace for step 19: "
+        "2 LANDED of 2 items checked, 0 PARTIAL, 0 CONTRADICTED.\n")
+    files["registers/fix-register.md"] = (
+        "# Fix register\n\nEntry one: a fix entry carrying no origin "
+        "step field.\n")
+    files["registers/defect-register.md"] = (
+        "# Defect register\n\nEntry one: a defect entry carrying no "
+        "origin step field.\n")
+    step_rows = "\n".join(
+        "Step %d row." % step for step in range(1, 19))
+    closing = "\n".join(
+        "Closing entry for step %d, dated 2026-11-01." % step
+        for step in range(1, 19))
+    metrics = (
+        "# Build metrics record\n\n## Build header\n\nBuild: metrics "
+        "fixture build.\n\n## Record change statement\n\nNo change.\n"
+        "\n## Step table\n\n" + step_rows + "\nQ-3 column printed "
+        "zero: 0\n\n## Loop round table\n\nNo rows.\n\n## Decision "
+        "table\n\n| Item | Origin step | Raised | Presented | Ruled |"
+        "\n| --- | --- | --- | --- | --- |\n| Item one | 3 | "
+        "2026-11-01 |  |  |\n| Item two | 3 | 2026-11-01 |  |  |\n"
+        "Latency on each item: not yet countable.\n\n## Audit round "
+        "table\n\nNo rows.\n\n## Admission review table\n\nNo rows.\n"
+        "\n## Build summary\n\nNo computed figure stands here.\n\n"
+        "## Corrections\n\nNo corrections.\n\n## Dated closing "
+        "entries\n\n" + closing + "\n")
+    files.update(single_page_metrics_record_files(metrics))
+    return {
+        "name": "f16-miniature",
+        "features": (
+            "date-only-timestamps", "single-page-metrics-record",
+            "decision-table-inside-root", "gate-record-name",
+            "gate-ruling-name", "gate-adjudication-evidence",
+            "empty-round-tables", "step-rows-to-step-18",
+            "banked-entries-no-duration", "printed-zero",
+            "proxy-label", "additions-over-base-stated",
+            "whole-build-money-statement",
+            "first-trace-per-counted-step", "parts-fail-sum"),
+        "files": files,
+    }
+
+
+F16_FILE_COUNT = 57
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_ROOT = Path.home() / "workspace" / "fold-in-trace-checker" / "design"
