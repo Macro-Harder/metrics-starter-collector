@@ -23,7 +23,6 @@ skip with the reason golden subject tree not present on this machine,
 and nothing else in this module skips. Where the tree stands but an
 identity fact fails, the test fails with the failed fact named.
 """
-import re
 import subprocess
 import sys
 import unittest
@@ -119,39 +118,44 @@ def check_identity(test):
                      "golden identity failed: gate ruling file count")
 
 
-def _numbers(text):
-    return re.findall(r"\d[\d,]*", text)
+def _printed_part(block, label):
+    """Return the printed row's own segment for one labelled part.
+
+    The row line of the block is split into its labelled parts in
+    the form the Slice 7 parts_of helper provides: chunks separated
+    by space, vertical bar, space, each chunk a label and a value
+    divided by colon and space. A part the printed row does not
+    carry yields an empty segment, so an assertion against it fails.
+    """
+    if not block:
+        return ""
+    line = block.splitlines()[0]
+    for chunk in line.split(" | ")[1:]:
+        name, _, value = chunk.partition(": ")
+        if name.strip() == label:
+            return value.strip()
+    return ""
 
 
 def _assert_atoms(test, block, text, code, label):
-    """Assert the checkable content of one expected part in a row.
+    """Assert the content of one expected part in its own part segment.
 
-    Short segments are asserted whole. Longer segments are asserted
-    through every share pair, every number, every file name and every
-    step name they state, so a wrong figure, a wrong denominator or a
-    wrong coverage naming in the printed row fails the comparison.
+    Every segment of the expected part, short or long, stands
+    asserted whole against the printed row's own segment for that
+    part, part scoped, never against the row block as a whole, so a
+    segment carrying the right numbers and names but the wrong
+    wording, or a figure standing in the wrong part, fails the
+    comparison.
     """
+    part = _printed_part(block, label)
     for segment in text.split(";"):
         segment = segment.strip()
         if not segment:
             continue
-        if len(segment) <= 60:
-            test.assertIn(segment, block,
-                          "%s %s: %s" % (code, label, segment))
-            continue
-        for pair in re.findall(r"\d[\d,]* of \d[\d,]*", segment):
-            test.assertIn(pair, block,
-                          "%s %s share: %s" % (code, label, pair))
-        for name in re.findall(r"[\w./-]+\.md", segment):
-            test.assertIn(Path(name).name, block,
-                          "%s %s file: %s" % (code, label, name))
-        for step_name in re.findall(r"Step \d+", segment):
-            test.assertIn(step_name, block,
-                          "%s %s: %s" % (code, label, step_name))
-        for number in _numbers(segment):
-            test.assertIn(number.replace(",", ""),
-                          block.replace(",", ""),
-                          "%s %s number: %s" % (code, label, number))
+        test.assertIn(segment, part,
+                      "%s %s part segment does not carry: %s; "
+                      "printed part: %s"
+                      % (code, label, segment, part[:400]))
 
 
 def _part(parts, label):

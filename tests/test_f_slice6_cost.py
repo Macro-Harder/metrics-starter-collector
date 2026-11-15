@@ -23,6 +23,10 @@ LEDGER_FULL = ("# Cost ledger\n\nStep 1: money 10, tokens 1000.\n"
                "Step 2: money 20, tokens 2000.\n"
                "Step 3: money 30, tokens 3000.\n"
                "Budget: money 100, tokens 10000.\n")
+LEDGER_COMBINATION = ("# Cost ledger\n\nStep 1: money 10, tokens 1000.\n"
+                      "Step 2: money 20, tokens 2000.\n"
+                      "Step 3: money 40, tokens 3000.\n"
+                      "Budget: money 200, tokens 10000.\n")
 LEDGER_PARTIAL = ("# Cost ledger\n\nStep 1: money 10, tokens 1000.\n"
                   "No entries for Steps 2 and 3.\n"
                   "Budget: money 100, tokens 10000.\n")
@@ -78,6 +82,40 @@ def ledger_case(name, ledger, features=("token-figures-in-ledger",
 def has_number(block, number):
     return re.search(r"(?<!\d)(?<!\d\.)%s(?!\d)(?!\.\d)" % number,
                      block) is not None
+
+
+def row_substance(block):
+    """Return the EC-04 parts of one row block, in Slice 7 helper form.
+
+    The parts are the verdict, the value or its stated absence, the
+    denominator or coverage position, the pointer, and, where the
+    verdict is not present, the reason. Values are lowercased with
+    whitespace collapsed, as the Slice 7 _row_substance helper
+    normalises. No Numerator or Denominator label stands on these
+    rows, so a share figure stands inside its value part, as the
+    carried line grammar item records.
+    """
+    substance = {"verdict": row_verdict(block)}
+    lines = block.splitlines()
+    if lines:
+        chunks = [chunk.strip() for chunk in lines[0].split(" | ")]
+        for chunk in chunks:
+            lowered = chunk.lower()
+            if lowered.startswith("pointer:"):
+                substance["pointer"] = re.sub(
+                    r"\s+", " ", chunk.split(":", 1)[1]).strip().lower()
+            elif lowered.startswith("denominator"):
+                substance["coverage"] = re.sub(
+                    r"\s+", " ", chunk).strip().lower()
+        if len(chunks) > 3:
+            substance["value"] = re.sub(
+                r"\s+", " ", chunks[3]).strip().lower()
+    if substance["verdict"] != "present":
+        for line in lines:
+            if line.lower().startswith("reason:"):
+                substance["reason"] = re.sub(
+                    r"\s+", " ", line).strip().lower()
+    return substance
 
 
 class TestSlice6Cost(FixtureTestCase):
@@ -144,15 +182,22 @@ class TestSlice6Cost(FixtureTestCase):
         self.assertNotIn("100 percent", block.lower())
 
     def test_b2_absent_budget_both_sides_undefined_never_zero(self):
-        """EC-38; WV22 B-2 F3, WV22 B-2 F6."""
-        result, _ = run_case(ledger_case("b2-no-ledger", LEDGER_PARTIAL))
-        no_ledger_files = base_files()
-        result2, _ = run_case(make_case("b2-absent", no_ledger_files))
-        block = row_block(result2.stdout, "B-2")
+        """EC-38; WV22 B-2 F3, WV22 B-2 F6, each side stated separately."""
+        result, _ = run_case(make_case("b2-absent", base_files()))
+        block = row_block(result.stdout, "B-2")
         assert_verdict(self, block, "present but not derivable", "B-2")
-        self.assertIn("undefined", block.lower())
+        segments = re.split(r"[;\n]", block.lower())
+        self.assertTrue(
+            any("token" in segment and "undefined" in segment
+                for segment in segments),
+            "token side undefined position stands nowhere in its own "
+            "segment of the B-2 row: " + block[:400])
+        self.assertTrue(
+            any("money" in segment and "undefined" in segment
+                for segment in segments),
+            "money side undefined position stands nowhere in its own "
+            "segment of the B-2 row: " + block[:400])
         self.assertNotIn("0 percent", block.lower())
-        self.assertTrue(result.stdout)
 
     def test_e3_present_on_complete_cost_ledger_span(self):
         """EC-30, EC-18; WV22 E-3 F1."""
@@ -377,10 +422,16 @@ class TestSlice6Cost(FixtureTestCase):
 
     def test_b2_combination_percentages_from_both_sides(self):
         """EC-38; WV22 B-2 F3, WV22 B-2 F6, WV22 B-2 F7."""
-        result, _ = run_case(ledger_case("b2-combined", LEDGER_FULL))
+        result, _ = run_case(ledger_case(
+            "b2-combined", LEDGER_COMBINATION))
         block = row_block(result.stdout, "B-2")
         assert_verdict(self, block, "present", "B-2")
-        self.assertTrue(has_number(block, "60"))
+        self.assertIn(
+            "money spent 70 against a money budget of 200, 35 percent",
+            block)
+        self.assertIn(
+            "token spent 6000 against a token budget of 10000, "
+            "60 percent", block)
 
     def test_b2_step_record_figures_count_for_nothing_on_either_side(self):
         """EC-38; WV22 B-2 F1, WV22 B-2 F2, WV22 B-2 F4, WV22 B-2 F5."""
@@ -409,6 +460,38 @@ class TestSlice6Cost(FixtureTestCase):
         block = row_block(result.stdout, "B-2")
         assert_verdict(self, block, "present", "B-2")
         self.assertTrue(has_number(block, "6000"))
+
+    def test_f21_estimator_figure_outside_ledger_no_input_e3_b2(self):
+        """EC-30, EC-38, fixture family F-21 separation form;
+        WV22 E-3 F1, WV22 B-2 F1, WV22 B-2 F4."""
+        files = base_files()
+        files[LEDGER_PATH] = LEDGER_FULL
+        files["notes/estimator-offer.md"] = (
+            "# Estimator offer, not a feeder record\n\n"
+            "Estimator figure: tokens estimated at 7777 and money "
+            "estimated at 777, against an estimated budget of tokens "
+            "8888 and money 888.\n")
+        result, _ = run_case(make_case(
+            "f21-estimator-outside-ledger", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        e3 = row_block(result.stdout, "E-3")
+        assert_verdict(self, e3, "present", "E-3")
+        self.assertTrue(has_number(e3, "1000"))
+        self.assertNotIn("7777", e3)
+        self.assertNotIn("8888", e3)
+        self.assertNotIn("estimat", e3.lower())
+        block = row_block(result.stdout, "B-2")
+        assert_verdict(self, block, "present", "B-2")
+        self.assertIn(
+            "money spent 60 against a money budget of 100, 60 percent",
+            block)
+        self.assertIn(
+            "token spent 6000 against a token budget of 10000, "
+            "60 percent", block)
+        for figure in ("7777", "777", "8888", "888"):
+            self.assertNotIn(figure, block)
+        self.assertNotIn("estimat", block.lower())
 
     def test_b2_money_spent_with_absent_budget_percentage_undefined(self):
         """EC-38; WV22 B-2 F4, WV22 B-2 F5, WV22 B-2 F6, money side."""
@@ -453,12 +536,46 @@ class TestSlice6Cost(FixtureTestCase):
                        "cost-ledger-inside-root"))], root)
         out_a = run_tool(built["shape-a-step-records"]).stdout
         out_b = run_tool(built["shape-b-ledger"]).stdout
-        for code in ("E-4", "B-2"):
-            self.assertEqual(row_verdict(row_block(out_a, code)),
-                             row_verdict(row_block(out_b, code)),
-                             "row %s verdict differs between shapes, "
-                             "shape difference: cost ledger inside the "
-                             "root in shape B" % code)
+        e4_a = row_substance(row_block(out_a, "E-4"))
+        e4_b = row_substance(row_block(out_b, "E-4"))
+        for part in ("verdict", "value", "coverage"):
+            self.assertEqual(
+                e4_a.get(part), e4_b.get(part),
+                "row E-4 %s differs between shapes: first shape %r, "
+                "second shape %r; shape difference: cost ledger "
+                "inside the root in shape B" % (
+                    part, e4_a.get(part), e4_b.get(part)))
+        self.assertNotIn("reason", e4_a)
+        self.assertNotIn("reason", e4_b)
+        self.assertIn("step-01-record.md", e4_a.get("pointer", ""))
+        self.assertIn("cost-ledger.md", e4_b.get("pointer", ""))
+        b2_a = row_substance(row_block(out_a, "B-2"))
+        b2_b = row_substance(row_block(out_b, "B-2"))
+        self.assertEqual(
+            b2_a.get("verdict"), b2_b.get("verdict"),
+            "row B-2 verdict differs between shapes, shape "
+            "difference: cost ledger inside the root in shape B")
+        self.assertEqual(
+            b2_a.get("coverage", "").split(";")[0],
+            b2_b.get("coverage", "").split(";")[0],
+            "row B-2 coverage core differs between shapes, shape "
+            "difference: cost ledger inside the root in shape B")
+        self.assertIn("step-01-record.md", b2_a.get("pointer", ""))
+        self.assertIn("cost-ledger.md", b2_b.get("pointer", ""))
+        self.assertEqual(b2_a.get("value"), "no percentage stands")
+        self.assertEqual(
+            b2_b.get("value"),
+            "money spent 60 against a money budget of 100, "
+            "60 percent; token spent and token budget figures absent")
+        for substance in (b2_a, b2_b):
+            self.assertIn("missing-field",
+                          substance.get("reason", ""))
+            self.assertIn("weaker limb", substance.get("reason", ""))
+        self.assertIn("no cost ledger stands",
+                      b2_a.get("reason", ""))
+        self.assertIn("either limb", b2_a.get("reason", ""))
+        self.assertIn("absent for the token limb",
+                      b2_b.get("reason", ""))
 
     def test_wv21_queue_habit_equivalent_content_same_rows(self):
         """EC-04, EC-08, EC-17, EC-36."""
@@ -488,6 +605,26 @@ class TestSlice6Cost(FixtureTestCase):
         block_b = row_block(out_b, "D-1")
         assert_verdict(self, block_a, "present", "D-1")
         assert_verdict(self, block_b, "present", "D-1")
+        d1_a = row_substance(block_a)
+        d1_b = row_substance(block_b)
+        for part in ("verdict", "value"):
+            self.assertEqual(
+                d1_a.get(part), d1_b.get(part),
+                "row D-1 %s differs between shapes: first shape %r, "
+                "second shape %r; shape difference: queue file "
+                "inside the root governing in shape B" % (
+                    part, d1_a.get(part), d1_b.get(part)))
+        self.assertEqual(
+            d1_a.get("coverage", "").split(",")[0],
+            d1_b.get("coverage", "").split(",")[0],
+            "row D-1 coverage core differs between shapes, shape "
+            "difference: queue file inside the root governing in "
+            "shape B")
+        self.assertNotIn("reason", d1_a)
+        self.assertNotIn("reason", d1_b)
+        self.assertIn("build-metrics-record.md",
+                      d1_a.get("pointer", ""))
+        self.assertEqual(d1_b.get("pointer"), "decision-queue.md")
 
     def test_cost_family_and_cross_check_read_capture_only(self):
         """EC-04; WV22 B-2 F7. Named reread test for Slice 6, plan S5."""

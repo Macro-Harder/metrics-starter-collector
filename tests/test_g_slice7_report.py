@@ -28,6 +28,7 @@ from pathlib import Path
 
 from tests.fixture_builder import (
     FixtureTestCase, REPO_ROOT, STARTER_ORDER, build_case, build_cases,
+    make_case,
     decision_table, f16_miniature_case, gate_record, gate_ruling,
     manifest, metrics_record, path_ledger, queue_file, row_verdict,
     run_tool, split_metrics_record_files, step_record, tracked_tempdir)
@@ -74,15 +75,6 @@ def base_files(steps=(1, 2, 3)):
     files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
         body="Step table stands complete for the fixture steps.")
     return files
-
-
-def make_case(name, files, features=(), malformations=()):
-    """Return one case table in the fixture builder case table form."""
-    case = {"name": name, "features": tuple(features),
-            "files": dict(files)}
-    if malformations:
-        case["malformations"] = tuple(malformations)
-    return case
 
 
 def run_case(case):
@@ -281,17 +273,309 @@ class TestSlice7Report(FixtureTestCase):
                 "row %s differs between the two physical forms" % code)
 
     def test_f15_single_page_precedence_where_both_forms_stand(self):
-        """EC-06. Where both forms stand, the single page governs."""
+        """EC-06. Where both forms stand, the single page governs.
+
+        Row content stands asserted against the single page form on
+        the row the split page could touch, as the Slice 1 counterpart
+        does: the split page plants a D-1 figure of 4242 hours, and
+        the D-1 row must carry the single page form's verdict and
+        median, with the planted figure nowhere in the row.
+        """
         files = base_files()
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(decision_table=decision_table([RULED_ITEM])))
         files["wiki/wiki/synthesis/build-metrics-record-page-2.md"] = (
             "# Build metrics record page 2\n\nPage order: 2.\n\n"
-            "A split page standing beside the single page form.\n")
+            "Split copy states the D-1 figure as 4242 hours.\n")
         result, built = run_case(make_case(
             "s7-both-forms", files,
             features=("single-page-metrics-record",
-                      "split-metrics-record")))
+                      "split-metrics-record",
+                      "decision-table-inside-root",
+                      "decision-items-full-timestamps")))
         self.assertEqual(result.returncode, 0, result.stderr[:300])
         self.assertEqual(row_codes(result.stdout), STARTER_ORDER)
+        block = row_line(result.stdout, "D-1")
+        self.assertEqual(row_verdict(block), "present",
+                         "D-1 verdict is not the single page form's "
+                         "verdict in block: %s" % block[:400])
+        self.assertRegex(block, r"median[^\d]*4(?!\d)(?!\.\d)")
+        self.assertNotIn("4242", block)
+
+    # Brief family F-16 done condition, CA2-12 pair, F-25 CA2-04
+    # corrected form, and the F-21 report search form.
+
+    def test_f16_done_condition_all_17_rows_on_miniature_copy(self):
+        """Brief family F-16 done condition; plan Section 15 duty 3.
+
+        One case runs the product over the f16 miniature copy and
+        asserts all 17 rows against the established split: present
+        E-1, E-2, Q-4; present but not derivable T-4, T-7, E-4, F-2,
+        Q-1, Q-3, D-1, B-2; missing T-1, T-2, E-3, B-1, B-3, B-4.
+        Any one row differing fails the test; no partial pass stands.
+        """
+        expected = {
+            "E-1": "present", "E-2": "present", "Q-4": "present",
+            "T-4": "present but not derivable",
+            "T-7": "present but not derivable",
+            "E-4": "present but not derivable",
+            "F-2": "present but not derivable",
+            "Q-1": "present but not derivable",
+            "Q-3": "present but not derivable",
+            "D-1": "present but not derivable",
+            "B-2": "present but not derivable",
+            "T-1": "missing", "T-2": "missing", "E-3": "missing",
+            "B-1": "missing", "B-3": "missing", "B-4": "missing",
+        }
+        self.assertEqual(sorted(expected), sorted(STARTER_ORDER))
+        result, built = run_case(f16_miniature_case())
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        self.assertEqual(row_codes(result.stdout), STARTER_ORDER)
+        for code in STARTER_ORDER:
+            self.assertEqual(
+                row_verdict(row_line(result.stdout, code)),
+                expected[code],
+                "row %s differs from the established F-16 split on "
+                "the miniature copy" % code)
+
+    def _ca2_12_files(self, dressed):
+        """Return one tree of the CA2-12 pair, sound or dressed.
+
+        The two trees share every feeder for the unseparable rows
+        byte for byte. The dressed tree differs only in the feeders
+        for the separable rows: a staffed count its roster does not
+        recount, an unreconciled spin figure, a trace whose parts do
+        not sum to its stated total, a governing queue figure the
+        decision derivation must recompute from, token figures
+        offered only in estimator form outside the ledger feeders,
+        and stated build totals and rankings that do not recompute
+        from the ledger inputs the two trees share.
+        """
+        files = base_files()
+        transitions = []
+        for n in (1, 2, 3):
+            extra = ""
+            if n == 1:
+                extra = ("Loop step. Board ruling held inside this "
+                         "record: the board closes Round 1 of this "
+                         "step. Work record for Round 1 stands in "
+                         "audit/step-01-work.md.")
+            if dressed and n == 1:
+                files["steps/step-%02d-record.md" % n] = step_record(
+                    n, team=9, additions=1, extra=extra)
+            elif dressed and n == 3:
+                files["steps/step-%02d-record.md" % n] = step_record(
+                    n, total_spins=12, additions=1,
+                    extra="Total spins for Step 3: 12.")
+            else:
+                files["steps/step-%02d-record.md" % n] = step_record(
+                    n, additions=1, extra=extra)
+            files["steps/step-%02d-roster.md" % n] = (
+                "# Step %d roster\n\nNamed agents: 3. Base: 2.\n"
+                "Roster additions over base: 1.\n" % n)
+            transitions.append(
+                "Step %d IN PROGRESS 2026-11-01 09:00, closed "
+                "2026-11-01 17:00." % n)
+        transitions.append("Step 1 BANKED duration 2 hours on Q-1.")
+        files["PATH-LEDGER.md"] = path_ledger(
+            "\n".join(transitions), "1, 2, 3")
+        body = "Step table stands complete for the fixture steps."
+        if dressed:
+            body = ("Step table stands complete for the fixture "
+                    "steps. Total spins through Step 3: 999, stated "
+                    "with no correction. Total build elapsed "
+                    "stated: 999 hours. Slowest three steps stated: "
+                    "Step 3, Step 1, Step 2. Fastest three steps "
+                    "stated: Step 2, Step 3, Step 1.")
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body=body,
+                           decision_table=decision_table([RULED_ITEM])))
+        files["audit/step-01-work.md"] = (
+            "# Round 1 work record\n\nThe work Round 1 disposed "
+            "of stands stated here.\n")
+        files["audit/step-01-round-record.md"] = (
+            "# Round record, step 1\n\nPost triage severity "
+            "breakdown, flow scale: Critical 0, High 1, Medium 2, "
+            "Low 3.\n")
+        if dressed:
+            files["steps/step-01-trace.md"] = (
+                "# First trace, step 1\n\nParts: 2 LANDED, "
+                "1 PARTIAL, 0 CONTRADICTED. Stated total: 2 items "
+                "checked.\n")
+        else:
+            files["steps/step-01-trace.md"] = (
+                "# First trace, step 1\n\nParts: 4 LANDED, "
+                "0 PARTIAL, 0 CONTRADICTED. Stated total: 4 items "
+                "checked.\n")
+        files["registers/fix-register.md"] = (
+            "# Fix register\n\nEntry one. Origin step: 1.\n")
+        files["registers/defect-register.md"] = (
+            "# Defect register\n\nEscaped defects: 0. Measurement "
+            "basis: every register entry was triaged in full on "
+            "2026-11-02 and no entry escaped. Entry D-1: origin "
+            "step Step 1, as judged at triage.\n")
+        money = ("Step 1: money 10.\nStep 2: money 20.\n"
+                 "Step 3: money 30.\nBudget: money 100.\n")
+        if dressed:
+            files["registers/cost-ledger.md"] = (
+                "# Cost ledger\n\n" + money)
+            files["notes/token-estimate.md"] = (
+                "# Token estimate\n\nEstimated tokens for Step 1: "
+                "1000. Estimated tokens for Step 2: 2000. "
+                "Estimated tokens for Step 3: 3000. Token budget "
+                "estimate: 10000.\n")
+            files["DECISION-QUEUE.md"] = queue_file([
+                "| Q-1 | 1 | 2026-11-01 09:00 | 2026-11-01 10:00 | "
+                "2026-11-02 13:00 |"])
+        else:
+            files["registers/cost-ledger.md"] = (
+                "# Cost ledger\n\nStep 1: money 10, tokens 1000.\n"
+                "Step 2: money 20, tokens 2000.\n"
+                "Step 3: money 30, tokens 3000.\n"
+                "Budget: money 100, tokens 10000.\n")
+        return files
+
+    def test_ca2_12_adversarial_pair_all_17_rows_against_marks(self):
+        """CA2-12 adversarial pair; plan Section 15 duty 3 supplement.
+
+        A dressed tree and a sound tree stand built through the
+        fixture builder's pair support, build_cases. All 17 rows
+        stand compared between the two trees against the expectation
+        marks hand copied here from the golden authoring record's
+        CA2-12 marks: separable 10 (E-1, E-2, Q-4, T-4, D-1, E-3,
+        B-1, B-2, B-3, B-4), unseparable 7 (T-1, T-2, T-7, E-4, F-2,
+        Q-1, Q-3). On an unseparable row the tool reports the two
+        trees identically and the row stands present in both trees,
+        the named limit of the gaming defences. The falsifier stands
+        as the failure form: if the tool reports the two trees
+        identically on a separable row, this test fails.
+        """
+        separable = ("E-1", "E-2", "Q-4", "T-4", "D-1", "E-3",
+                     "B-1", "B-2", "B-3", "B-4")
+        unseparable = ("T-1", "T-2", "T-7", "E-4", "F-2", "Q-1",
+                       "Q-3")
+        self.assertEqual(len(separable), 10)
+        self.assertEqual(len(unseparable), 7)
+        self.assertEqual(sorted(separable + unseparable),
+                         sorted(STARTER_ORDER))
+        root = tracked_tempdir("msc_slice7_")
+        built = build_cases([
+            make_case("s7-ca2-12-sound", self._ca2_12_files(False),
+                      features=("single-page-metrics-record",
+                                "decision-table-inside-root",
+                                "cost-ledger-inside-root",
+                                "full-clock-timestamps",
+                                "decision-items-full-timestamps",
+                                "banked-entries-with-duration",
+                                "origin-step-on-register-entries")),
+            make_case("s7-ca2-12-dressed", self._ca2_12_files(True),
+                      features=("single-page-metrics-record",
+                                "decision-table-inside-root",
+                                "queue-file-inside-root",
+                                "queue-governs-over-table",
+                                "cost-ledger-inside-root",
+                                "full-clock-timestamps",
+                                "decision-items-full-timestamps",
+                                "banked-entries-with-duration",
+                                "origin-step-on-register-entries",
+                                "unreconciled-figure",
+                                "parts-fail-sum"))], root)
+        sound = run_tool(built["s7-ca2-12-sound"])
+        dressed = run_tool(built["s7-ca2-12-dressed"])
+        self.assertEqual(sound.returncode, 0, sound.stderr[:300])
+        self.assertEqual(dressed.returncode, 0, dressed.stderr[:300])
+        self.assertEqual(row_codes(sound.stdout), STARTER_ORDER)
+        self.assertEqual(row_codes(dressed.stdout), STARTER_ORDER)
+        for code in STARTER_ORDER:
+            sound_line = row_line(sound.stdout, code)
+            dressed_line = row_line(dressed.stdout, code)
+            if code in unseparable:
+                self.assertEqual(
+                    row_verdict(sound_line), "present",
+                    "unseparable row %s is not present on the sound "
+                    "tree" % code)
+                self.assertEqual(
+                    row_verdict(dressed_line), "present",
+                    "unseparable row %s is not present on the "
+                    "dressed tree" % code)
+                self.assertEqual(
+                    dressed_line, sound_line,
+                    "unseparable row %s differs between the dressed "
+                    "tree and the sound tree" % code)
+            else:
+                self.assertNotEqual(
+                    dressed_line, sound_line,
+                    "CA2-12 falsifier: row %s stands marked "
+                    "separable in the expectation marks, and the "
+                    "tool reports the two trees identically on it"
+                    % code)
+
+    def test_f25_ca2_04_corrected_form_counts_on_miniature_copy(self):
+        """F-25 CA2-04 corrected form; plan Section 15 duty 2, line 600.
+
+        A run over the f16 miniature copy: the data quality section
+        lists missing field count 5, for T-4, D-1, E-4, B-2 and Q-3,
+        and wrong form count 3, for T-7, F-2 and Q-1. Any differing
+        kind count fails the test.
+        """
+        missing_field = ("T-4", "D-1", "E-4", "B-2", "Q-3")
+        wrong_form = ("T-7", "F-2", "Q-1")
+        result, built = run_case(f16_miniature_case())
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        section = section_text(result.stdout, "Data quality")
+        self.assertTrue(section, "no data quality section stands")
+        self.assertRegex(section, r"(?m)^missing field: 5$")
+        self.assertRegex(section, r"(?m)^wrong form: 3$")
+        for code in missing_field:
+            line = row_line(result.stdout, code)
+            self.assertIn("missing field", line,
+                          "row %s does not carry the missing field "
+                          "kind its count stands on" % code)
+        for code in wrong_form:
+            line = row_line(result.stdout, code)
+            self.assertIn("wrong form", line,
+                          "row %s does not carry the wrong form "
+                          "kind its count stands on" % code)
+
+    def test_f21_report_search_no_estimated_figure_no_estimated_mark(self):
+        """F-21 report search form; plan Section 15 duty 2, line 604.
+
+        The tree holds the F-21 offers: a labelled proxy figure and
+        a figure in estimator form offered outside the ledger
+        feeders. The whole report stands searched for an estimated
+        figure in any form and for the ESTIMATED mark beside a
+        verdict, and the search finds neither; any find fails.
+        """
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Agent count ceiling of 10 documented units "
+                     "on a labelled proxy basis: 4242 documented "
+                     "units. Tokens estimated for Step 1: 7777, in "
+                     "estimator form.")
+        files["notes/money-estimate.md"] = (
+            "# Money estimate\n\nEstimated money for Step 1: 8888, "
+            "offered in estimator form outside the ledger "
+            "feeders.\n")
+        result, built = run_case(make_case(
+            "s7-f21-search", files, features=("proxy-label",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        self.assertEqual(row_codes(result.stdout), STARTER_ORDER)
+        report = result.stdout
+        self.assertNotIn("estimated", report.lower(),
+                         "an estimated figure in some form stands "
+                         "in the report")
+        for figure in ("7777", "8888"):
+            self.assertNotIn(figure, report,
+                             "the estimator figure %s offered "
+                             "outside the ledger feeders stands in "
+                             "the report" % figure)
+        for line in row_lines(report):
+            parts, order = parts_of(line)
+            self.assertNotIn("ESTIMATED", line,
+                             "the ESTIMATED mark stands beside a "
+                             "verdict on the row: %s" % line[:200])
+            self.assertNotIn("estimated",
+                             parts.get("Verdict", "").lower())
 
     # The plain text line grammar, spin 775, line by line in order.
 
@@ -1111,19 +1395,30 @@ class TestSlice7Report(FixtureTestCase):
         self.assertIn("no build identity was found", line.lower())
 
     def test_wv4_disputed_count_rerun_against_completed_header(self):
-        """EC-42. The WV-4 disputed form stands in the completed header."""
+        """EC-42. WV-4 disputed count in the completed header form.
+
+        Both counts and the word disagrees stand asserted in the
+        completed header, as the Slice 3 WV-4 case asserts them in
+        the coverage statement: the metrics record states the step
+        universe as 5 steps, the other records state 3 steps, and
+        neither count is picked over the other.
+        """
         files = base_files(steps=(1, 2, 3))
         files["wiki/wiki/synthesis/build-metrics-record.md"] = (
             metrics_record(
-                body="Step table stands for Steps 1 to 5."))
+                body="Metrics record states the step universe "
+                     "as 5 steps."))
         result, built = run_case(make_case("s7-wv4-rerun", files))
         self.assertEqual(result.returncode, 0, result.stderr[:300])
-        head = "\n".join(result.stdout.splitlines()[:12])
+        self.assertEqual(row_codes(result.stdout), STARTER_ORDER)
+        lines = result.stdout.splitlines()
+        first_row = lines.index(row_lines(result.stdout)[0])
+        head = "\n".join(lines[:first_row])
         self.assertIn("Coverage taken set: ", head)
-        self.assertTrue(
-            "disput" in head.lower() or "Steps 1 to 5" in head,
-            "the disputed step universe position stands nowhere in "
-            "the header: %s" % head[:400])
+        self.assertIn("build-metrics-record.md", head)
+        self.assertRegex(head, r"(?<!\d)5 steps\b")
+        self.assertRegex(head, r"(?<!\d)3 steps\b")
+        self.assertIn("disagrees", head.lower())
         e1 = row_line(result.stdout, "E-1")
         parts, order = parts_of(e1)
         self.assertIn("Row coverage", parts)
