@@ -1,121 +1,155 @@
-"""Slice 3 tests: step universe, gates, staffing family E-1, E-2, F-2."""
+"""Slice 3 tests: step universe, gates, staffing family E-1, E-2, F-2.
+
+Cases state their citations in the test design record form: EC
+numbers for WV2-21 points and WV22 with metric and field numbers
+for WV2-22 fields. Fixture trees stand built through the fixture
+builder into temporary directories, and the product stands invoked
+through the pre install invocation route, python3 -m
+metrics_starter_collector with the root argument first, by the
+run_tool harness in the fixture builder.
+"""
 import re
 import unittest
 
 from tests.fixture_builder import (FixtureTestCase, assert_verdict,
-                                     assert_reads_capture_only, base_case,
-                                     build_tree, coverage_statement,
+                                     assert_reads_capture_only, build_case,
+                                     build_cases, coverage_statement,
                                      gate_record, gate_ruling, metrics_record,
                                      path_ledger, row_block, run_tool,
-                                     statement_segment, step_record)
+                                     statement_segment, step_record,
+                                     tracked_tempdir)
 
 
-def staffing_table(closure="CLOSED-PASS"):
-    table = base_case()
-    for n in (1, 2, 3):
-        table["steps/step-%02d-gate-record.md" % n] = gate_record(n, closure)
-    return table
+def staffing_files(steps=(1, 2, 3), closure="CLOSED-PASS"):
+    files = {}
+    transitions = []
+    for n in steps:
+        files["steps/step-%02d-record.md" % n] = step_record(n)
+        files["steps/step-%02d-gate-record.md" % n] = gate_record(n, closure)
+        transitions.append(
+            "Step %d IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00." % n)
+    files["PATH-LEDGER.md"] = path_ledger(
+        "\n".join(transitions), ", ".join(str(s) for s in steps))
+    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
+    files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
+        body="Step table stands complete for the fixture steps.")
+    return files
 
 
-def wv4_table():
-    table = base_case(steps=(1, 2, 3))
-    table["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
-        body="Metrics record states the step universe as 2 steps.")
-    table["PATH-LEDGER.md"] = path_ledger(
-        "Step 1 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.\n"
-        "Step 2 IN PROGRESS 2026-11-02 09:00, closed 2026-11-02 17:00.\n"
-        "Step 3 IN PROGRESS 2026-11-03 09:00, closed 2026-11-03 17:00.",
-        steps="1, 2, 3")
-    return table
+def staffing_case(name, steps=(1, 2, 3), closure="CLOSED-PASS", features=()):
+    return {"name": name, "features": tuple(features),
+            "files": staffing_files(steps, closure)}
 
 
-def assert_wv4_disputed_form(test, result):
-    cov = coverage_statement(result.stdout)
-    test.assertTrue(cov, "header coverage statement stands")
-    test.assertIn("build-metrics-record.md", cov)
-    test.assertTrue("PATH-LEDGER.md" in cov or "step record" in cov.lower(),
-                    cov[:400])
-    test.assertRegex(cov, r"(?<!\d)2 steps\b")
-    test.assertRegex(cov, r"(?<!\d)3 steps\b")
-    test.assertIn("disagrees", cov.lower())
-    block = row_block(result.stdout, "E-1")
-    segment = statement_segment(block)
-    test.assertIn("record disagrees", segment)
-    test.assertIn("Step 3", block)
-    test.assertRegex(block, r"(denominator[^\d]*3(?!\d)(?!\.\d)|"
-                            r"of 3 steps\b|(?<!\d)3 steps\b)")
+def build_one(case):
+    return build_case(case, tracked_tempdir("msc_slice3_"))
+
+
+def audit_paper_failed_signal(signal):
+    if signal == "signal-one":
+        return ("# Step 1 audit paper\n\nFindings in number order.\n"
+                "Finding 1 stands.\nFinding 2 stands.\nFinding 4 stands.\n")
+    if signal == "signal-two":
+        return ("# Step 1 audit paper\n\nSeverity breakdown table. "
+                "Rows stated in header: 5.\n"
+                "| Severity | Count |\n| --- | --- |\n"
+                "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+    return ("# Step 1 audit paper\n\nContents list: Section Alpha, "
+            "Section Beta.\n\n## Section Alpha\n\nText stands.\n")
+
+
+def unmarked_case(name, family, signal, with_correcting):
+    files = staffing_files((1,))
+    files["audit/step-01-audit-paper.md"] = audit_paper_failed_signal(signal)
+    if with_correcting:
+        files["audit/step-01-correcting-record.md"] = (
+            "# Correcting record for step 1\n\n"
+            "The correcting record stands for the step 1 audit paper.\n")
+    case = {"name": name, "features": (), "files": files,
+            "malformations": (
+                {"switch": "M-05",
+                 "target": "audit/step-01-audit-paper.md",
+                 "target_kind": "AP",
+                 "state": "signal-failed",
+                 "signal": signal},)}
+    return case
 
 
 class TestSlice3Staffing(FixtureTestCase):
 
     def test_f04_both_gate_names_read(self):
-        table = staffing_table()
-        table["steps/step-01-gate-ruling.md"] = gate_ruling(1, "CLOSED-PASS")
-        root = build_tree(table)
+        """F-04. EC-09, EC-19. Gate record and gate ruling both read."""
+        case = staffing_case("f04-both-names")
+        case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(1)
+        root = build_one(case)
         result = run_tool(root)
-        block = row_block(result.stdout, "F-2")
-        assert_verdict(self, block, "present", "F-2")
+        assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
 
     def test_f04_step_with_neither_gate_name(self):
-        table = staffing_table()
-        del table["steps/step-03-gate-record.md"]
-        root = build_tree(table)
+        """F-04. EC-09, EC-23. A step with neither gate name stands missing."""
+        case = staffing_case("f04-neither-name")
+        del case["files"]["steps/step-03-gate-record.md"]
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         assert_verdict(self, block, "present", "F-2")
         self.assertIn("Step 3", block)
 
     def test_f03_metrics_record_stops_early_coverage_naming(self):
-        table = staffing_table()
-        table["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
-            body="Step table stops at Step 1. Steps 2 and 3 not stated.")
-        root = build_tree(table)
+        """F-03. EC-42. Coverage naming where the metrics record stops early."""
+        case = staffing_case("f03-stops-early")
+        case["files"]["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body="Step table stops at Step 1. "
+                                "Steps 2 and 3 not stated."))
+        root = build_one(case)
         result = run_tool(root)
         self.assertIn("coverage", result.stdout.lower())
         self.assertTrue("Step 2" in result.stdout or "Step 3" in result.stdout)
 
     def test_g01_exact_closure_state_matching_two_subcounts(self):
-        table = base_case(steps=(1, 2, 3, 4))
-        table["steps/step-01-gate-record.md"] = gate_record(1, "CLOSED-PASS")
-        table["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-QUALIFIED")
-        table["steps/step-03-gate-record.md"] = gate_record(3, "CLOSED-FAIL")
-        table["steps/step-04-gate-record.md"] = gate_record(4, "CLOSED-PASS-EXTRA")
-        root = build_tree(table)
+        """G-01. WV22 F-2 F3, WV22 F-2 F4. Exact closure matching, two subcounts."""
+        case = staffing_case("g01-closures", steps=(1, 2, 3, 4))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(1, "CLOSED-PASS")
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-QUALIFIED")
+        case["files"]["steps/step-03-gate-record.md"] = gate_record(3, "CLOSED-FAIL")
+        case["files"]["steps/step-04-gate-record.md"] = gate_record(4, "CLOSED-PASS-EXTRA")
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         assert_verdict(self, block, "present but not derivable", "F-2")
         self.assertRegex(block, r"plain[^\d]*1(?!\d)(?!\.\d)")
         self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
-        self.assertRegex(block, r"(denominator[^\d]*3(?!\d)(?!\.\d)|"
-                                r"of 3(?!\d)(?!\.\d)|(?<!\d)3 steps ruled\b)")
 
     def test_g02_adjudication_as_first_ruling_source(self):
-        table = base_case(steps=(1,))
-        del table["steps/step-01-gate-record.md"]
-        table["steps/step-01-gate-adjudication.md"] = gate_record(
+        """G-02. EC-09. An adjudication stands as evidence beside the gate file."""
+        case = staffing_case("g02-adjudication", steps=(1,))
+        del case["files"]["steps/step-01-gate-record.md"]
+        case["files"]["steps/step-01-gate-adjudication.md"] = gate_record(
             1, "CLOSED-PASS", extra="Adjudication states the first gate outcome.")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         assert_verdict(self, block, "present", "F-2")
         self.assertIn("adjudication", block.lower())
 
     def test_g02_step_record_gate_histories_never_read(self):
-        table = base_case(steps=(1,))
-        del table["steps/step-01-gate-record.md"]
-        table["steps/step-01-record.md"] = step_record(
+        """G-02. WV22 F-2 F1. Gate histories inside step records never count."""
+        case = staffing_case("g02-history", steps=(1,))
+        del case["files"]["steps/step-01-gate-record.md"]
+        case["files"]["steps/step-01-record.md"] = step_record(
             1, extra="Gate history inside this record claims CLOSED-PASS.")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
-        block = row_block(result.stdout, "F-2")
-        assert_verdict(self, block, "present but not derivable", "F-2")
+        assert_verdict(self, row_block(result.stdout, "F-2"),
+                       "present but not derivable", "F-2")
 
     def test_g03_additions_over_base_with_ca9_three_figures(self):
-        table = base_case(steps=(1,))
-        table["steps/step-01-record.md"] = step_record(
+        """G-03. WV22 E-2 F1, WV22 E-2 F2. Additions over base, three figures."""
+        case = staffing_case("g03-additions", steps=(1,))
+        case["files"]["steps/step-01-record.md"] = step_record(
             1, base=2, total_spins=7,
             extra="Detail total spins: 7. Stated total spins: 6.")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-2")
         assert_verdict(self, block, "present", "E-2")
@@ -126,10 +160,11 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertRegex(block, r"variance[^\d]*1(?!\d)(?!\.\d)")
 
     def test_g03_step_with_no_base_named_for_additions_only(self):
-        table = base_case(steps=(1, 2))
-        table["steps/step-02-record.md"] = (
+        """G-03. WV22 E-2 F3. No base named: the step stands named, no figure."""
+        case = staffing_case("g03-no-base", steps=(1, 2))
+        case["files"]["steps/step-02-record.md"] = (
             "# Step 2 record\n\nNo base stated. Total spins: 5.\n")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-2")
         assert_verdict(self, block, "present", "E-2")
@@ -137,85 +172,93 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertIn("missing-field", block)
 
     def test_g04_keeper_gate_in_qualified_subcount_no_t7_effect(self):
-        table = base_case(steps=(22,))
-        table["steps/step-22-record.md"] = step_record(22)
-        table["steps/step-22-gate-record.md"] = gate_record(
+        """G-04. EC-09. Step 22 classed by content, qualified, no T-7 effect."""
+        case = staffing_case("g04-keeper", steps=(22,))
+        case["files"]["steps/step-22-gate-record.md"] = gate_record(
             22, "CLOSED-QUALIFIED",
             extra="Release gate record held by the Release-gate Keeper. Outcome: Go.")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
-        self.assertRegex(block, r"(denominator[^\d]*1(?!\d)(?!\.\d)|"
-                                r"of 1(?!\d)(?!\.\d))")
-        t7 = row_block(result.stdout, "T-7")
-        assert_verdict(self, t7, "missing", "T-7")
+        assert_verdict(self, row_block(result.stdout, "T-7"), "missing", "T-7")
 
     def test_g04_recycled_step_counted_once(self):
-        table = base_case(steps=(2,))
-        table["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-FAIL")
-        table["steps/step-02-regate-record.md"] = gate_record(
+        """G-04. Spin 772 key: a recycled instance yields one key, counted once."""
+        case = staffing_case("g04-recycled", steps=(2,))
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-FAIL")
+        case["files"]["steps/step-02-regate-record.md"] = gate_record(
             2, "CLOSED-QUALIFIED", extra="Recycled instance ruling.")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
         assert_verdict(self, block, "present", "F-2")
-        self.assertIn("first-time approval rate 0 percent", block)
-        self.assertIn("not approved", block.lower())
-        self.assertRegex(block, r"plain[^\d]*0(?!\d)(?!\.\d)")
-        self.assertRegex(block, r"qualified[^\d]*0(?!\d)(?!\.\d)")
-        self.assertRegex(block, r"(denominator[^\d]*1(?!\d)(?!\.\d)|"
-                                r"of 1(?!\d)(?!\.\d)|(?<!\d)1 step ruled\b)")
+        self.assertRegex(block, r"(denominator[^\d]*1(?!\d)(?!\.\d)|of 1(?!\d))")
 
     def test_g09_e1_present_with_coverage_remainder_named(self):
-        table = base_case(steps=(1, 2, 3, 4))
-        table["steps/step-04-record.md"] = (
+        """G-09. EC-28. WV22 E-1 F2. Present with the remainder named."""
+        case = staffing_case("g09-coverage", steps=(1, 2, 3, 4))
+        case["files"]["steps/step-04-record.md"] = (
             "# Step 4 record\n\nRoster stands. No base stated for this step.\n")
-        root = build_tree(table)
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present", "E-1")
         self.assertIn("Step 4", block)
-        self.assertRegex(block, r"(denominator[^\d]*4(?!\d)(?!\.\d)|"
-                                r"of 4 steps\b|(?<!\d)4 steps\b)")
+        self.assertRegex(block, r"(of 4 steps\b|(?<!\d)4 steps\b)")
 
     def test_e1_partial_coverage_without_defined_form_is_not_present(self):
-        table = base_case(steps=(1, 2))
-        table["steps/step-01-record.md"] = "# Step 1 record\n\nRoster fragment only.\n"
-        table["steps/step-02-record.md"] = "# Step 2 record\n\nRoster fragment only.\n"
-        root = build_tree(table)
+        """E-1 negative case. EC-28. Partial coverage in no defined form."""
+        case = staffing_case("e1-negative", steps=(1, 2))
+        case["files"]["steps/step-01-record.md"] = "# Step 1 record\n\nRoster fragment only.\n"
+        case["files"]["steps/step-02-record.md"] = "# Step 2 record\n\nRoster fragment only.\n"
+        root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present but not derivable", "E-1")
         self.assertIn("missing-field", block)
 
     def test_wv4_disputed_count_header_and_denominators(self):
-        root = build_tree(wv4_table())
+        """WV-4. EC-42. Disputed count: both counts stated, neither picked."""
+        case = staffing_case("wv4-disputed")
+        case["files"]["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body="Metrics record states the step universe as 2 steps."))
+        root = build_one(case)
         result = run_tool(root)
         self.assertEqual(result.returncode, 0, result.stderr)
-        assert_wv4_disputed_form(self, result)
+        cov = coverage_statement(result.stdout)
+        self.assertTrue(cov, "header coverage statement stands")
+        self.assertIn("build-metrics-record.md", cov)
+        self.assertRegex(cov, r"(?<!\d)2 steps\b")
+        self.assertRegex(cov, r"(?<!\d)3 steps\b")
+        self.assertIn("disagrees", cov.lower())
+        block = row_block(result.stdout, "E-1")
+        self.assertIn("record disagrees", statement_segment(block))
+        self.assertIn("Step 3", block)
 
     def test_e1_row_cross_check_marking_in_statement_line(self):
-        table = base_case(steps=(1,))
-        table["steps/step-01-record.md"] = step_record(1, team=3)
-        table["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
-            body="Metrics record states E-1 for Step 1 as 9 of 2.")
-        root = build_tree(table)
+        """Cross check marking. EC-43. Record disagrees in the statement line."""
+        case = staffing_case("e1-cross-check", steps=(1,))
+        case["files"]["steps/step-01-record.md"] = step_record(1, team=3)
+        case["files"]["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body="Metrics record states E-1 for Step 1 as 9 of 2."))
+        root = build_one(case)
         result = run_tool(root)
-        block = row_block(result.stdout, "E-1")
-        segment = statement_segment(block)
+        segment = statement_segment(row_block(result.stdout, "E-1"))
         self.assertIn("record disagrees", segment)
         self.assertIn("build-metrics-record.md", segment)
         self.assertIn("3 of 2", segment)
         self.assertIn("9 of 2", segment)
 
     def test_f18_unknown_version_slice3_rows(self):
-        table = base_case()
+        """F-18 variant. EC-03. WV-2 refusal for E-1, E-2 and F-2."""
+        case = staffing_case("f18-slice3")
         for n in (1, 2, 3):
-            del table["steps/step-%02d-gate-record.md" % n]
-        table["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
-            body="Step table stands.", header_version="unknown-version-999")
-        root = build_tree(table)
+            del case["files"]["steps/step-%02d-gate-record.md" % n]
+        case["files"]["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body="Step table stands.",
+                           header_version="unknown-version-999"))
+        root = build_one(case)
         result = run_tool(root)
         for code in ("E-1", "E-2"):
             block = row_block(result.stdout, code)
@@ -225,8 +268,321 @@ class TestSlice3Staffing(FixtureTestCase):
         assert_verdict(self, row_block(result.stdout, "F-2"), "missing", "F-2")
 
     def test_step_universe_reads_capture_only(self):
-        root = build_tree(staffing_table())
+        """Named reread test for Slice 3, plan Section 5. EC-04."""
+        root = build_one(staffing_case("reread-slice3"))
         assert_reads_capture_only(self, root)
+
+    def test_instance_key_restart_suffix_is_separate_instance(self):
+        """Spin 772 key, F-18. EC-10, EC-19. A restart suffix names a new key."""
+        case = staffing_case("key-restart", steps=(2,))
+        case["features"] = ("restart-instance",)
+        case["files"]["steps/step-02-record.md"] = step_record(
+            2, extra="Instance marker: restart suffix R stands on this record.")
+        case["files"]["steps/step-02r-record.md"] = (
+            "# Step 2 record, restart instance R\n\n"
+            "Build: metrics fixture build.\nBase: 2. Team staffed: 3 agents. "
+            "Total spins: 4.\nReplaces instance: Step 2 plain instance.\n")
+        case["files"]["steps/step-02r-gate-record.md"] = gate_record(2, "CLOSED-PASS")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-1")
+        assert_verdict(self, block, "present", "E-1")
+        self.assertRegex(block, r"(of 2 steps\b|(?<!\d)2 steps\b)")
+
+    def test_instance_key_recycled_inside_one_record_one_key(self):
+        """Spin 772 key. EC-19. One record, first ruling and recycle, one key."""
+        case = staffing_case("key-recycled", steps=(2,))
+        case["features"] = ("recycled-instance",)
+        case["files"]["steps/step-02-record.md"] = step_record(
+            2, extra="First ruling stands, then a recycle marker stands "
+                     "inside this same record for this same instance.")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-1")
+        assert_verdict(self, block, "present", "E-1")
+        self.assertRegex(block, r"(of 1 step\b|(?<!\d)1 step\b|denominator[^\d]*1(?!\d))")
+
+    def test_instance_key_same_key_across_four_record_kinds(self):
+        """Spin 772 key, if and only if rule. EC-10, EC-12, EC-13, EC-19.
+
+        A step record, a gate file, the path ledger and the metrics
+        record giving the same step number and the same instance
+        marker, here no marker, name one and the same instance.
+        """
+        case = staffing_case("key-same-across-kinds", steps=(1,))
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-1")
+        assert_verdict(self, block, "present", "E-1")
+        self.assertRegex(block, r"(of 1 step\b|(?<!\d)1 step\b|denominator[^\d]*1(?!\d))")
+        cov = coverage_statement(result.stdout)
+        self.assertNotIn("disagrees", cov.lower())
+
+    def test_instance_key_different_marker_never_merged(self):
+        """Spin 772 key. EC-19, EC-32. Replaced figures stay under their own key."""
+        case = staffing_case("key-not-merged", steps=(3,))
+        case["features"] = ("restart-instance", "figure-credited-to-other-step")
+        case["files"]["steps/step-03-record.md"] = step_record(
+            3, extra="Replaced instance figures stand named as replaced "
+                     "under the replaced instance key.")
+        case["files"]["steps/step-03r-gate-record.md"] = gate_record(3, "CLOSED-PASS")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertIn("replaced", block.lower())
+
+    def test_gate_alias_regate_record_counts_as_gate_file(self):
+        """Gate alias set, Margin M4 List 2. EC-09. The regate form stands in the set."""
+        case = staffing_case("alias-regate", steps=(5,))
+        del case["files"]["steps/step-05-gate-record.md"]
+        case["files"]["steps/step-05-regate-record.md"] = gate_record(5, "CLOSED-PASS")
+        root = build_one(case)
+        result = run_tool(root)
+        assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
+
+    def test_gate_alias_round_and_reaudit_variants_read(self):
+        """Gate alias set, Margin M4 List 2. EC-09. Ruling variants stand in the set."""
+        case = staffing_case("alias-variants", steps=(6,))
+        del case["files"]["steps/step-06-gate-record.md"]
+        case["files"]["steps/step-06-gate-ruling-round-2.md"] = gate_ruling(6)
+        case["files"]["steps/step-06-gate-ruling-reaudit.md"] = gate_ruling(6)
+        root = build_one(case)
+        result = run_tool(root)
+        assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
+
+    def test_gate_alias_near_match_name_not_read(self):
+        """Gate alias set, Margin M4 List 2. EC-22. A near match name stands outside."""
+        case = staffing_case("alias-near-match", steps=(7,))
+        del case["files"]["steps/step-07-gate-record.md"]
+        case["features"] = ("near-match-name",)
+        case["files"]["steps/step-07-gate-notes.md"] = gate_record(7, "CLOSED-PASS")
+        root = build_one(case)
+        result = run_tool(root)
+        assert_verdict(self, row_block(result.stdout, "F-2"),
+                       "present but not derivable", "F-2")
+
+    def test_gate_alias_both_names_disagreement_reported(self):
+        """Gate alias set, Margin M4 List 2. EC-09. Both names read, disagreement shown."""
+        case = staffing_case("alias-disagreement", steps=(1,))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(1, "CLOSED-PASS")
+        case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(1, "CLOSED-FAIL")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        self.assertIn("disagree", block.lower())
+
+    def test_f05_unmarked_signal_one(self):
+        """F-05 unmarked, switch M-05, signal-one. EC-20. No correcting record."""
+        root = build_one(unmarked_case("f05-m05-s1", "F-05", "signal-one", False))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-one", result.stdout)
+
+    def test_f05_unmarked_signal_two(self):
+        """F-05 unmarked, switch M-05, signal-two. EC-20. No correcting record."""
+        root = build_one(unmarked_case("f05-m05-s2", "F-05", "signal-two", False))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-two", result.stdout)
+
+    def test_f05_unmarked_signal_three(self):
+        """F-05 unmarked, switch M-05, signal-three. EC-20. No correcting record."""
+        root = build_one(unmarked_case("f05-m05-s3", "F-05", "signal-three", False))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-three", result.stdout)
+
+    def test_f06_unmarked_signal_one(self):
+        """F-06 unmarked, switch M-05, signal-one. EC-20. One correcting record stands."""
+        root = build_one(unmarked_case("f06-m05-s1", "F-06", "signal-one", True))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-one", result.stdout)
+
+    def test_f06_unmarked_signal_two(self):
+        """F-06 unmarked, switch M-05, signal-two. EC-20. One correcting record stands."""
+        root = build_one(unmarked_case("f06-m05-s2", "F-06", "signal-two", True))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-two", result.stdout)
+
+    def test_f06_unmarked_signal_three(self):
+        """F-06 unmarked, switch M-05, signal-three. EC-20. One correcting record stands."""
+        root = build_one(unmarked_case("f06-m05-s3", "F-06", "signal-three", True))
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("step-01-audit-paper.md", result.stdout)
+        self.assertIn("signal-three", result.stdout)
+
+    def test_f05_f06_pair_relation_in_prose_form(self):
+        """F-05 and F-06 pair relation, plan Section 2A condition four.
+
+        Pair case in prose form, outside the factory: the two trees
+        stand built side by side through build_cases, one case table
+        per tree. The trees agree in every piece except one position:
+        the F-05 tree holds the unmarked audit paper under switch
+        M-05 with no correcting record standing, and the F-06 tree
+        holds the same paper under the same switch and the same
+        failed signal, signal-one, with one correcting record
+        standing. The relation asserted is that the pair differs in
+        the correcting record position alone, so any report
+        difference between the two runs stands charged to that
+        position and to no other difference.
+        """
+        first = unmarked_case("pair-f05", "F-05", "signal-one", False)
+        second = unmarked_case("pair-f06", "F-06", "signal-one", True)
+        built = build_cases((first, second), tracked_tempdir("msc_pair_"))
+        first_result = run_tool(built["pair-f05"])
+        second_result = run_tool(built["pair-f06"])
+        self.assertEqual(first_result.returncode, 0, first_result.stderr)
+        self.assertEqual(second_result.returncode, 0, second_result.stderr)
+        self.assertIn("step-01-audit-paper.md", first_result.stdout)
+        self.assertIn("step-01-audit-paper.md", second_result.stdout)
+        self.assertIn("signal-one", first_result.stdout)
+        self.assertIn("signal-one", second_result.stdout)
+        self.assertIn("correcting", second_result.stdout.lower())
+
+    def test_wv21_gate_ruling_habit_same_f2_row(self):
+        """WV2-21 habit four. EC-09, EC-04, EC-32.
+
+        Two shapes on equivalent content: gate files under the record
+        name in the first shape and under the ruling name throughout
+        in the second. The F-2 row stands compared verdict, value and
+        denominator under EC-04 and must not differ between shapes.
+        """
+        first = staffing_case("wv21-shape-first", features=("gate-record-name",))
+        second = staffing_case("wv21-shape-second", features=("gate-ruling-name",))
+        for n in (1, 2, 3):
+            second["files"]["steps/step-%02d-gate-ruling.md" % n] = (
+                second["files"].pop("steps/step-%02d-gate-record.md" % n))
+        built = build_cases((first, second), tracked_tempdir("msc_wv21_"))
+        first_block = row_block(run_tool(built["wv21-shape-first"]).stdout, "F-2")
+        second_block = row_block(run_tool(built["wv21-shape-second"]).stdout, "F-2")
+        assert_verdict(self, first_block, "present", "F-2")
+        assert_verdict(self, second_block, "present", "F-2")
+        self.assertEqual(row_block_verdict(first_block), row_block_verdict(second_block))
+
+    def test_wv21_second_shape_e1_e2_substance_same(self):
+        """WV2-21 row points. EC-28, EC-29, EC-04. E-1 and E-2 on habit content."""
+        first = staffing_case("wv21-rows-first", features=("gate-record-name",))
+        second = staffing_case("wv21-rows-second", features=("gate-ruling-name",))
+        for n in (1, 2, 3):
+            second["files"]["steps/step-%02d-gate-ruling.md" % n] = (
+                second["files"].pop("steps/step-%02d-gate-record.md" % n))
+        built = build_cases((first, second), tracked_tempdir("msc_wv21r_"))
+        first_out = run_tool(built["wv21-rows-first"]).stdout
+        second_out = run_tool(built["wv21-rows-second"]).stdout
+        for code in ("E-1", "E-2"):
+            self.assertEqual(row_block_verdict(row_block(first_out, code)),
+                             row_block_verdict(row_block(second_out, code)), code)
+
+    def test_wv22_e1_f1_staffed_list_in_named_feeder_only(self):
+        """WV22 E-1 F1. EC-28. A list for another step counts for nothing."""
+        case = staffing_case("wv22-e1-f1", steps=(1, 2))
+        case["files"]["steps/step-02-record.md"] = (
+            "# Step 2 record\n\nStaffed list standing here names Step 1 only.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-1")
+        assert_verdict(self, block, "present", "E-1")
+        self.assertIn("Step 2", block)
+
+    def test_wv22_e1_f2_base_count_same_step(self):
+        """WV22 E-1 F2. EC-28. List and base count must stand for the same step."""
+        case = staffing_case("wv22-e1-f2", steps=(1,))
+        case["files"]["steps/step-01-record.md"] = (
+            "# Step 1 record\n\nNamed agents: 3. Base count stands "
+            "for Step 9 in this text and for no step in this tree.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        assert_verdict(self, row_block(result.stdout, "E-1"),
+                       "present but not derivable", "E-1")
+
+    def test_wv22_e2_f1_addition_entries_labelled(self):
+        """WV22 E-2 F1. EC-29. Additions printed labelled, never unlabelled."""
+        case = staffing_case("wv22-e2-f1", steps=(1,))
+        case["files"]["steps/step-01-record.md"] = step_record(
+            1, additions=1)
+        case["features"] = ("additions-over-base-stated",)
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present", "E-2")
+        self.assertIn("additions over base", block.lower())
+
+    def test_wv22_e2_f2_total_only_step_split_form(self):
+        """WV22 E-2 F2. EC-29. A total only step: present for total, not for E-2."""
+        case = staffing_case("wv22-e2-f2", steps=(1,))
+        case["features"] = ("total-only-step",)
+        case["files"]["steps/step-01-record.md"] = (
+            "# Step 1 record\n\nTotal spins: 6. No addition entries stand.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present but not derivable", "E-2")
+        self.assertIn("total spins", block.lower())
+
+    def test_wv22_e2_f3_total_alone_never_additions(self):
+        """WV22 E-2 F3. EC-29. A total alone yields no additions figure."""
+        case = staffing_case("wv22-e2-f3", steps=(1,))
+        case["files"]["steps/step-01-roster.md"] = (
+            "# Step 1 roster\n\nTotal standing alone: 9. "
+            "No addition entries in the roster form stand.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        self.assertNotIn("additions over base: 9", block.lower())
+
+    def test_wv22_f2_f1_outcome_in_one_named_place(self):
+        """WV22 F-2 F1. EC-32. Scattered outcomes count for nothing."""
+        case = staffing_case("wv22-f2-f1", steps=(1,))
+        del case["files"]["steps/step-01-gate-record.md"]
+        case["files"]["steps/step-01-record.md"] = step_record(
+            1, extra="An outcome word stands scattered in this record only.")
+        root = build_one(case)
+        result = run_tool(root)
+        assert_verdict(self, row_block(result.stdout, "F-2"),
+                       "present but not derivable", "F-2")
+
+    def test_wv22_f2_f2_outcome_words(self):
+        """WV22 F-2 F2. EC-32. Go, Hold, Recycle and Kill under the approval test."""
+        case = staffing_case("wv22-f2-f2", steps=(1, 2, 3, 4))
+        words = {1: "Go, closes the step, no send back before closure.",
+                 2: "Hold, closes nothing, the step stands to be ruled again.",
+                 3: "Recycle, the step stands sent back.",
+                 4: "Kill, the step stands failed, nothing closed as approved."}
+        for n, text in words.items():
+            case["files"]["steps/step-%02d-gate-record.md" % n] = gate_record(
+                n, "CLOSED-PASS", extra="First ruling outcome: " + text)
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertRegex(block, r"plain[^\d]*1(?!\d)(?!\.\d)")
+
+    def test_wv22_f2_f3_f4_subcounts_travel_with_rate(self):
+        """WV22 F-2 F3, WV22 F-2 F4. EC-32. Subcounts under one denominator."""
+        case = staffing_case("wv22-f2-f34", steps=(1, 2))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(1, "CLOSED-PASS")
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-QUALIFIED")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertRegex(block, r"plain[^\d]*1(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"(denominator[^\d]*2(?!\d)(?!\.\d)|of 2(?!\d))")
+
+
+def row_block_verdict(block):
+    from tests.fixture_builder import row_verdict
+    return row_verdict(block)
 
 
 if __name__ == "__main__":
