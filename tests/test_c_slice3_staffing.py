@@ -12,11 +12,13 @@ import re
 import unittest
 
 from tests.fixture_builder import (FixtureTestCase, assert_verdict,
+                                     audit_paper_failed_signal,
                                      assert_reads_capture_only, build_case,
                                      build_cases, coverage_statement,
                                      gate_record, gate_ruling, metrics_record,
                                      path_ledger, row_block, run_tool,
                                      statement_segment, step_record,
+                                     unmarked_case,
                                      tracked_tempdir)
 
 
@@ -45,45 +47,27 @@ def build_one(case):
     return build_case(case, tracked_tempdir("msc_slice3_"))
 
 
-def audit_paper_failed_signal(signal):
-    if signal == "signal-one":
-        return ("# Step 1 audit paper\n\nFindings in number order.\n"
-                "Finding 1 stands.\nFinding 2 stands.\nFinding 4 stands.\n")
-    if signal == "signal-two":
-        return ("# Step 1 audit paper\n\nSeverity breakdown table. "
-                "Rows stated in header: 5.\n"
-                "| Severity | Count |\n| --- | --- |\n"
-                "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
-    return ("# Step 1 audit paper\n\nContents list: Section Alpha, "
-            "Section Beta.\n\n## Section Alpha\n\nText stands.\n")
-
-
-def unmarked_case(name, family, signal, with_correcting):
-    files = staffing_files((1,))
-    files["audit/step-01-audit-paper.md"] = audit_paper_failed_signal(signal)
-    if with_correcting:
-        files["audit/step-01-correcting-record.md"] = (
-            "# Correcting record for step 1\n\n"
-            "The correcting record stands for the step 1 audit paper.\n")
-    case = {"name": name, "features": (), "files": files,
-            "malformations": (
-                {"switch": "M-05",
-                 "target": "audit/step-01-audit-paper.md",
-                 "target_kind": "AP",
-                 "state": "signal-failed",
-                 "signal": signal},)}
-    return case
-
-
 class TestSlice3Staffing(FixtureTestCase):
 
     def test_f04_both_gate_names_read(self):
-        """F-04. EC-09, EC-19. Gate record and gate ruling both read."""
+        """F-04. EC-09, EC-19. Gate record and gate ruling both read.
+
+        The ruling name file stands as the sole source of one
+        asserted subcount: Step 3 carries no gate record, only a
+        gate ruling in the qualified form, so the qualified
+        subcount of 1 can stand only if the ruling name is read.
+        """
         case = staffing_case("f04-both-names")
         case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(1)
+        del case["files"]["steps/step-03-gate-record.md"]
+        case["files"]["steps/step-03-gate-ruling.md"] = gate_ruling(
+            3, "CLOSED-QUALIFIED")
         root = build_one(case)
         result = run_tool(root)
-        assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
+        self.assertRegex(block, r"plain[^\d]*2(?!\d)(?!\.\d)")
 
     def test_f04_step_with_neither_gate_name(self):
         """F-04. EC-09, EC-23. A step with neither gate name stands missing."""
@@ -103,8 +87,10 @@ class TestSlice3Staffing(FixtureTestCase):
                                 "Steps 2 and 3 not stated."))
         root = build_one(case)
         result = run_tool(root)
-        self.assertIn("coverage", result.stdout.lower())
-        self.assertTrue("Step 2" in result.stdout or "Step 3" in result.stdout)
+        cov = coverage_statement(result.stdout)
+        self.assertTrue(cov, "header coverage statement stands")
+        self.assertIn("Step 2", cov)
+        self.assertIn("Step 3", cov)
 
     def test_g01_exact_closure_state_matching_two_subcounts(self):
         """G-01. WV22 F-2 F3, WV22 F-2 F4. Exact closure matching, two subcounts."""
@@ -121,7 +107,14 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertRegex(block, r"qualified[^\d]*1(?!\d)(?!\.\d)")
 
     def test_g02_adjudication_as_first_ruling_source(self):
-        """G-02. EC-09. An adjudication stands as evidence beside the gate file."""
+        """G-02. WV22 F-2 F1 to F4 exclusion limb; EC-09, EC-32.
+
+        An outcome standing only in an adjudication record never
+        counts, excluded from numerator and denominator alike: the
+        F-2 row stands present but not derivable on the adjudication
+        only fixture, with the reason naming the adjudication record
+        kind, never stated as absence of a ruling.
+        """
         case = staffing_case("g02-adjudication", steps=(1,))
         del case["files"]["steps/step-01-gate-record.md"]
         case["files"]["steps/step-01-gate-adjudication.md"] = gate_record(
@@ -129,7 +122,7 @@ class TestSlice3Staffing(FixtureTestCase):
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
-        assert_verdict(self, block, "present", "F-2")
+        assert_verdict(self, block, "present but not derivable", "F-2")
         self.assertIn("adjudication", block.lower())
 
     def test_g02_step_record_gate_histories_never_read(self):
@@ -466,7 +459,12 @@ class TestSlice3Staffing(FixtureTestCase):
         second_block = row_block(run_tool(built["wv21-shape-second"]).stdout, "F-2")
         assert_verdict(self, first_block, "present", "F-2")
         assert_verdict(self, second_block, "present", "F-2")
-        self.assertEqual(row_block_verdict(first_block), row_block_verdict(second_block))
+        self.assertEqual(
+            _row_substance(first_block), _row_substance(second_block),
+            "F-2 row parts differ between shapes under EC-04: first "
+            "shape %r, second shape %r; shape difference: gate files "
+            "under the ruling name throughout"
+            % (_row_substance(first_block), _row_substance(second_block)))
 
     def test_wv21_second_shape_e1_e2_substance_same(self):
         """WV2-21 row points. EC-28, EC-29, EC-04. E-1 and E-2 on habit content."""
@@ -479,8 +477,15 @@ class TestSlice3Staffing(FixtureTestCase):
         first_out = run_tool(built["wv21-rows-first"]).stdout
         second_out = run_tool(built["wv21-rows-second"]).stdout
         for code in ("E-1", "E-2"):
-            self.assertEqual(row_block_verdict(row_block(first_out, code)),
-                             row_block_verdict(row_block(second_out, code)), code)
+            first_block = row_block(first_out, code)
+            second_block = row_block(second_out, code)
+            self.assertEqual(
+                _row_substance(first_block), _row_substance(second_block),
+                "row %s parts differ between shapes under EC-04: first "
+                "shape %r, second shape %r; shape difference: gate "
+                "files under the ruling name throughout"
+                % (code, _row_substance(first_block),
+                   _row_substance(second_block)))
 
     def test_wv22_e1_f1_staffed_list_in_named_feeder_only(self):
         """WV22 E-1 F1. EC-28. A list for another step counts for nothing."""
@@ -492,6 +497,7 @@ class TestSlice3Staffing(FixtureTestCase):
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present", "E-1")
         self.assertIn("Step 2", block)
+        self.assertRegex(block, r"(of 2 steps\b|(?<!\d)2 steps\b)")
 
     def test_wv22_e1_f2_base_count_same_step(self):
         """WV22 E-1 F2. EC-28. List and base count must stand for the same step."""
@@ -529,15 +535,25 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertIn("total spins", block.lower())
 
     def test_wv22_e2_f3_total_alone_never_additions(self):
-        """WV22 E-2 F3. EC-29. A total alone yields no additions figure."""
+        """WV22 E-2 F3. EC-29. A total alone yields no additions figure.
+
+        In the form its Slice 1 twin uses: the verdict form stands
+        asserted, total spins stands in the block, not derivable
+        stands in the block, and no figure stands in the additions
+        position for the total alone step.
+        """
         case = staffing_case("wv22-e2-f3", steps=(1,))
         case["files"]["steps/step-01-roster.md"] = (
-            "# Step 1 roster\n\nTotal standing alone: 9. "
+            "# Step 1 roster\n\nNamed agents: 3. Base: 2.\n"
+            "Total standing alone: 9. "
             "No addition entries in the roster form stand.\n")
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-2")
-        self.assertNotIn("additions over base: 9", block.lower())
+        self.assertIn("total spins", block.lower())
+        self.assertIn("not derivable", block.lower())
+        self.assertNotRegex(block.lower(),
+                            r"additions over base[^|]*9(?!\d)")
 
     def test_wv22_f2_f1_outcome_in_one_named_place(self):
         """WV22 F-2 F1. EC-32. Scattered outcomes count for nothing."""
@@ -580,9 +596,167 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertRegex(block, r"(denominator[^\d]*2(?!\d)(?!\.\d)|of 2(?!\d))")
 
 
+    def test_f22_no_degraded_marking_on_f2_row(self):
+        """F-22 degraded forms, Slice 3 negative limb. EC-32.
+
+        No degraded marking stands on an F-2 row: the two degraded
+        forms belong to T-4 and T-7 alone, and F-2 carries none.
+        """
+        case = staffing_case("f22-f2-negative")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertNotIn("degraded", block.lower())
+        self.assertNotIn("counted, not marked", block.lower())
+
+    def test_f26_ca2_06_case_form_recorded_by_step_name(self):
+        """F-26 CA2-06 case form. EC-29; DG-03; R12-08 deferral form.
+
+        The case records, by step name, which CA2-06 case its built
+        fixture tree builds, and asserts the E-2 row in that case
+        form. Step 1 builds the second case: the stated total and
+        the base position both stand, and no roster addition entries
+        and no named agents stand for that step in a countable form.
+        Step 2 builds the subtraction case: a specific arithmetic
+        input, the base position, stands absent for that step. A
+        tree whose built case cannot be recorded fails in this form.
+        """
+        case = staffing_case("f26-ca2-06", steps=(1, 2))
+        case["files"]["steps/step-01-record.md"] = (
+            "# Step 1 record\n\nBuild: metrics fixture build.\n"
+            "Base: 2. Total spins: 6.\n")
+        case["files"]["steps/step-02-record.md"] = (
+            "# Step 2 record\n\nBuild: metrics fixture build.\n"
+            "Total spins: 5. No base stated for this step.\n")
+        recorded = {}
+        for n in (1, 2):
+            text = case["files"]["steps/step-%02d-record.md" % n]
+            has_total = "Total spins:" in text
+            has_base = "Base:" in text
+            has_entries = "Roster additions" in text
+            has_named = "Named agents:" in text
+            if has_total and has_base and not has_entries and not has_named:
+                recorded["Step %d" % n] = "second-case"
+            elif has_total and not has_base:
+                recorded["Step %d" % n] = "subtraction-case"
+            else:
+                self.fail("built CA2-06 case cannot be recorded by "
+                          "step name for Step %d" % n)
+        self.assertEqual(recorded.get("Step 1"), "second-case")
+        self.assertEqual(recorded.get("Step 2"), "subtraction-case")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        self.assertIn("Step 2", block)
+        self.assertNotRegex(
+            block.lower(), r"additions over base step 2:\s*\d")
+        self.assertIn("Step 1", block)
+        self.assertRegex(block, r"total spins Step 1:\s*6(?!\d)")
+        self.assertRegex(block.lower(), r"base[^\d]*2(?!\d)")
+        lowered = block.lower()
+        self.assertIn("no roster addition entries", lowered)
+        self.assertIn("no named agents", lowered)
+        self.assertIn("countable form", lowered)
+
+    def test_f27_figure_credited_to_described_step_pointer_names_source(self):
+        """F-27 credited step, Slice 3 placement. EC-29.
+
+        A figure stored on one step record describing another step
+        stands credited to the described step, and the pointer on
+        the row names where the figure was found: the record of the
+        step that stores it.
+        """
+        case = staffing_case("f27-credited", steps=(1, 2),
+                             features=("figure-credited-to-other-step",))
+        case["files"]["steps/step-01-record.md"] = step_record(
+            1, extra="Total spins for Step 2: 7.")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present", "E-2")
+        self.assertRegex(block, r"Step 2:\s*7(?!\d)")
+        self.assertNotRegex(block, r"Step 1:\s*7(?!\d)")
+        self.assertIn("step-01-record.md", block)
+
+    def test_f18_recycle_inside_one_record_f2_q4_visible(self):
+        """Brief family F-18 recycle limb. EC-19, EC-32, EC-35.
+
+        A recycle inside one record file counts as one instance,
+        beside the standing E-1 assertion on the same tree, with
+        the first ruling and the recycle both visible to the F-2
+        and Q-4 derivations in their single counting forms.
+        """
+        case = staffing_case("f18-recycle-visibility", steps=(2,))
+        case["features"] = ("recycled-instance",)
+        case["files"]["steps/step-02-record.md"] = step_record(
+            2, extra="First ruling stands, then a recycle marker stands "
+                     "inside this same record for this same instance.")
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(
+            2, "CLOSED-PASS",
+            extra="First trace for step 2: 2 LANDED of 2 items "
+                  "checked, 0 PARTIAL, 0 CONTRADICTED.")
+        case["files"]["steps/step-02-trace-record.md"] = (
+            "# Step 2 first trace record\n\nParts: 2 LANDED, "
+            "1 PARTIAL, 0 CONTRADICTED. Stated total: 3 items "
+            "checked.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        e1 = row_block(result.stdout, "E-1")
+        assert_verdict(self, e1, "present", "E-1")
+        self.assertRegex(
+            e1, r"(of 1 step\b|(?<!\d)1 step\b|denominator[^\d]*1(?!\d))")
+        f2 = row_block(result.stdout, "F-2")
+        assert_verdict(self, f2, "present", "F-2")
+        self.assertRegex(
+            f2, r"(denominator[^\d]*1(?!\d)(?!\.\d)|of 1(?!\d))")
+        q4 = row_block(result.stdout, "Q-4")
+        assert_verdict(self, q4, "present", "Q-4")
+        self.assertIn("Step 2", q4)
+
+
 def row_block_verdict(block):
     from tests.fixture_builder import row_verdict
     return row_verdict(block)
+
+
+def _row_substance(block):
+    """Return the EC-04 compared parts of one row block.
+
+    Verdict, value or its stated absence, denominator position,
+    step coverage as printed in the value and denominator parts,
+    pointer in substance, and reason in substance where the block
+    carries one, normalised for the gate name, in the form the
+    Slice 7 _row_substance helper shows.
+    """
+    from tests.fixture_builder import row_verdict
+    lines = [ln for ln in block.splitlines() if ln.strip()]
+    first = lines[0] if lines else ""
+    chunks = [chunk.strip() for chunk in first.split(" | ")]
+    substance = {"verdict": row_verdict(block)}
+    if len(chunks) > 2:
+        pointer = chunks[2].lower()
+        for form in ("gate ruling", "gate record",
+                     "gate-ruling", "gate-record"):
+            pointer = pointer.replace(form, "gate file")
+        substance["Pointer"] = pointer
+    if len(chunks) > 3:
+        substance["Value"] = re.sub(r"\s+", " ", chunks[3].lower()).strip()
+    if len(chunks) > 4:
+        substance["Denominator"] = re.sub(
+            r"\s+", " ", " | ".join(chunks[4:]).lower()).strip()
+    for line in lines[1:]:
+        lowered = line.lower()
+        if lowered.startswith("reason:"):
+            reason = lowered
+            for form in ("gate ruling", "gate record",
+                         "gate-ruling", "gate-record"):
+                reason = reason.replace(form, "gate file")
+            substance["Reason"] = re.sub(r"\s+", " ", reason).strip()
+        if lowered.startswith("statement line:"):
+            substance["Statement"] = re.sub(
+                r"\s+", " ", lowered).strip()
+    return substance
 
 
 if __name__ == "__main__":

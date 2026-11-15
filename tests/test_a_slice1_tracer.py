@@ -14,6 +14,7 @@ pre install route, python3 -m metrics_starter_collector from the
 public repo root, root argument first, then the optional report
 argument in its two word form.
 """
+import re
 import subprocess
 import sys
 import unittest
@@ -21,6 +22,7 @@ from pathlib import Path
 
 from tests.fixture_builder import (
     F16_FILE_COUNT,
+    REASON_CODES,
     FixtureTestCase,
     STARTER_ORDER,
     assert_reads_capture_only,
@@ -28,10 +30,12 @@ from tests.fixture_builder import (
     assert_verdict,
     build_case,
     build_cases,
+    clean_files,
     data_quality_entry_for,
     data_quality_section,
     f16_miniature_case,
     measure_tree,
+    metrics_text,
     row_block,
     row_order,
     row_verdict,
@@ -98,41 +102,52 @@ def date_only_transitions(steps=(1, 2, 3)):
         for n in steps)
 
 
-def metrics_text(decision_rows=None, header_version=None, body_extra=""):
-    version_line = ""
-    if header_version is not None:
-        version_line = "Definitions version: %s\n" % header_version
-    rows = decision_rows
-    if rows is None:
-        rows = ("| Q-1 | 1 | 2026-11-01 09:00 | 2026-11-01 10:00 | "
-                "2026-11-01 13:00 |")
-    return ("# Build metrics record\n\nBuild: metrics fixture build.\n"
-            "%s\nStep table stands complete for the fixture steps.\n%s\n"
-            "## Decision table\n\n"
-            "| Item | Origin step | Raised | Presented | Ruled |\n"
-            "| --- | --- | --- | --- | --- |\n%s\n"
-            % (version_line, body_extra, rows))
-
-
-def clean_files(ledger=None, metrics=None):
-    """Files for a small complete tree over Steps 1, 2 and 3."""
-    files = {}
-    for n in (1, 2, 3):
-        files["steps/step-%02d-record.md" % n] = step_record_text(n)
-        files["steps/step-%02d-roster.md" % n] = roster_text(
-            n, additions=1 if n == 3 else 0)
-        files["steps/step-%02d-gate-record.md" % n] = gate_record_text(n)
-    files["PATH-LEDGER.md"] = ledger or ledger_text(
-        full_clock_transitions())
-    files["TIER-RECORD.md"] = "# Tier record\n\nTier: Low. Base: 2.\n"
-    files.update(single_page_metrics_record_files(
-        metrics if metrics is not None else metrics_text()))
-    return files
-
-
 def clean_case(name, ledger=None, metrics=None, features=()):
     return {"name": name, "features": tuple(features),
             "files": clean_files(ledger=ledger, metrics=metrics)}
+
+
+def _substance_normalised(text):
+    value = text.lower()
+    value = value.replace("gate-ruling", "gate-file")
+    value = value.replace("gate-record", "gate-file")
+    value = value.replace("gate ruling", "gate file")
+    value = value.replace("gate record", "gate file")
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _row_substance(block):
+    """Return the EC-04 compared parts of one row block, normalised.
+
+    The form follows the Slice 7 _row_substance helper: verdict,
+    value or its stated absence, numerator and denominator where
+    the metric is a share, step coverage, pointer in substance,
+    and reason in substance where the verdict is not present.
+    """
+    substance = {"verdict": row_verdict(block)}
+    lines = block.splitlines()
+    first = lines[0] if lines else ""
+    segments = [segment.strip() for segment in first.split(" | ")]
+    value_segments = []
+    for segment in segments[2:]:
+        if segment.startswith("Pointer:"):
+            substance["pointer"] = _substance_normalised(segment)
+        elif segment.lower().startswith("denominator"):
+            substance["coverage"] = _substance_normalised(segment)
+        else:
+            value_segments.append(segment)
+    value = "; ".join(value_segments)
+    if value:
+        substance["value"] = _substance_normalised(value)
+        share = re.search(r"(\d+) of (\d+)", value)
+        if share:
+            substance["numerator"] = share.group(1)
+            substance["share denominator"] = share.group(2)
+    reason = " ".join(line for line in lines
+                      if line.startswith("Reason:"))
+    if reason:
+        substance["reason"] = _substance_normalised(reason)
+    return substance
 
 
 class TestSlice1Tracer(FixtureTestCase):
@@ -195,9 +210,8 @@ class TestSlice1Tracer(FixtureTestCase):
         root = self.build(clean_case("t1-f2-mixed", ledger=ledger))
         result = run_tool(root)
         block = row_block(result.stdout, "T-1")
-        self.assertNotEqual(row_verdict(block), "present",
-                            "one date only closing entry must not pass T-1 "
-                            "for its step in full: " + block[:300])
+        assert_verdict(self, block, "present but not derivable", "T-1")
+        self.assertIn("partial-span", block)
 
     def test_wv22_t1_f1_time_outside_transitions_counts_for_nothing(self):
         """WV22 T-1 F1: a time of day outside the transition entries counts for nothing."""
@@ -237,6 +251,8 @@ class TestSlice1Tracer(FixtureTestCase):
         block = row_block(result.stdout, "E-1")
         assert_verdict(self, block, "present", "E-1")
         self.assertIn("Step 2", block)
+        self.assertNotIn("Step 2 staffed", block)
+        self.assertRegex(block, r"(of 3 steps\b|(?<!\d)3 steps\b)")
 
     def test_wv22_e2_f1_additions_labelled(self):
         """WV22 E-2 F1; EC-29: additions print labelled as additions over base."""
@@ -291,7 +307,10 @@ class TestSlice1Tracer(FixtureTestCase):
         result = run_tool(root)
         block = row_block(result.stdout, "Q-4")
         assert_verdict(self, block, "present", "Q-4")
-        self.assertIn("2", block)
+        self.assertRegex(block, r"(?<!\d)6 LANDED\b")
+        self.assertRegex(block, r"(?<!\d)0 PARTIAL\b")
+        self.assertRegex(block, r"(?<!\d)0 CONTRADICTED\b")
+        self.assertRegex(block, r"(?<!\d)6 items checked\b")
 
     def test_wv22_q4_f3_sum_test_exception_beside_reconciled_steps(self):
         """WV22 Q-4 F3; EC-35: one excepted step, the build verdict stays present."""
@@ -318,6 +337,27 @@ class TestSlice1Tracer(FixtureTestCase):
         result = run_tool(root)
         block = row_block(result.stdout, "Q-4")
         assert_verdict(self, block, "present but not derivable", "Q-4")
+
+    def test_f19_mapping_force_statement_refused_and_absent_file_figure(self):
+        """Brief family F-19 mapping test; D4R-25, R-256: force refused, absent file not recorded."""
+        case = clean_case(
+            "f19-mapping",
+            metrics=metrics_text(body_extra=(
+                "Record change statement: the per step money field "
+                "for every step stands IN FORCE and is asserted "
+                "present as a field of the step records for E-4.\n"
+                "Tokens for Step 1: 5000, recorded in "
+                "registers/cost-ledger.md.\n")))
+        root = self.build(case)
+        result = run_tool(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        money = row_block(result.stdout, "E-4")
+        assert_verdict(self, money, "present but not derivable", "E-4")
+        self.assertIn("missing-field", money)
+        tokens = row_block(result.stdout, "E-3")
+        assert_verdict(self, tokens, "missing", "E-3")
+        self.assertIn("registers/cost-ledger.md", tokens)
+        self.assertIn("R-256", tokens)
 
     def test_f18_unknown_definitions_version_slice1_rows(self):
         """F-18 scoped to Slice 1 rows; EC-03: feeders standing take the refusal."""
@@ -400,7 +440,13 @@ class TestSlice1Tracer(FixtureTestCase):
         for code in STARTER_ORDER:
             block = row_block(result.stdout, code)
             self.assertTrue(block, code)
-            self.assertTrue((".md" in block) or ("present" in block), code)
+            self.assertRegex(block, r"Pointer:[^\n]*\.md", code)
+            if row_verdict(block) != "present":
+                self.assertIn("Reason", block, code)
+                self.assertTrue(
+                    any(reason_code in block
+                        for reason_code in REASON_CODES),
+                    "no reason code stands on the row for " + code)
 
     def test_exit_zero_on_completed_report(self):
         """Exit contract: a completed report exits 0."""
@@ -562,10 +608,10 @@ class TestSlice1Tracer(FixtureTestCase):
         second = run_tool(built["shape-split"])
         for code in STARTER_ORDER:
             self.assertEqual(
-                row_verdict(row_block(first.stdout, code)),
-                row_verdict(row_block(second.stdout, code)),
-                "verdict differs between shapes on %s, shape difference: "
-                "metrics record split across pages" % code)
+                _row_substance(row_block(first.stdout, code)),
+                _row_substance(row_block(second.stdout, code)),
+                "row substance differs between shapes on %s, shape "
+                "difference: metrics record split across pages" % code)
 
     def test_wv21_ec09_gate_ruling_name_same_verdicts(self):
         """EC-09, EC-04, EC-19, EC-28: gate files under the ruling name read the same."""
@@ -585,10 +631,10 @@ class TestSlice1Tracer(FixtureTestCase):
         second = run_tool(built["gate-ruling-shape"])
         for code in ("E-1", "E-2", "Q-4"):
             self.assertEqual(
-                row_verdict(row_block(first.stdout, code)),
-                row_verdict(row_block(second.stdout, code)),
-                "verdict differs between shapes on %s, shape difference: "
-                "gate files under the ruling name" % code)
+                _row_substance(row_block(first.stdout, code)),
+                _row_substance(row_block(second.stdout, code)),
+                "row substance differs between shapes on %s, shape "
+                "difference: gate files under the ruling name" % code)
 
     def test_step_universe_includes_step_evidenced_only_by_regate_record(self):
         """Step universe variant gate test; EC-09, EC-10."""
@@ -649,9 +695,8 @@ class TestSlice1Tracer(FixtureTestCase):
         root = self.build(clean_case("closed-content"))
         result = run_tool(root)
         lowered = result.stdout.lower()
-        self.assertNotIn("score:", lowered)
-        self.assertNotIn("grade:", lowered)
-        self.assertNotIn("estimated figure", lowered)
+        for word in ("score:", "grade:", "digest", "estimated"):
+            self.assertNotIn(word, lowered)
 
     def test_determinism_same_tree_same_rows(self):
         """Determinism; EC-48: two runs on one unchanged tree agree."""
