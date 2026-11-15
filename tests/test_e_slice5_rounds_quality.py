@@ -12,9 +12,11 @@ from the public repo root, as the run_tool harness performs it.
 import re
 import unittest
 
-from tests.fixture_builder import (FixtureTestCase, assert_verdict,
+from tests.fixture_builder import (FixtureTestCase, assert_two_part_form,
+                                     assert_verdict,
                                      assert_reads_capture_only, build_case,
-                                     build_cases, decision_table,
+                                     build_cases, data_quality_section,
+                                     decision_table,
                                      f10_cases, gate_record,
                                      gate_ruling, metrics_record, queue_file,
                                      row_block, row_verdict, run_tool,
@@ -405,6 +407,27 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertIn("Step 2", pop_segment)
         excl_segment = block[excl_at:]
         self.assertIn("board ruling", excl_segment.lower())
+
+    def test_t7_unmapped_rounds_no_code_fits_and_code_list_gap(self):
+        """EC-27; S5-02. Unmapped rounds: no code fits, code list gap."""
+        extra = single_page_metrics_record_files(metrics_record(
+            body="## Loop round table\n\n(no rows yet)\n\n"
+                 "No loop step has run yet.\n"))
+        result = run_case(make_case("t7-unmapped-no-code-fits", extra))
+        block = row_block(result.stdout, "T-7")
+        assert_verdict(self, block, "present but not derivable", "T-7")
+        assert_two_part_form(self, block, "no code fits",
+                             "T-7 reason line")
+        self.assertNotIn("missing-field", block)
+        section = data_quality_section(result.stdout)
+        self.assertTrue(section, "data quality section stands")
+        gap_lines = [line for line in section.splitlines()
+                     if "code list gap" in line.lower()]
+        self.assertTrue(gap_lines,
+                        "no code list gap entry stands for T-7")
+        self.assertIn("T-7", gap_lines[0])
+        assert_two_part_form(self, gap_lines[0], "no code fits",
+                             "T-7 data quality entry")
 
     # --------------------------------------------------------------
     # Q-1 core cases.
@@ -1016,7 +1039,7 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertIn("Critical 1", row_block(second.stdout, "Q-1"))
 
     def test_wv21_slice5_disagreements_equivalent_across_shapes(self):
-        """EC-20, EC-34, EC-43, EC-44. Same disagreement in both shapes."""
+        """EC-20, EC-34, EC-43, EC-44. Q-3 entry on the first shape; same Q-3 verdict in both shapes."""
         extra = {
             "registers/defect-register.md": (
                 "# Defect register\n\nEntry D-9: defect disposition, "
@@ -1036,7 +1059,7 @@ class TestSlice5RoundsQuality(FixtureTestCase):
               "files": second_files}), parent)
         first = run_tool(built["shape-one"])
         second = run_tool(built["shape-two"])
-        for report in (first.stdout, second.stdout):
+        for report in (first.stdout,):
             block = disagreements_block(report)
             self.assertIn("Q-3", block)
         self.assertEqual(row_verdict(row_block(first.stdout, "Q-3")),

@@ -226,7 +226,7 @@ INVENTORY = {
         ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 53,
+        "count": 54,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -268,6 +268,7 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_sum_test_all_contributions_excepted_not_derivable",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_sum_test_one_contribution_excepted_build_present",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_rounds_family_reads_capture_only",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_t7_unmapped_rounds_no_code_fits_and_code_list_gap",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv21_slice5_disagreements_equivalent_across_shapes",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv21_slice5_rows_equivalent_across_second_shape",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv22_q1_f4_subject_bar_other_subject_counts_nothing",
@@ -429,4 +430,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 356
+TOTAL = 357

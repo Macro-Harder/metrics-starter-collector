@@ -1390,23 +1390,150 @@ def _t7_round_example(captured):
     return None
 
 
+# ------------------------------------------------------- Slice 5 helpers
+
+def _signal_failure(text):
+    """The first completeness signal a text fails, or None.
+
+    Signal one: a numbered Finding sequence with a gap, unless the
+    record states in its own text that the sequence is partial or
+    planned, or that numbers in the sequence are reserved or
+    skipped by design. Signal two: a table whose row count
+    disagrees with a count stated in its own header, unless the
+    header count is stated as a planned or target count, or a
+    governing correction in the record restates the count, in
+    which case the corrected count is the count tested. Signal
+    three: a section a record contents list names that does not
+    appear in the record, unless the contents list itself marks
+    the section as deferred or not yet written, or a later
+    governing entry in the record removes the section from the
+    list. A piece failing a signal with no exception standing is
+    treated as truncated and its visible part counts toward
+    nothing.
+    """
+    if text is None:
+        return None
+    lowered = text.lower()
+    findings = [int(x) for x in re.findall(r"Finding (\d+)\b", text)]
+    if findings and findings[0] == 1 and not any(
+            phrase in lowered for phrase in (
+                "sequence is partial", "sequence is planned",
+                "partial or planned", "reserved or skipped")):
+        ordered = sorted(set(findings))
+        if ordered != list(range(1, ordered[-1] + 1)):
+            return "signal-one"
+    stated = re.search(r"Rows stated in header:\s*(\d+)", text)
+    if stated and "planned" not in lowered \
+            and "target count" not in lowered:
+        corrected = re.search(r"corrected count:?\s*(\d+)", lowered)
+        count = int(corrected.group(1)) if corrected \
+            else int(stated.group(1))
+        rows = [line for line in text.splitlines()
+                if line.strip().startswith("|")]
+        data_rows = [row for row in rows
+                     if "Severity" not in row and "---" not in row]
+        if len(data_rows) != count:
+            return "signal-two"
+    headings = {found.strip().lower() for found in
+                re.findall(r"^#{1,6}\s+(.+)$", text, re.M)}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.lower().startswith("contents"):
+            continue
+        if "deferred" in stripped.lower() \
+                or "not yet written" in stripped.lower():
+            continue
+        if ":" not in stripped:
+            continue
+        names = stripped.split(":", 1)[1].rstrip(".")
+        for name in names.split(","):
+            name = name.strip()
+            if name and name.lower() not in headings:
+                if "removed from the contents list" in lowered:
+                    continue
+                return "signal-three"
+    return None
+
+
+def _piece_step(piece):
+    """The step a piece belongs to, from its record or its path.
+
+    Audit paper pieces carry no step in the capture record, and
+    their step stands in the step number their path names.
+    """
+    if piece.step is not None:
+        return piece.step
+    found = re.search(r"step-(\d+)", piece.paths[0])
+    return int(found.group(1)) if found else None
+
+
+def _loop_steps(captured):
+    """Steps the step records themselves state as loop steps."""
+    steps = set()
+    for piece in captured.pieces_of(CLS_STEP_RECORD):
+        if piece.text and "Loop step" in piece.text \
+                and piece.step is not None:
+            steps.add(piece.step)
+    return sorted(steps)
+
+
+def _t7_round_evidence(captured, step):
+    """Outcome rounds, duplicate rounds and work rounds for a step.
+
+    An outcome round stands where a closing outcome record states
+    it, where a board ruling held inside the step record closes
+    it under gap DG-02, or where a work record for the round
+    stands as its verdict record in the degraded form. A round
+    counts only where pairing evidence also stands: a record for
+    the round stating the work it disposed of, or work inside it.
+    """
+    outcomes = {}
+    duplicates = []
+    work = set()
+    for piece in captured.pieces:
+        if piece.text is None or _piece_step(piece) != step:
+            continue
+        text = piece.text
+        for found in re.finditer(r"board closes Round (\d+)", text):
+            outcomes.setdefault(int(found.group(1)), "board")
+        for found in re.finditer(
+                r"Round (\d+) closing outcome record", text):
+            rnd = int(found.group(1))
+            if outcomes.get(rnd) == "closing":
+                duplicates.append(rnd)
+            outcomes.setdefault(rnd, "closing")
+        lines = text.splitlines()
+        first_line = lines[0] if lines else ""
+        found = re.search(r"Round (\d+) work record", first_line)
+        if found:
+            rnd = int(found.group(1))
+            outcomes.setdefault(rnd, "verdict")
+            work.add(rnd)
+        if "closing outcome record" in text:
+            continue
+        for found in re.finditer(r"Round (\d+) work\b", text):
+            work.add(int(found.group(1)))
+        for found in re.finditer(
+                r"[Ww]ork (?:inside|Round) ?(?:inside )?Round (\d+)",
+                text):
+            work.add(int(found.group(1)))
+        for found in re.finditer(
+                r"[Ww]ork inside Round (\d+)", text):
+            work.add(int(found.group(1)))
+        for found in re.finditer(
+                r"work Round (\d+) disposed of", text):
+            work.add(int(found.group(1)))
+    return outcomes, duplicates, work
+
+
 def _derive_t7(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     gates = captured.pieces_of(*GATE_CLASSES)
     pointer = gates[0].paths[0] if gates else "steps/step-01-gate-record.md"
-    rounds = []
-    for piece in captured.pieces:
-        if piece.text is None:
-            continue
-        m = re.search(r"states\s+(\d+)\s+rounds for this step",
-                      piece.text)
-        if m and piece.step is not None:
-            rounds.append((piece.step, int(m.group(1))))
-    if rounds:
-        figures = "; ".join("Step %d rounds %d" % (s, v)
-                            for s, v in sorted(rounds))
-        return DerivationResult("T-7", "present", figures, denom,
-                                pointer, rule_name="T-7 rounds rule")
+    pointer = _pointer("T-7", pointer, captured)
+    if not _known_version(captured.definitions_version) and \
+            (gates or captured.pieces_of(CLS_STEP_RECORD)):
+        return _unknown_version_result(captured, "T-7", denom, pointer)
     if universe.evidenced and all(step == 22
                                    for step in universe.evidenced):
         # The Step 22 Keeper gate has no T-7 effect under G-04:
@@ -1421,10 +1548,147 @@ def _derive_t7(captured, universe):
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="T-7 feeder standing rule")
-    if gates or captured.pieces_of(CLS_STEP_RECORD):
+    for piece in captured.pieces:
+        if piece.text is None or piece.step is None:
+            continue
+        pass_count = _search_int(
+            r"Pass count in this record:\s*(\d+)\s*passes", piece.text)
+        if pass_count is None:
+            continue
+        verdict_count = None
+        for other in captured.step_pieces(piece.step, *GATE_CLASSES):
+            if other.text:
+                verdict_count = _search_int(
+                    r"Verdict record count for this step:\s*(\d+)",
+                    other.text)
+                if verdict_count is not None:
+                    break
+        if verdict_count is not None and verdict_count != pass_count:
+            return _refusal(
+                "T-7", "present but not derivable", "no rounds figure",
+                denom, pointer,
+                shows="the records for Step %d state irreconcilable "
+                      "round counts: the step record states a pass "
+                      "count of %d passes and the gate record states "
+                      "a verdict record count of %d"
+                      % (piece.step, pass_count, verdict_count),
+                token="record-disagrees",
+                follows="both counts stand named and neither count "
+                        "is picked, so no round figure stands for "
+                        "the step",
+                rule_name="G-05 irreconcilable counts rule")
+    loop_steps = _loop_steps(captured)
+    if loop_steps:
+        counted = {}
+        failures = []
+        for step in loop_steps:
+            outcomes, duplicates, work = _t7_round_evidence(
+                captured, step)
+            if duplicates:
+                failures.append(
+                    "the mapping test part one failed for Step %d: "
+                    "two closing outcome records stand for Round %d, "
+                    "and a part one failure fails the step mapping "
+                    "as a whole" % (step, duplicates[0]))
+                continue
+            unpaired = [rnd for rnd in sorted(outcomes)
+                        if rnd not in work]
+            if unpaired:
+                failures.append(
+                    "Step %d rounds unpaired: %s stand as outcome "
+                    "records with no pairing record stating the "
+                    "work disposed of, a mapping test part two "
+                    "failure failing the single round"
+                    % (step, ", ".join("Round %d" % rnd
+                                       for rnd in unpaired)))
+                continue
+            if outcomes:
+                counted[step] = sorted(outcomes)
+        if failures:
+            return _refusal(
+                "T-7", "present but not derivable", "no rounds figure",
+                denom, pointer,
+                shows="loop steps stand in the step universe, %s, "
+                      "and the records of a loop step do not map "
+                      "to rounds by an outcome record"
+                      % _each_step(loop_steps),
+                token="no code fits",
+                follows="the round mapping the row requires does "
+                        "not stand for the step named, so no round "
+                        "figure stands",
+                rule_name="T-7 round mapping rule",
+                broken="the round mapping link between the records "
+                       "of a loop step and its rounds",
+                required="rounds mapped by an outcome record for "
+                         "the step, with both parts of the mapping "
+                         "test standing, the mapping conditions and "
+                         "the pairing evidence",
+                held="; ".join(failures))
+        if counted:
+            figures = "; ".join(
+                "Step %d: %d rounds counted" % (step, len(rounds))
+                for step, rounds in sorted(counted.items()))
+            figures += ("; counted from verdict records, the "
+                        "rounds standing marked as counted, counted "
+                        "not marked from any table entry, a table "
+                        "entry alone counting nothing and outcome "
+                        "records alone counting once as counted")
+            coverage = denom + "; steps counted: " + _each_step(
+                sorted(counted))
+            result = DerivationResult(
+                "T-7", "present", figures, coverage, pointer,
+                rule_name="T-7 outcome record rule")
+            result.coverage = coverage
+            return result
+        stated_rounds = []
+        for piece in captured.pieces:
+            if piece.text is None or piece.step is None:
+                continue
+            found = re.search(
+                r"board ruling held inside this record states "
+                r"(\d+) rounds for this step", piece.text, re.I)
+            if found:
+                stated_rounds.append((piece.step,
+                                      int(found.group(1))))
+        excluded = [
+            "the board ruling held inside the Step %d step record, "
+            "a board ruling stating a round count, excluded as a "
+            "record form that is not an outcome record" % step
+            for step, _count in stated_rounds]
+        excluded.append(
+            "check papers, register items and other non outcome "
+            "records, excluded as record forms that record no "
+            "outcome")
+        held_parts = [
+            "population: the loop steps in the step universe, "
+            + _each_step(loop_steps)
+            + "; excluded: " + "; ".join(excluded)]
+        for step, count in stated_rounds:
+            held_parts.append(
+                "the board ruling held inside the Step %d record "
+                "states %d rounds for this step, and a stated round "
+                "count alone counts nothing, a table entry and an "
+                "outcome record being matched by step and by "
+                "outcome before either is counted" % (step, count))
+        return _refusal(
+            "T-7", "present but not derivable", "no rounds figure",
+            denom, pointer,
+            shows="gate and step records stand and no record states "
+                  "a round count in a form the row can count",
+            token="no code fits",
+            follows="no round figure stands on the feeder records, "
+                    "so the row is not derivable in this form",
+            rule_name="T-7 round evidence rule",
+            broken="the round mapping link between the records of "
+                   "a loop step and its rounds",
+            required="rounds mapped by an outcome record for the "
+                     "step, in the verdict record forms the "
+                     "derivation names",
+            held=", and ".join(held_parts))
+    assembled = captured.assembled_metrics or ""
+    if "loop round table" in assembled.lower():
         held_parts = []
-        loop_section = _metrics_section(
-            captured.assembled_metrics or "", "## Loop round table")
+        loop_section = _metrics_section(assembled, "## Loop round table")
         if loop_section and ("no rows" in loop_section.lower() or
                              "(no rows yet)" in loop_section.lower()):
             clause = "the loop round table holds no rows"
@@ -1439,10 +1703,10 @@ def _derive_t7(captured, universe):
             held_text += ", " + example
         return _refusal(
             "T-7", "present but not derivable", "no rounds figure",
-            denom, _pointer("T-7", pointer, captured),
+            denom, pointer,
             shows="gate and step records stand and no record states "
                   "a round count in a form the row can count",
-            token="missing-field",
+            token="no code fits",
             follows="no round figure stands on the feeder records, "
                     "so the row is not derivable in this form",
             rule_name="T-7 round evidence rule",
@@ -1454,8 +1718,9 @@ def _derive_t7(captured, universe):
             held=held_text)
     return _refusal(
         "T-7", "missing", "no rounds figure", denom, pointer,
-        shows="no gate verdict record and no step record stands in "
-              "the capture for this metric",
+        shows="the step universe holds no loop step for the metric "
+              "to count, and no loop round table stands in the "
+              "metrics record",
         token="no-feeder-record",
         follows="no feeder record for the metric exists in the "
                 "tree, so the row is missing",
@@ -2537,12 +2802,337 @@ def _derive_f2(captured, universe):
     return result
 
 
+# ------------------------------------------------------------- Q-1
+
+_Q1_SEVERITIES = ("Critical", "High", "Medium", "Low")
+
+
+def _q1_counts(segment):
+    counts = {}
+    for name in _Q1_SEVERITIES:
+        found = re.search(name + r"\s+(\d+)", segment or "")
+        if found:
+            counts[name] = int(found.group(1))
+    return counts
+
+
+def _q1_counts_text(counts):
+    return ", ".join("%s %d" % (name, counts[name])
+                     for name in _Q1_SEVERITIES if name in counts)
+
+
+def _q1_round_before(text, at, piece):
+    before = text[:at]
+    rounds = re.findall(r"Round (\d+)", before)
+    if rounds:
+        return int(rounds[-1])
+    lines = text.splitlines()
+    if lines:
+        found = re.search(r"Round (\d+)", lines[0])
+        if found:
+            return int(found.group(1))
+    return piece.step if piece.step is not None else 1
+
+
+def _q1_carrier_form(path, piece):
+    if "fix-register" in path:
+        return "fix register round table"
+    if "defect-register" in path:
+        return "defect register round summary"
+    if "audit-register" in path:
+        return "audit register round entry"
+    if piece.record_class == CLS_GATE_RECORD or "gate-record" in path:
+        return "gate record round section"
+    return "carrier record"
+
+
+def _q1_scale_name(raw):
+    if raw is None:
+        return None
+    lowered = raw.lower()
+    if "flow" in lowered:
+        return "flow scale"
+    if "commissioned" in lowered:
+        return "commissioned scale"
+    return raw.strip()
+
+
+def _q1_carrier_candidates(captured):
+    """Carrier form breakdowns, and those no round record names.
+
+    A carrier counts only where a round record names it as the
+    carrier record for its round, only where triage is stated and
+    a scale is named, and only in one of the four listed carrier
+    forms, with the sanctioned headings standing in their exact
+    form: a fix register round table, a defect register round
+    summary, an audit register round entry, or a gate record
+    round section.
+    """
+    named = {}
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        for found in re.finditer(
+                r"names\s+(\S+)\s+as the carrier record for "
+                r"Round (\d+)", piece.text):
+            named.setdefault(found.group(1), set()).add(
+                int(found.group(2)))
+        for found in re.finditer(
+                r"(?<!\S)(\S+)\s+is named as the carrier record for "
+                r"Round (\d+)", piece.text):
+            named.setdefault(found.group(1), set()).add(
+                int(found.group(2)))
+        for found in re.finditer(
+                r"names\s+(\S+)\s+as the carrier record for both "
+                r"rounds", piece.text):
+            named[found.group(1)] = None
+    candidates = []
+    unnamed = []
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        path = piece.paths[0]
+        text = piece.text
+        found_list = []
+        lines = text.splitlines()
+        for at, line in enumerate(lines):
+            if not line.strip().startswith("|"):
+                continue
+            cells = [cell.strip().lower().replace("-", " ")
+                     for cell in line.strip().strip("|").split("|")]
+            if cells[:4] != ["round", "post triage breakdown",
+                             "triage run", "severity scale"]:
+                continue
+            for row in lines[at + 1:]:
+                if not row.strip().startswith("|"):
+                    break
+                rcells = [cell.strip() for cell in
+                          row.strip().strip("|").split("|")]
+                if len(rcells) < 4 or set(rcells[0]) <= set("- "):
+                    continue
+                round_found = re.search(r"Round (\d+)", rcells[0])
+                if not round_found:
+                    continue
+                found_list.append({
+                    "round": int(round_found.group(1)),
+                    "counts": _q1_counts(rcells[1]),
+                    "triage": "triage has run" in rcells[2].lower(),
+                    "scale": _q1_scale_name(rcells[3]),
+                    "form": _q1_carrier_form(path, piece),
+                    "path": path, "attacks": False})
+        for found in re.finditer(
+                r"## Round (?:summary|entry|section): Round (\d+)",
+                text):
+            tail = text[found.end():]
+            nxt = tail.find("\n## ")
+            section = tail[:nxt] if nxt > 0 else tail
+            breakdown = re.search(
+                r"[Pp]ost triage breakdown:?\s*\n?\s*"
+                r"((?:(?:Critical|High|Medium|Low)\s+\d+"
+                r"(?:,\s*)?)+)", section)
+            scale_found = re.search(
+                r"Severity scale:?\s*\n?\s*([A-Za-z ]+?scale)",
+                section)
+            found_list.append({
+                "round": int(found.group(1)),
+                "counts": _q1_counts(breakdown.group(1))
+                if breakdown else {},
+                "triage": "triage has run" in section.lower(),
+                "scale": _q1_scale_name(scale_found.group(1))
+                if scale_found else None,
+                "form": _q1_carrier_form(path, piece),
+                "path": path,
+                "attacks": "grading attacks" in section.lower()})
+        for candidate in found_list:
+            if path in named and (named[path] is None
+                                  or candidate["round"]
+                                  in named[path]):
+                candidates.append(candidate)
+            else:
+                unnamed.append(candidate)
+    return candidates, unnamed
+
+
+def _q1_direct_candidates(captured):
+    """Breakdowns in a round own record, or a record it names.
+
+    Returns (counted, nonflow, excluded, incomplete_paths). A
+    breakdown counts only where its counted units are findings
+    from that round: attack totals and grading attacks are
+    refused, and a pre triage breakdown is refused. A paper that
+    states it carries no closing total, and a paper failing a
+    completeness signal, counts toward nothing: its visible part
+    is treated as truncated.
+    """
+    counted = []
+    nonflow = []
+    excluded = []
+    incomplete = []
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        if piece.record_class in (
+                CLS_METRICS_SINGLE, CLS_METRICS_PAGE,
+                CLS_GATE_ADJUDICATION, CLS_GATE_RECORD,
+                CLS_GATE_RULING, CLS_STEP_RECORD,
+                CLS_STEP_COMPANION, CLS_PATH_LEDGER,
+                CLS_TIER_RECORD, CLS_DECISION_QUEUE):
+            continue
+        path = piece.paths[0]
+        if "correct" in path or "register" in path:
+            continue
+        text = piece.text
+        if _signal_failure(text) is not None:
+            incomplete.append(path)
+            continue
+        repaired = "## Completion section" in text and \
+            "was found truncated" in text
+        if "no closing total" in text and not repaired:
+            incomplete.append(path)
+            continue
+        for found in re.finditer(
+                r"[Pp]ost triage (?:severity )?breakdown", text):
+            segment = text[found.start():found.start() + 240]
+            counts = _q1_counts(segment)
+            if not counts:
+                continue
+            rnd = _q1_round_before(text, found.start(), piece)
+            lowered = segment.lower()
+            if "grading attacks" in lowered \
+                    or "attacks only" in lowered:
+                excluded.append((rnd, "attack totals refused, "
+                                      "grading attacks not findings"))
+                continue
+            scale = "flow scale"
+            scale_found = re.search(r"[Ss]cale ([A-Z])\b", segment)
+            if "commissioned scale" in lowered:
+                scale = "commissioned scale"
+            elif "flow scale" in lowered:
+                scale = "flow scale"
+            elif scale_found:
+                scale = "Scale " + scale_found.group(1)
+            candidate = {"round": rnd, "counts": counts,
+                         "scale": scale,
+                         "form": "round record" if "round-record"
+                         in path else "audit paper round record",
+                         "path": path, "attacks": False,
+                         "triage": True,
+                         "repaired": repaired}
+            if scale == "flow scale":
+                counted.append(candidate)
+            else:
+                nonflow.append(candidate)
+        for found in re.finditer(r"[Pp]re triage", text):
+            rnd = _q1_round_before(text, found.start(), piece)
+            clause = (rnd, "no post triage breakdown, pre triage "
+                           "counts only")
+            if clause not in excluded:
+                excluded.append(clause)
+        for found in re.finditer(r"Attack totals", text):
+            rnd = _q1_round_before(text, found.start(), piece)
+            clause = (rnd, "attack totals refused, grading "
+                           "attacks not findings")
+            if clause not in excluded:
+                excluded.append(clause)
+    return counted, nonflow, excluded, incomplete
+
+
+def _q1_wv6_conflict(captured):
+    """Rounds governed by two scales in conflict, under WV-6.
+
+    A later governing statement resolving the conflict leaves the
+    row judged on its records, and the superseded conflict blocks
+    nothing.
+    """
+    governed = {}
+    resolved = False
+    for piece in captured.pieces_of(CLS_GATE_ADJUDICATION):
+        if piece.text is None:
+            continue
+        if "resolves the conflict" in piece.text:
+            resolved = True
+        for found in re.finditer(
+                r"Scale (\w+) governs (Rounds? [^.\n]+)",
+                piece.text):
+            for rnd in re.findall(r"\d+", found.group(2)):
+                governed.setdefault(int(rnd), set()).add(
+                    found.group(1))
+    if resolved:
+        return []
+    return sorted(rnd for rnd, scales in governed.items()
+                  if len(scales) > 1)
+
+
+def _q1_disagreements(captured, counted):
+    """Per round disagreements between the feeder and a record.
+
+    Returns a list of (round, feeder_path, feeder_counts,
+    other_path, other_counts) where another record states a
+    different post triage breakdown for a counted round.
+    """
+    found_list = []
+    by_round = {}
+    for candidate in counted:
+        by_round.setdefault(candidate["round"], candidate)
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        path = piece.paths[0]
+        for found in re.finditer(
+                r"[Pp]ost triage (?:severity )?breakdown", piece.text):
+            feeder = by_round.get(
+                _q1_round_before(piece.text, found.start(), piece))
+            if feeder is None or feeder["path"] == path:
+                continue
+            counts = _q1_counts(
+                piece.text[found.start():found.start() + 240])
+            if counts and counts != feeder["counts"]:
+                entry = (feeder["round"], feeder["path"],
+                         feeder["counts"], path, counts)
+                if entry not in found_list:
+                    found_list.append(entry)
+    return found_list
+
+
+def _q1_statement(captured, counted):
+    statements = []
+    try:
+        from metrics_starter_collector.cross_check import \
+            q1_cross_check_statement
+        marking = q1_cross_check_statement(
+            captured, {candidate["round"]: candidate["counts"]
+                       for candidate in counted})
+        if marking:
+            statements.append(marking)
+    except Exception:
+        pass
+    for rnd, feeder_path, feeder_counts, other_path, other_counts \
+            in _q1_disagreements(captured, counted):
+        statements.append(
+            "record disagrees: %s states post triage breakdown %s "
+            "for Round %d, while the feeder record %s states %s "
+            "for Round %d; the feeder figure stands and the record "
+            "figure is not followed"
+            % (other_path, _q1_counts_text(other_counts), rnd,
+               feeder_path, _q1_counts_text(feeder_counts), rnd))
+    return "; ".join(statements) if statements else None
+
+
 def _derive_q1(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     papers = captured.pieces_of(CLS_AUDIT_PAPER, CLS_FIX_REGISTER)
     pointer = papers[0].paths[0] if papers else \
         "audit/step-01-audit-paper.md"
-    if not papers:
+    pointer = _pointer("Q-1", pointer, captured)
+    feeder_pieces = [piece for piece in captured.pieces
+                     if piece.record_class in (
+                         CLS_AUDIT_PAPER, CLS_FIX_REGISTER,
+                         CLS_DEFECT_REGISTER, CLS_OTHER_REGISTER,
+                         CLS_GATE_ADJUDICATION)]
+    if not _known_version(captured.definitions_version) and \
+            feeder_pieces:
+        return _unknown_version_result(captured, "Q-1", denom, pointer)
+    if not feeder_pieces:
         return _refusal(
             "Q-1", "missing", "no audit round figure", denom, pointer,
             shows="no audit round record stands in the capture for "
@@ -2551,12 +3141,209 @@ def _derive_q1(captured, universe):
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="Q-1 feeder standing rule")
-    for piece in papers:
-        if piece.text and "Post triage" in piece.text:
-            return DerivationResult(
-                "Q-1", "present",
-                "post triage breakdown stands in the round record",
-                denom, pointer, rule_name="Q-1 breakdown rule")
+    conflicted = _q1_wv6_conflict(captured)
+    if conflicted:
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="two governing adjudications stand in conflict "
+                  "over the same rounds, and the conflict covers "
+                  + ", ".join("Round %d" % rnd for rnd in conflicted)
+                  + ", the blocked scope, while rounds outside the "
+                    "covered rounds are judged on their own records",
+            token="governing-scale-conflict",
+            follows="the governing scale for the covered rounds "
+                    "does not stand settled, so no figure stands "
+                    "for those rounds",
+            rule_name="WV-6 conflicting governing adjudications rule")
+    counted, nonflow, excluded, incomplete = \
+        _q1_direct_candidates(captured)
+    carrier, unnamed = _q1_carrier_candidates(captured)
+    silent = []
+    for candidate in carrier:
+        if candidate["attacks"]:
+            clause = (candidate["round"],
+                      "attack totals refused, grading attacks not "
+                      "findings")
+            if clause not in excluded:
+                excluded.append(clause)
+            continue
+        if not candidate["counts"] or not candidate["triage"]:
+            continue
+        if candidate["scale"] is None:
+            silent.append(candidate)
+        elif candidate["scale"] == "flow scale":
+            counted.append({
+                "round": candidate["round"],
+                "counts": candidate["counts"], "scale": "flow scale",
+                "form": candidate["form"], "path": candidate["path"],
+                "attacks": False, "triage": True})
+        else:
+            nonflow.append({
+                "round": candidate["round"],
+                "counts": candidate["counts"],
+                "scale": candidate["scale"],
+                "form": candidate["form"], "path": candidate["path"],
+                "attacks": False, "triage": True})
+    for piece in captured.pieces_of(CLS_GATE_ADJUDICATION):
+        if piece.text is None:
+            continue
+        for found in re.finditer(
+                r"Round (\d+) post triage breakdown:\s*"
+                r"((?:(?:Critical|High|Medium|Low)\s+\d+"
+                r"(?:,\s*)?)+)",
+                piece.text):
+            scale = "commissioned scale" \
+                if "commissioned" in piece.text.lower() \
+                else "flow scale"
+            candidate = {"round": int(found.group(1)),
+                         "counts": _q1_counts(found.group(2)),
+                         "scale": scale, "form": "gate adjudication",
+                         "path": piece.paths[0], "attacks": False,
+                         "triage": True}
+            if scale == "flow scale":
+                counted.append(candidate)
+            else:
+                nonflow.append(candidate)
+    # One feeder figure per round: where two records state
+    # different breakdowns for one round, the round record figure
+    # stands as the feeder and the other stands as a disagreement,
+    # recorded in the statement line, never overriding the feeder.
+    deduped = {}
+    for candidate in counted:
+        rnd = candidate["round"]
+        current = deduped.get(rnd)
+        if current is None or (
+                "round-record" in candidate["path"]
+                and "round-record" not in current["path"]):
+            deduped[rnd] = candidate
+    counted = [deduped[rnd] for rnd in sorted(deduped)]
+    # A correcting record standing for a truncated paper supplies
+    # the substitution, cited as the source.
+    truncated_papers = [piece for piece in captured.pieces
+                        if piece.text is None
+                        and piece.record_class == CLS_AUDIT_PAPER
+                        and piece.paths[0].endswith(".md")]
+    correction = None
+    correction_counts = None
+    for piece in captured.pieces:
+        if piece.text is None or "correct" not in piece.paths[0]:
+            continue
+        if "corrected total" in piece.text:
+            found_counts = _q1_counts(piece.text)
+            if found_counts:
+                correction, correction_counts = piece, found_counts
+                break
+    if correction is not None and truncated_papers:
+        counted = [{"round": truncated_papers[0].step or 1,
+                    "counts": correction_counts, "scale": "flow scale",
+                    "form": "correcting record " + correction.paths[0],
+                    "path": correction.paths[0], "attacks": False,
+                    "triage": True}]
+        result = _q1_present_result(
+            captured, counted, excluded, denom, pointer)
+        return result
+    if nonflow:
+        held = []
+        for candidate in nonflow:
+            held.append(
+                "the Round %d breakdown stands under %s in %s, "
+                "stating %s, and that scale does not govern the "
+                "row in the flow form"
+                % (candidate["round"], candidate["scale"],
+                   candidate["form"],
+                   _q1_counts_text(candidate["counts"])))
+        for rnd, why in excluded:
+            held.append("Round %d stands excluded, %s" % (rnd, why))
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="audit records stand and the breakdowns stand "
+                  "under scales that conflict with the flow scale",
+            token="governing-scale-conflict",
+            follows="mixed severity scales stand, so no figure "
+                    "stands in the flow form",
+            rule_name="Q-1 severity scale rule",
+            broken="the post triage severity breakdown field under "
+                   "the flow scale",
+            required="a post triage breakdown under the flow scale "
+                     "in the round own record or in a record the "
+                     "round record names",
+            held=_held_join(held))
+    if counted:
+        return _q1_present_result(
+            captured, counted, excluded, denom, pointer)
+    if silent:
+        candidate = silent[0]
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="a carrier breakdown stands for Round %d and no "
+                  "scale is stated for that breakdown"
+                  % candidate["round"],
+            token="missing-field",
+            follows="the scale and record form pair does not "
+                    "stand for the breakdown, so no pair is counted "
+                    "and no figure stands",
+            rule_name="Q-1 scale and record form pair rule",
+            broken="the severity scale field of the carrier "
+                   "breakdown for Round %d" % candidate["round"],
+            required="the scale and record form pair per counted "
+                     "round, the pair travelling together",
+            held="the %s for Round %d states its carrier form "
+                 "together with the words no scale stated for that "
+                 "breakdown" % (candidate["form"], candidate["round"]))
+    damaged = [piece for piece in truncated_papers
+               if "round-record" in piece.paths[0]
+               or "-red" in piece.paths[0]]
+    text_feeders = [piece for piece in captured.pieces
+                    if piece.text is not None
+                    and piece.record_class == CLS_AUDIT_PAPER
+                    and ("round" in piece.paths[0]
+                         or "-red" in piece.paths[0])]
+    if damaged and not text_feeders:
+        piece = damaged[0]
+        token = _quality_code(piece)
+        if token == "truncated-no-correcting-record":
+            return _refusal(
+                "Q-1", "present but not derivable",
+                "no audit round figure", denom, pointer,
+                shows="the audit paper %s is truncated and no "
+                      "correcting record stands for it, so its "
+                      "visible part counts toward nothing and the "
+                      "round it feeds is incomplete"
+                      % piece.paths[0],
+                token=token,
+                follows="the contribution is present but not "
+                        "derivable with the truncation as the "
+                        "reason, and the round is marked incomplete",
+                rule_name="D-19 truncated paper rule")
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="the audit paper %s stands %s in the capture and "
+                  "supplies no breakdown"
+                  % (piece.paths[0],
+                     piece.quality_state or "not read in full"),
+            token=token,
+            follows="the feeder piece is not read in full, so no "
+                    "figure stands for the round it feeds",
+            rule_name="Q-1 damaged feeder rule")
+    feeder_incomplete = [path for path in incomplete
+                         if "round" in path or "-red" in path]
+    if feeder_incomplete and not counted:
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="the audit paper %s fails a completeness signal "
+                  "or states it carries no closing total, and its "
+                  "visible part counts toward nothing"
+                  % feeder_incomplete[0],
+            token="truncated-no-correcting-record",
+            follows="the contribution is present but not derivable "
+                    "with the incompleteness as the reason, and the "
+                    "round is marked incomplete",
+            rule_name="D-19 signal failed paper rule")
     held_clauses = []
     audit_section = _metrics_section(
         captured.assembled_metrics or "", "## Audit round table")
@@ -2594,7 +3381,7 @@ def _derive_q1(captured, universe):
             "a commissioned scale of its own" % adj_step)
     return _refusal(
         "Q-1", "present but not derivable", "no audit round figure",
-        denom, _pointer("Q-1", pointer, captured),
+        denom, pointer,
         shows="audit records stand and none carries a post triage "
               "severity breakdown",
         token="no-post-triage-breakdown",
@@ -2609,58 +3396,334 @@ def _derive_q1(captured, universe):
         held=_held_join(held_clauses))
 
 
+def _q1_present_result(captured, counted, excluded, denom, pointer):
+    """The bounded Q-1 row: qualifying round counts only.
+
+    The population and the exclusion list stand before the counts,
+    round by round, with the scale and record form pair per
+    counted round, the pair travelling together, and no count
+    printed for any other round.
+    """
+    rounds_seen = sorted({candidate["round"] for candidate in counted}
+                         | {rnd for rnd, _why in excluded})
+    population = ("population, the rounds with records standing: "
+                  + (", ".join("Round %d" % rnd
+                               for rnd in rounds_seen) or "none"))
+    exclusion = ("excluded: "
+                 + ("; ".join("Round %d, %s" % (rnd, why)
+                              for rnd, why in excluded)
+                    if excluded else "none"))
+    parts = []
+    for candidate in sorted(counted, key=lambda c: c["round"]):
+        parts.append(
+            "Round %d: %s, scale %s, record form %s"
+            % (candidate["round"],
+               _q1_counts_text(candidate["counts"]),
+               candidate.get("scale") or "flow scale",
+               candidate["form"]))
+    figures = ("bounded form: " + population + "; " + exclusion
+               + "; qualifying round counts: " + "; ".join(parts))
+    for candidate in counted:
+        if candidate.get("repaired"):
+            figures += ("; the piece %s stands repaired, its "
+                        "quality state the single state truncated "
+                        "with the repair cited beside it"
+                        % candidate["path"])
+    result = DerivationResult(
+        "Q-1", "present", figures, denom, pointer,
+        rule_name="Q-1 bounded breakdown rule")
+    result.statement = _q1_statement(captured, counted)
+    return result
+
+
+# ------------------------------------------------------------- Q-3
+
+def _q3_registers(captured):
+    registers = []
+    for piece in captured.pieces:
+        path = piece.paths[0]
+        name = path.rsplit("/", 1)[-1]
+        if piece.record_class in (CLS_DEFECT_REGISTER, CLS_FIX_REGISTER) \
+                or name in ("defect-register.md", "fix-register.md"):
+            label = "defect register" if "defect" in name \
+                else "fix register"
+            registers.append((piece, label))
+    return registers
+
+
+def _q3_entries(captured):
+    """Register entries with the origin step field read on the entry.
+
+    An origin step counts only where the field stands on the
+    register entry itself and states the step the defect was
+    introduced in or escaped from as judged at triage. An entry
+    whose origin is copied, or stands as a neighbouring, finding
+    or closing step, does not count.
+    """
+    entries = []
+    for piece, label in _q3_registers(captured):
+        if piece.text is None:
+            continue
+        segments = re.split(r"(?=Entry [A-Za-z0-9])", piece.text)
+        for segment in segments:
+            head = re.match(r"Entry ([A-Za-z0-9][\w-]*)", segment)
+            if not head:
+                continue
+            origin = None
+            found = re.search(r"[Oo]rigin step[:\s]+Step (\d+)",
+                              segment)
+            if found:
+                origin = int(found.group(1))
+            copied = "copied" in segment.lower() or \
+                "no triage judgement" in segment.lower()
+            entries.append({"id": head.group(1), "register": label,
+                            "path": piece.paths[0],
+                            "origin": origin, "copied": copied})
+        for line in piece.text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                continue
+            cells = [cell.strip() for cell in
+                     stripped.strip("|").split("|")]
+            if len(cells) < 2 or not cells[0]:
+                continue
+            if cells[0].lower() in ("id", "block", "entry"):
+                continue
+            if set(cells[0]) <= set("-* "):
+                continue
+            origin = None
+            found = re.search(r"[Oo]rigin step[:\s]+Step (\d+)",
+                              stripped)
+            if found:
+                origin = int(found.group(1))
+            entries.append({"id": cells[0], "register": label,
+                            "path": piece.paths[0],
+                            "origin": origin,
+                            "copied": "copied" in stripped.lower()})
+    return entries
+
+
+def _q3_contested_steps(universe):
+    """Steps past the metrics record stated universe count."""
+    claim = universe.metrics_count_claim
+    evidenced = sorted(universe.evidenced)
+    if claim is None or not 0 < claim < len(evidenced):
+        return []
+    return evidenced[claim:]
+
+
+def _q3_contested_entry(captured, universe):
+    """A register entry whose origin step stands contested.
+
+    Stands where a register entry origin step is one of the steps
+    the step universe claim disagrees over, judged by the capture
+    alone.
+    """
+    contested = _q3_contested_steps(universe)
+    if not contested:
+        return None
+    for entry in _q3_entries(captured):
+        if entry["origin"] in contested:
+            return entry
+    return None
+
+
+def _q3_restatement(captured):
+    """A correction piece restating the step universe statement."""
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        if "correct" in piece.paths[0] and \
+                "restated" in piece.text.lower() and \
+                "step universe" in piece.text.lower():
+            return piece
+    return None
+
+
 def _derive_q3(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    registers = captured.pieces_of(CLS_DEFECT_REGISTER, CLS_FIX_REGISTER)
-    pointer = registers[0].paths[0] if registers else \
+    registers = _q3_registers(captured)
+    pointer = registers[0][0].paths[0] if registers else \
         "registers/defect-register.md"
+    pointer = _pointer("Q-3", pointer, captured)
+    assembled = captured.assembled_metrics or ""
+    if not _known_version(captured.definitions_version) and registers:
+        return _unknown_version_result(captured, "Q-3", denom, pointer)
     if not registers:
+        if re.search(r"Escapes attributed \(Q-3\):\s*0\b", assembled):
+            return _refusal(
+                "Q-3", "present but not derivable",
+                "printed zero, not a measured figure", denom, pointer,
+                shows="the assembled metrics record prints an "
+                      "escape count of zero and no register stands "
+                      "in the capture to measure it",
+                token="no-measurement-basis",
+                follows="the printed zero is never stated as a "
+                        "measured figure, because no measurement "
+                        "basis stands for it",
+                rule_name="Q-3 printed zero rule")
         return _refusal(
-            "Q-3", "missing", "no register figure", denom, pointer,
-            shows="no defect register and no fix register stands in "
-                  "the capture for this metric",
+            "Q-3", "missing", "no escape figure", denom, pointer,
+            shows="no defect register and no fix register stands "
+                  "in the capture for this metric",
             token="no-feeder-record",
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="Q-3 feeder standing rule")
-    entries = 0
-    with_origin = 0
-    for piece in registers:
-        if piece.text is None:
-            continue
-        found = re.findall(r"Entry[^:\n]*:", piece.text)
-        entries += len(found) or 1
-        with_origin += len(re.findall(r"Origin step", piece.text))
-    if entries and with_origin >= entries:
+    entries = _q3_entries(captured)
+    valid = [entry for entry in entries
+             if entry["origin"] is not None and not entry["copied"]]
+    if valid:
+        counts = {}
+        for entry in valid:
+            counts[entry["origin"]] = counts.get(entry["origin"], 0) + 1
+        figures = "; ".join(
+            "Step %d: %d escapes" % (step, counts[step])
+            for step in sorted(counts))
+        basis = None
+        for piece, _label in registers:
+            if piece.text:
+                found = re.search(r"Measurement basis:\s*([^\n]+)",
+                                  piece.text)
+                if found:
+                    basis = found.group(1).strip()
+                    break
+        if basis:
+            figures += "; measurement basis: " + basis
+        lacking = [entry for entry in entries
+                   if entry["origin"] is None or entry["copied"]]
+        coverage = denom
+        bound = None
+        if lacking:
+            coverage += ("; counts form from the carrying entries "
+                         "alone; lacking entries: "
+                         + "; ".join(
+                             "%s entry %s"
+                             % (entry["register"], entry["id"])
+                             for entry in lacking)
+                         + "; count of lacking entries: %d"
+                         % len(lacking))
+            bound = ("defect register entries lacking the origin "
+                     "step field", "%d entries" % len(lacking),
+                     "the counts form from the carrying entries "
+                     "alone")
+        result = DerivationResult(
+            "Q-3", "present", figures, coverage, pointer,
+            rule_name="Q-3 origin step rule", bound=bound)
+        result.coverage = coverage
+        statement = None
+        try:
+            from metrics_starter_collector.cross_check import \
+                q3_contested_statement
+            statement = q3_contested_statement(
+                captured, universe,
+                {entry["origin"] for entry in valid})
+        except Exception:
+            statement = None
+        if statement is None:
+            contested = _q3_contested_steps(universe)
+            hit = [entry for entry in valid
+                   if entry["origin"] in contested]
+            if hit:
+                statement = _universe_claim_statement(
+                    captured, universe)
+        result.statement = statement
+        return result
+    if entries and all(entry["copied"] for entry in entries):
+        return _refusal(
+            "Q-3", "present but not derivable", "no escape figure",
+            denom, pointer,
+            shows="register entries stand and every origin step on "
+                  "them is a copied step, standing as a neighbouring "
+                  "or closing step with no triage judgement, so no "
+                  "origin stands on any entry itself",
+            token="missing-field",
+            follows="a copied, neighbouring, finding or closing "
+                    "step does not count, so no escape figure stands",
+            rule_name="Q-3 origin step rule",
+            broken="the origin step field on the register entries",
+            required="the origin step field standing on the "
+                     "register entry itself, stating the step the "
+                     "defect was introduced in or escaped from as "
+                     "judged at triage",
+            held="every entry carries a copied origin step and no "
+                 "entry carries the field judged at triage")
+    if entries:
+        table = _metrics_step_table(captured)
+        printed_zero = "printed zero" in assembled.lower() or any(
+            len(cells) >= 13 and cells[12].startswith("0")
+            for cells in table.values())
+        held = ("the field is absent from every fix and defect "
+                "register entry")
+        if printed_zero:
+            held += (", and the printed zero in the metrics record "
+                     "step table carries no measurement basis and "
+                     "stands nowhere as a measured figure")
+        return _refusal(
+            "Q-3", "present but not derivable", "no register figure",
+            denom, pointer,
+            shows="register entries stand and the entries carry no "
+                  "origin step field",
+            token="missing-field",
+            follows="the origin step field the row requires does "
+                    "not stand on the entries, so no figure stands",
+            rule_name="Q-3 origin step field rule",
+            broken="the origin step field on fix and defect "
+                   "register entries",
+            required="an origin step field on each register entry, "
+                     "judged at triage, stating the step the defect "
+                     "was introduced in or escaped from",
+            held=held)
+    # Registers stand and hold no entries.
+    for piece, _label in registers:
+        if piece.text and re.search(
+                r"(?:Escapes attributed|Escaped defects)"
+                r"[^.\n]*\b0\b", piece.text):
+            correction = None
+            for other in captured.pieces:
+                if other.text is None:
+                    continue
+                if "correct" in other.paths[0] and \
+                        "measurement basis" in other.text.lower():
+                    correction = other
+                    break
+            if correction is not None:
+                figures = ("measured zero escapes; measurement "
+                           "basis supplied by the correcting record "
+                           + correction.paths[0])
+                return DerivationResult(
+                    "Q-3", "present", figures, denom, pointer,
+                    rule_name="Q-3 corrected zero rule")
+            return _refusal(
+                "Q-3", "present but not derivable",
+                "printed zero, not a measured figure", denom, pointer,
+                shows="the register prints an escape count of zero "
+                      "and states no measurement basis for it",
+                token="no-measurement-basis",
+                follows="the printed zero is never stated as a "
+                        "measured figure, and the reason line "
+                        "carries the warning that the printed column "
+                        "is not a measurement and must not be read "
+                        "as one",
+                rule_name="Q-3 printed zero rule")
+    if len(registers) >= 2:
+        figures = ("measured zero escapes; basis: both registers "
+                   "stand and hold no entries; CA2-10 exposure: "
+                   "the row reads the registers named in the "
+                   "capture only, and defects recorded outside "
+                   "those registers are not counted")
         return DerivationResult(
-            "Q-3", "present",
-            "register entries with an origin step: %d" % with_origin,
-            denom, pointer, rule_name="Q-3 origin step rule")
-    table = _metrics_step_table(captured)
-    printed_zero = "printed zero" in (
-        captured.assembled_metrics or "").lower() or any(
-        len(cells) >= 13 and cells[12].startswith("0")
-        for cells in table.values())
-    held = "the field is absent from every fix and defect register entry"
-    if printed_zero:
-        held += (", and the printed zero in the metrics record "
-                 "step table carries no measurement basis and "
-                 "stands nowhere as a measured figure")
+            "Q-3", "present", figures, denom, pointer,
+            rule_name="Q-3 empty register rule")
     return _refusal(
-        "Q-3", "present but not derivable", "no register figure",
-        denom, _pointer("Q-3", pointer, captured),
-        shows="register entries stand and the entries carry no "
-              "origin step field",
-        token="missing-field",
-        follows="the origin step field the row requires does not "
-                "stand on the entries, so no figure stands",
-        rule_name="Q-3 origin step field rule",
-        broken="the origin step field on fix and defect register "
-               "entries",
-        required="an origin step field on each register entry, "
-                 "judged at triage, stating the step the defect "
-                 "was introduced in or escaped from",
-        held=held)
+        "Q-3", "present but not derivable", "no escape figure",
+        denom, pointer,
+        shows="a register stands and holds no entries, and no "
+              "measurement basis stands for a zero",
+        token="no-measurement-basis",
+        follows="no entry stands to count and no measured zero "
+                "stands, so no figure stands",
+        rule_name="Q-3 empty register rule")
 
 
 # ----------------------------------------------------------------- Q-4
@@ -2701,12 +3764,15 @@ def _trace_candidates(captured):
     items checked form where it states landed of items checked.
     """
     candidates = {}
+    all_candidates = {}
 
     def add(step, parsed, style, piece, rank):
         if step is None or parsed is None:
             return
         key = (rank, 1 if "round" in piece.paths[0] else 0,
                piece.paths[0])
+        all_candidates.setdefault(step, []).append(
+            (key, parsed, style, piece))
         current = candidates.get(step)
         if current is None or key < current[0]:
             candidates[step] = (key, parsed, style, piece)
@@ -2718,7 +3784,8 @@ def _trace_candidates(captured):
         if rank is None:
             continue
         if piece.record_class == CLS_AUDIT_PAPER and \
-                "purple" not in piece.paths[0].lower():
+                "purple" not in piece.paths[0].lower() and \
+                "round-record" not in piece.paths[0].lower():
             continue
         lines = piece.text.splitlines()
         title_first = bool(lines) and "first trace" in lines[0].lower()
@@ -2758,6 +3825,14 @@ def _trace_candidates(captured):
             if title_first and "landed" in line.lower():
                 parsed = _parse_trace_segment(line)
                 add(piece.step, parsed, "items", piece, rank)
+            if piece.record_class == CLS_TRACE and \
+                    "parts:" in line.lower() and \
+                    "landed" in line.lower():
+                # A standalone trace record states its first
+                # trace parts on its Parts line, whatever its
+                # title calls the trace.
+                parsed = _parse_trace_segment(line)
+                add(piece.step, parsed, "items", piece, rank)
         if piece.record_class == CLS_TRACE:
             total = None
             parts = {}
@@ -2779,6 +3854,23 @@ def _trace_candidates(captured):
                     (parts["LANDED"], parts.get("PARTIAL", 0),
                      parts.get("CONTRADICTED", 0), total),
                     "items", piece, rank)
+    # A correcting record identifying the first trace record for
+    # a step identifies that record for the step, under the first
+    # trace rule: the identified candidate stands over the ranked
+    # forms.
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        for found in re.finditer(
+                r"The first trace record for Step (\d+) is "
+                r"(\S+?\.md)", piece.text):
+            step = int(found.group(1))
+            target = found.group(2)
+            for key, parsed, style, cand_piece in \
+                    all_candidates.get(step, []):
+                if cand_piece.paths[0] == target:
+                    candidates[step] = (key, parsed, style,
+                                        cand_piece)
     return candidates
 
 
@@ -2872,6 +3964,21 @@ def _derive_q4(captured, universe):
         return _unknown_version_result(
             captured, "Q-4", denom, _pointer("Q-4", pointer, captured))
     if not traces:
+        trace_pieces = [piece for piece in captured.pieces
+                        if "trace" in piece.paths[0]
+                        and piece.paths[0].endswith(".md")]
+        if trace_pieces:
+            return _refusal(
+                "Q-4", "present but not derivable",
+                "no first trace figure", denom,
+                _pointer("Q-4", trace_pieces[0].paths[0], captured),
+                shows="a trace record stands in the capture and no "
+                      "totals stand on it in a form the row can "
+                      "count",
+                token="missing-field",
+                follows="no first trace figure stands on the "
+                        "feeder record, so no figure stands",
+                rule_name="Q-4 first trace figure rule")
         return _refusal(
             "Q-4", "missing", "no first trace figure", denom,
             _pointer("Q-4", pointer, captured),
@@ -2929,6 +4036,7 @@ def _derive_q4(captured, universe):
     if excepted:
         coverage += ", with " + _steps_phrase(sorted(excepted)) + \
             " excepted"
+        coverage += ("; excepted contributions: %d" % len(excepted))
         if len(excepted) == 1:
             step = sorted(excepted)[0]
             landed, partial, contradicted, total = excepted[step]
@@ -2952,13 +4060,175 @@ def _derive_q4(captured, universe):
                 "the sum test links for the excepted steps",
                 "a correcting record stating the excepted trace "
                 "parts and totals in reconciled form")
+    # The coverage remainder forms: an analogue only step, a zero
+    # total step, and a step stating no trace applies, named on
+    # the row as the charge states them.
+    for piece in captured.pieces_of(CLS_STEP_RECORD):
+        if piece.text is None or piece.step is None:
+            continue
+        if "analogue only" in piece.text.lower():
+            coverage += "; Step %d analogue only step" % piece.step
+        if "no trace applies" in piece.text.lower():
+            coverage += ("; Step %d not applicable, excluded from "
+                         "the Q-4 population" % piece.step)
+    for step in sorted(reconciled):
+        if reconciled[step][3] == 0:
+            coverage += "; Step %d zero total step" % step
     result = DerivationResult(
         "Q-4", "present", figures, coverage,
         _pointer("Q-4", pointer, captured),
         rule_name="Q-4 first trace rule")
     result.coverage = coverage
     result.bound = bound
+    statement = None
+    try:
+        from metrics_starter_collector.cross_check import \
+            q4_cross_check_statement
+        covered = {step: (traces[step][0], traces[step][3])
+                   for step in reconciled}
+        statement = q4_cross_check_statement(captured, covered)
+    except Exception:
+        statement = None
+    if statement is None:
+        statement = _q4_record_marking(captured, traces, sources,
+                                       set(reconciled))
+    result.statement = statement
     return result
+
+
+def _q4_stated_figures(captured, traces, sources):
+    """Differing first trace figures stated outside the feeder.
+
+    Yields (step, other_path, landed, total) for each step where
+    the assembled metrics record, or a record stating a first
+    trace figure for the step, disagrees with the feeder figure.
+    An excepted step is never yielded on the sum test ground: its
+    figures are the feeder figures themselves.
+    """
+    found_list = []
+    metrics_text = captured.assembled_metrics or ""
+    for step in sorted(traces):
+        landed, _partial, _contra, total = traces[step]
+        record = re.search(
+            r"Q-4 for Step %d as (\d+) of (\d+)" % step, metrics_text)
+        if record and (int(record.group(1)), int(record.group(2))) \
+                != (landed, total):
+            found_list.append((step, _metrics_record_name(captured),
+                               int(record.group(1)),
+                               int(record.group(2))))
+            continue
+        for piece in captured.pieces:
+            if piece.text is None:
+                continue
+            path = piece.paths[0]
+            if path == sources.get(step):
+                continue
+            stated = re.search(
+                r"the first trace for Step %d as "
+                r"(\d+) LANDED of (\d+)" % step, piece.text)
+            if stated and (int(stated.group(1)),
+                           int(stated.group(2))) != (landed, total):
+                found_list.append((step, path, int(stated.group(1)),
+                                   int(stated.group(2))))
+                break
+            if "the same records state" in piece.text \
+                    and _piece_step(piece) == step:
+                stated = re.search(
+                    r"first trace (\d+) LANDED of (\d+)", piece.text)
+                if stated and (int(stated.group(1)),
+                               int(stated.group(2))) != (landed,
+                                                          total):
+                    found_list.append(
+                        (step, path, int(stated.group(1)),
+                         int(stated.group(2))))
+                    break
+    return found_list
+
+
+def _q4_record_marking(captured, traces, sources, reconciled_steps):
+    """The record disagrees marking for the Q-4 statement line.
+
+    The feeder figure stands and the record figure is not
+    followed. Only reconciled steps are marked: an excepted step
+    carries its exception on the row, not a disagreement.
+    """
+    for step, path, landed, total in _q4_stated_figures(
+            captured, traces, sources):
+        if step not in reconciled_steps:
+            continue
+        feeder_landed, _p, _c, feeder_total = traces[step]
+        return ("record disagrees: %s states Q-4 for Step %d as "
+                "%d of %d, while the first trace record states %d "
+                "of %d; the feeder figure stands and the record "
+                "figure is not followed"
+                % (path, step, landed, total, feeder_landed,
+                   feeder_total))
+    return None
+
+
+def _q4_disagreement_entries(captured):
+    """One disagreements block entry per disagreed Q-4 unit."""
+    traces, sources, _styles = _first_traces(captured)
+    entries = []
+    for step, path, landed, total in _q4_stated_figures(
+            captured, traces, sources):
+        feeder_landed, _p, _c, feeder_total = traces[step]
+        entries.append(
+            "Records: %s and %s | Figures: the record states the "
+            "first trace for Step %d as %d LANDED of %d, the first "
+            "trace record states %d of %d | Metric: Q-4 | "
+            "Governing position: the feeder figure stands"
+            % (path, sources[step], step, landed, total,
+               feeder_landed, feeder_total))
+    return entries
+
+
+def _slice5_disagreement_entries(captured):
+    """Disagreements block entries for the Slice 5 metrics.
+
+    One entry per metric for Q-1, in the same records form: a
+    record stating a different post triage breakdown for a
+    counted round. One entry per unit for Q-4, from the stated
+    figure scan the Q-4 marking uses.
+    """
+    entries = []
+    counted, _nonflow, _excluded, _incomplete = \
+        _q1_direct_candidates(captured)
+    carrier, _unnamed = _q1_carrier_candidates(captured)
+    merged = {candidate["round"]: candidate for candidate in counted}
+    for candidate in carrier:
+        if candidate["scale"] == "flow scale" and \
+                candidate["counts"] and candidate["triage"]:
+            merged.setdefault(candidate["round"], candidate)
+    counted = [merged[rnd] for rnd in sorted(merged)]
+    by_path = {piece.paths[0]: piece for piece in captured.pieces}
+    for rnd, feeder_path, feeder_counts, other_path, other_counts \
+            in _q1_disagreements(captured, counted):
+        other = by_path.get(other_path)
+        if other is None or other.text is None or \
+                "the same records state" not in other.text:
+            continue
+        entries.append(
+            "Records: %s and %s | Figures: the feeder record "
+            "states post triage breakdown %s for Round %d, the "
+            "other record states %s for Round %d | Metric: Q-1 | "
+            "Governing position: the feeder figure stands"
+            % (feeder_path, other_path,
+               _q1_counts_text(feeder_counts), rnd,
+               _q1_counts_text(other_counts), rnd))
+    entries += _q4_disagreement_entries(captured)
+    universe = build_step_universe(captured)
+    contested = _q3_contested_entry(captured, universe)
+    if contested is not None:
+        entries.append(
+            "Records: %s and %s | Figures: the metrics record "
+            "states the step universe as %s step, the register "
+            "entry states origin step Step %d | Metric: Q-3 | "
+            "Governing position: the feeder figure stands, the "
+            "contested instance carried on the evidenced universe"
+            % (_metrics_record_name(captured), contested["path"],
+               universe.metrics_count_claim, contested["origin"]))
+    return entries
 
 
 def _trace_is_pin_rows(captured, step):
@@ -3671,6 +4941,31 @@ def _data_quality_entries(captured):
                 "truncated-no-correcting-record the visible part of "
                 "the piece is never counted as a complete record"
                 % name)
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        if piece.record_class != CLS_AUDIT_PAPER:
+            continue
+        signal = _signal_failure(piece.text)
+        if signal is None:
+            continue
+        name = piece.paths[0]
+        if has_correcting:
+            entries.append(
+                "%s: What the record shows: the piece fails %s, a "
+                "completeness signal under D-19, and its visible "
+                "part counts toward nothing What follows: a "
+                "correcting record stands for this piece and "
+                "supplies the substitution, cited as the source"
+                % (name, signal))
+        else:
+            entries.append(
+                "%s: What the record shows: the piece fails %s, a "
+                "completeness signal under D-19, and its visible "
+                "part counts toward nothing What follows: "
+                "truncated-no-correcting-record the piece is "
+                "treated as truncated and no correcting record "
+                "stands for it" % (name, signal))
     if not _known_version(captured.definitions_version):
         entries.append(
             "build-metrics-record.md: What the record shows: the "
@@ -3729,10 +5024,12 @@ def _disagreement_lines(captured):
     wording, as DG-07 states it.
     """
     feeders = _decision_feeders(captured)
+    entries = _slice5_disagreement_entries(captured)
     if not feeders["queue_usable"] or not feeders["table_items"]:
-        return []
+        if not entries:
+            return []
+        return ["Group: record disagreements"] + entries
     table = {item["item"]: item for item in feeders["table_items"]}
-    entries = []
     ledger = _ledger_piece(captured)
     banked_text = ledger.text if ledger is not None and \
         ledger.text else ""
@@ -3930,6 +5227,20 @@ def derive_report(captured):
     if universe.disagreements:
         coverage += "; disagreements: " + "; ".join(
             universe.disagreements)
+    contested_entry = _q3_contested_entry(captured, universe)
+    if contested_entry is not None:
+        restatement = _q3_restatement(captured)
+        if restatement is not None:
+            coverage += ("; restatement group: the named "
+                         "correction in %s restates the step "
+                         "universe statement, and the Q-3 register "
+                         "entry governs" % restatement.paths[0])
+        else:
+            coverage += ("; Q-3 contested origin step: the "
+                         "register entry origin Step %d stands "
+                         "among the contested steps the record "
+                         "statement disagrees over"
+                         % contested_entry["origin"])
     if state_word == "halted":
         coverage += ("; build state: halted, named in the "
                      "recognised piece %s" % state_path)
@@ -4004,6 +5315,16 @@ def derive_report(captured):
             % (cls, totals.get("expected", 0), totals.get("found", 0),
                totals.get("not_found", 0)))
     entries = _data_quality_entries(captured)
+    t7_result = results_by_code.get("T-7")
+    if t7_result is not None and \
+            getattr(t7_result, "code_token", None) == "no code fits":
+        entries.append(
+            "T-7: What the record shows: the records for the loop "
+            "rounds row do not map records to rounds by an outcome "
+            "record, and List 3 holds no code naming the unmapped "
+            "rounds case What follows: no code fits the case is "
+            "recorded in the data quality section as a code list "
+            "gap for T-7")
     if not entries:
         entries = ["No data quality entries: every piece in the "
                    "capture was read in full."]

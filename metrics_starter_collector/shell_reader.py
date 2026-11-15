@@ -72,8 +72,153 @@ def _latest_timestamp(texts):
 
 TRUNCATION_MARKER = "TRUNCATED"
 
-_CONTENTS_LINE = re.compile(r"^Contents:\s*(.+?)\s*$")
+_CONTENTS_LINE = re.compile(r"^Contents(?: list)?:\s*(.+?)\s*$")
 _HEADING_LINE = re.compile(r"^#{1,6}\s+(.+?)\s*$")
+
+_SEQUENCE_ENTRY = re.compile(
+    r"^(Finding|Item|Entry|Part|Round|Step)\s+(\d+)\s+"
+    r"(stands|is|was|are|were|reads|states|holds|remains|applies)\b")
+_SEQUENCE_TOTAL = (
+    re.compile(r"(\d+)\s+(findings|items|entries|parts|rounds|steps)"
+               r"\s+in total"),
+    re.compile(r"total of\s+(\d+)\s+"
+               r"(findings|items|entries|parts|rounds|steps)"),
+    re.compile(r"(findings|items|entries|parts|rounds|steps) total:"
+               r"\s*(\d+)"))
+_SIGNAL_ONE_EXCEPTION = (
+    re.compile(r"sequence is (partial|planned)"),
+    re.compile(r"(partial|planned) sequence"),
+    re.compile(r"numbers( in the sequence)? (are|were) "
+               r"(reserved|skipped)"),
+    re.compile(r"skipped by design"),
+    re.compile(r"reserved by design"))
+
+_HEADER_COUNT = (
+    re.compile(r"rows stated in header:\s*(\d+)"),
+    re.compile(r"(\d+)\s+rows stated in (the )?header"),
+    re.compile(r"header[^\n:]*:\s*(\d+)\s+rows"))
+_CORRECTED_COUNT = (
+    re.compile(r"correct\w*[^\n]*?(\d+)\s+rows"),
+    re.compile(r"restates? the count[^\n\d]*(\d+)"))
+
+
+def _signal_one_failure(text):
+    """The signal one completeness failure in a text, or None.
+
+    Signal one: a numbered sequence with a gap, or a final
+    number below a total the same record states. A sequence
+    entry is a statement line opening with its label and number,
+    in the form Finding 1 stands. Entries stand grouped by
+    label, in record order. The signal does not fire where the
+    record states in its own text that the sequence is partial
+    or planned, or that numbers in the sequence are reserved or
+    skipped by design.
+    """
+    lowered = text.lower()
+    for pattern in _SIGNAL_ONE_EXCEPTION:
+        if pattern.search(lowered):
+            return None
+    sequences = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith("|"):
+            continue
+        found = _SEQUENCE_ENTRY.match(stripped)
+        if found:
+            label = found.group(1).lower()
+            number = int(found.group(2))
+            entries = sequences.setdefault(label, [])
+            if not entries or entries[-1] != number:
+                entries.append(number)
+    for label, entries in sequences.items():
+        if len(entries) >= 2 and entries[0] == 1 and \
+                all(b > a for a, b in zip(entries, entries[1:])):
+            missing = [n for n in range(1, entries[-1] + 1)
+                       if n not in entries]
+            if missing:
+                return ("the numbered %s sequence has a gap: "
+                        "number %d does not appear, and the sequence "
+                        "runs to %d" % (label, missing[0],
+                                        entries[-1]))
+    totals = {}
+    for pattern in _SEQUENCE_TOTAL:
+        for found in pattern.finditer(lowered):
+            if found.lastindex == 2 and \
+                    found.group(1).isdigit():
+                totals[found.group(2)] = int(found.group(1))
+            elif found.lastindex == 2:
+                totals[found.group(1)] = int(found.group(2))
+    for label, entries in sequences.items():
+        total = totals.get(label + "s")
+        if total is not None and entries and entries[-1] < total:
+            return ("the numbered %s sequence ends at %d, below "
+                    "the total of %d the same record states"
+                    % (label, entries[-1], total))
+    return None
+
+
+def _table_data_rows(lines, start):
+    """The data row count of the markdown table at or after start."""
+    index = start
+    while index < len(lines) and not lines[index].strip().startswith("|"):
+        index += 1
+    if index >= len(lines):
+        return None
+    rows = 0
+    index += 1
+    while index < len(lines) and lines[index].strip().startswith("|"):
+        cells = lines[index].strip().strip("|")
+        if not all(set(cell.strip()) <= set("-: ") and cell.strip()
+                   for cell in cells.split("|")):
+            rows += 1
+        index += 1
+    return rows
+
+
+def _signal_two_failure(text):
+    """The signal two completeness failure in a text, or None.
+
+    Signal two: a table whose row count disagrees with a count
+    stated in its own header. The signal does not fire where
+    the header count is stated in the record as a planned or
+    target count. Where a governing correction in the record
+    restates the count, the corrected count is the count
+    tested.
+    """
+    lines = text.splitlines()
+    corrected = None
+    for line in lines:
+        lowered_line = line.lower()
+        if "correct" not in lowered_line and \
+                "restate" not in lowered_line:
+            continue
+        for pattern in _CORRECTED_COUNT:
+            found = pattern.search(lowered_line)
+            if found:
+                corrected = int(found.group(1))
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        stated = None
+        for pattern in _HEADER_COUNT:
+            found = pattern.search(stripped.lower())
+            if found:
+                stated = int(found.group(1))
+                break
+        if stated is None:
+            continue
+        lowered_line = stripped.lower()
+        if "planned" in lowered_line or "target" in lowered_line:
+            continue
+        if "planned count" in text.lower() or \
+                "target count" in text.lower():
+            continue
+        tested = corrected if corrected is not None else stated
+        rows = _table_data_rows(lines, index + 1)
+        if rows is not None and rows != tested:
+            return ("a table holds %d data rows, which disagrees "
+                    "with the count of %d stated in its own header"
+                    % (rows, tested))
+    return None
 
 
 def _signal_three_failure(text):
@@ -81,29 +226,104 @@ def _signal_three_failure(text):
 
     Signal three: a section a record contents list names that
     does not appear in the record. A contents line states its
-    sections as a comma separated list after the Contents label.
-    A named section appears where a heading line in the record
-    states that section name. A contents line that marks a
-    section as deferred or not yet written carries the exception
-    form and the signal does not fire on that line.
+    sections as a comma separated list after the Contents or
+    Contents list label. A named section appears where a heading
+    line in the record states that section name. A section the
+    contents list itself marks as deferred or not yet written
+    carries the exception form and the signal does not fire on
+    that section, and a section a later governing entry in the
+    record removes from the list does not fire either.
     """
     headings = set()
     for line in text.splitlines():
         found = _HEADING_LINE.match(line.strip())
         if found:
             headings.add(found.group(1).strip().lower())
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
         found = _CONTENTS_LINE.match(line.strip())
         if not found:
-            continue
-        lowered = line.lower()
-        if "deferred" in lowered or "not yet written" in lowered:
             continue
         stated = found.group(1).rstrip(".")
         for name in stated.split(","):
             name = name.strip()
-            if name and name.lower() not in headings:
+            if not name:
+                continue
+            segment = name.lower()
+            if "deferred" in segment or \
+                    "not yet written" in segment:
+                continue
+            plain = re.sub(r"\s*\((deferred|not yet written)\)\s*",
+                           "", segment).strip()
+            if plain in headings:
+                continue
+            removed = False
+            for later in lines[index + 1:]:
+                lowered_later = later.lower()
+                if plain in lowered_later and (
+                        "removed from the list" in lowered_later
+                        or "removes the section" in lowered_later
+                        or "removed from the contents" in lowered_later
+                        or "no longer in the list" in lowered_later):
+                    removed = True
+                    break
+            if not removed:
                 return name
+    return None
+
+
+_COMPLETION_HEADING = re.compile(r"^#{1,6}\s+Completion section\s*$")
+
+
+def _repair_citation(text):
+    """The repair citation a Completion section carries, or None.
+
+    A repair is recognised by a section inside the same piece,
+    standing after the truncated part, headed Completion
+    section, stating that the piece was found truncated,
+    identifying its piece as this file, and supplying the
+    missing content in place. A completion supplying only a
+    corrected total is a correcting record, not a repair, and
+    carries no citation here.
+    """
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not _COMPLETION_HEADING.match(line.strip()):
+            continue
+        section = "\n".join(lines[index + 1:])
+        lowered = section.lower()
+        if "found truncated" not in lowered:
+            continue
+        if "this file" not in lowered:
+            continue
+        if "supplies the missing content in place" not in lowered \
+                and "supplying the missing content in place" \
+                not in lowered:
+            continue
+        return ("the piece was found truncated and a Completion "
+                "section in this file supplies the missing content "
+                "in place")
+    return None
+
+
+def _completeness_failure(text):
+    """The first completeness signal a text fails, or None.
+
+    Returns (signal name, detail). The three signals stand
+    tested in their numbered order, each with its exception
+    form, on a valid text file with no truncation marker.
+    """
+    detail = _signal_one_failure(text)
+    if detail is not None:
+        return "signal-one", detail
+    detail = _signal_two_failure(text)
+    if detail is not None:
+        return "signal-two", detail
+    missing_section = _signal_three_failure(text)
+    if missing_section is not None:
+        return "signal-three", (
+            "the contents list names the section %s, which does "
+            "not appear in the piece" % missing_section)
     return None
 
 
@@ -114,10 +334,14 @@ def _read_once(path):
     that cannot be read, that crosses the file limit, that is not
     valid UTF-8, or that holds a line over the line limit yields
     no text and carries its state and reason instead. A piece
-    carrying the truncation marker line, and a piece failing the
-    signal three completeness signal, likewise yields no text and
-    carries the truncated state: the visible part of a truncated
-    piece counts toward nothing.
+    carrying the truncation marker line, and a piece failing any
+    of the three completeness signals, likewise yields no text
+    and carries the truncated state, with the failed signal
+    named in the reason: the visible part of a truncated piece
+    counts toward nothing. A piece carrying a recognised
+    Completion section repair keeps its completed text and
+    carries the single state truncated, with the repair cited
+    in its reason beside that state.
     """
     try:
         data = path.read_bytes()
@@ -144,13 +368,18 @@ def _read_once(path):
             return size, None, "truncated", \
                 "truncated-piece: the piece carries a truncation " \
                 "marker and its visible part is not read in full"
-    missing_section = _signal_three_failure(text)
-    if missing_section is not None:
+    repair = _repair_citation(text)
+    if repair is not None:
+        return size, text, "truncated", \
+            "repaired-truncation: %s; the piece stands in its " \
+            "completed text with the repair cited beside its " \
+            "truncated state" % repair
+    failure = _completeness_failure(text)
+    if failure is not None:
+        signal, detail = failure
         return size, None, "truncated", \
-            "truncated-piece: signal-three failed: the contents " \
-            "list names the section %s, which does not appear in " \
-            "the piece, and its visible part is not read in full" \
-            % missing_section
+            "truncated-piece: %s failed: %s, and its visible " \
+            "part is not read in full" % (signal, detail)
     return size, text, None, None
 
 

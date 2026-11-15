@@ -102,6 +102,27 @@ statement for the statement line. The header coverage statement
 the model holds stands as held, in the open state form or the
 halt form the model states, and the renderer forms no coverage
 wording of its own.
+
+Slice 5 form, rounds and quality rows. The statement line form
+above stands for a row of any verdict in this slice as it stood
+for Slices 3 and 4: where the core hands over a cross check
+marking for T-7, Q-1, Q-3 or Q-4, that marking stands in the
+statement field of the affected row and the renderer prints it
+as the statement line of that row, with the disagreeing record
+named and the fact or figure each side supports, as the model
+holds them, and both figures and the cause where the model
+states them. The row form above stands for these rows as for
+every row: a present row carries its Value part as the model
+holds it, with the population and exclusion wording the model
+places before the count standing inside the parts the model
+hands over, in model order, and a row that is not present
+carries its Reason part in place of the value parts. The prose
+form stands as held: the data quality lines, the piece
+inventory lines and the coverage lines the model holds print
+whole and unshortened, so a completeness signal a data quality
+entry names, and the correcting record position a second tree
+of a pair carries, stand in the report in the words the model
+holds. The renderer forms no Slice 5 wording of its own.
 """
 import re
 

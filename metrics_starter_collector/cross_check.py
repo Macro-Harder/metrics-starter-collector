@@ -65,6 +65,47 @@ earlier slices landed. The staffing derivations carry their own
 marking in the core, and this module supplies a staffing marking
 only for a row that carries none yet, through
 staffing_cross_check_statements in its landed signature.
+
+Slice 5 form. This module builds the marking for the rows Slice 5
+certifies, T-7, Q-1, Q-3 and Q-4, under decisions D-18 and proposal
+CA-1, in the same form Slice 4 uses for the D-1 row: any
+disagreement stands in the statement line of the affected row, the
+disagreeing record is named, the fact or figure each side supports
+is stated, and, where CA-1 applies, both figures and the cause are
+stated. The feeder figure always stands and no marking overrides a
+feeder result. The functions below are the seam the derivation
+core addresses, in the forms the core consumes:
+
+rounds_quality_cross_check_statements(captured, feeder_figures)
+returns a mapping of metric code to statement text, for the Slice
+5 rows. captured is the CapturedRead, whose assembled metrics
+record text is the record compared. feeder_figures maps a metric
+code to its feeder figure, as a single figure text or number, a
+mapping of step to figure, or a sequence of (step, figure) pairs,
+where a figure may stand as a share in the form N of M, as a
+number, or as a (landed, total) pair. Where the metrics record
+states a figure for a row, in the form CODE for Step S as F or
+CODE as F, and that figure differs from the feeder figure for the
+same step or for the row, the statement for that code names the
+metrics record, states both figures, and states that the feeder
+figure stands. A row whose feeder figure the caller does not
+supply carries no marking from this function.
+
+q4_cross_check_statement(captured, covered) returns one statement
+text or None, the Q-4 limb of the form above in the signature the
+earlier slices landed. covered is the Q-4 feeder standing, as a
+mapping of step to a (landed, total) pair or a share text, a
+sequence of (step, landed, total) entries, or a single share.
+
+q3_contested_statement(captured, universe, origin_steps) returns
+one statement text or None, in the signature the earlier slices
+landed. universe is the StepUniverse the core built, or an
+iterable of evidenced steps. origin_steps is the set of origin
+steps the register entries state, as step numbers or Step S texts.
+Where an origin step stands outside the evidenced universe, the
+statement names the metrics record as the disagreeing record,
+states the universe the record supports and the origin step the
+register entry supports, and states that the feeder figure stands.
 """
 import re
 
@@ -193,13 +234,200 @@ def staffing_cross_check_statements(captured, universe, covered,
     return {}
 
 
-def q4_cross_check_statement(captured, covered):
-    """Return no statement: Slice 4 carries no Q-4 marking."""
+def _share_text(value):
+    """Return one feeder figure as a share or number text, or None."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return _fmt_num(value)
+    if isinstance(value, str):
+        found = re.search(r"(\d+)\s+of\s+(\d+)", value)
+        if found:
+            return "%s of %s" % (found.group(1), found.group(2))
+        found = re.search(r"(\d+(?:\.\d+)?)", value)
+        return _fmt_num(float(found.group(1))) if found else None
+    if isinstance(value, (tuple, list)):
+        numbers = [v for v in value
+                   if isinstance(v, (int, float))
+                   and not isinstance(v, bool)]
+        if len(numbers) >= 2:
+            return "%s of %s" % (_fmt_num(numbers[0]),
+                                 _fmt_num(numbers[-1]))
+        if len(numbers) == 1:
+            return _fmt_num(numbers[0])
     return None
 
 
+def _share_figures(value):
+    """Return a mapping of step to feeder figure text, where held so."""
+    found = {}
+    if isinstance(value, dict):
+        for key, held in value.items():
+            step = None
+            if isinstance(key, int):
+                step = key
+            elif isinstance(key, str):
+                match = re.search(r"(\d+)", key)
+                if match:
+                    step = int(match.group(1))
+            figure = _share_text(held)
+            if step is not None and figure is not None:
+                found[step] = figure
+        return found
+    if isinstance(value, (tuple, list)):
+        for entry in value:
+            if isinstance(entry, (tuple, list)) and len(entry) >= 2:
+                step = entry[0]
+                if isinstance(step, str):
+                    match = re.search(r"(\d+)", step)
+                    step = int(match.group(1)) if match else None
+                figure = _share_text(entry[1:] if len(entry) > 2
+                                     else entry[1])
+                if step is not None and figure is not None:
+                    found[int(step)] = figure
+    return found
+
+
+def _record_figures(text, code):
+    """Return (per step figures, row figure) the record states."""
+    per_step = {}
+    row = None
+    if not text:
+        return per_step, row
+    for found in re.finditer(
+            re.escape(code) +
+            r"\s+for\s+Step\s+(\d+)\s+as\s+(\d+\s+of\s+\d+|"
+            r"\d+(?:\.\d+)?)", str(text)):
+        per_step[int(found.group(1))] = _share_text(found.group(2))
+    found = re.search(
+        re.escape(code) + r"\s+as\s+(\d+\s+of\s+\d+|\d+(?:\.\d+)?)",
+        str(text))
+    if found:
+        row = _share_text(found.group(1))
+    return per_step, row
+
+
+def rounds_quality_cross_check_statements(captured, feeder_figures):
+    """Return the Slice 5 markings for T-7, Q-1, Q-3 and Q-4.
+
+    feeder_figures maps a metric code to the feeder figure the core
+    derived for that row. A marking stands only where the assembled
+    metrics record states a figure for the row that differs from
+    the feeder figure for the same step, or for the row where the
+    feeder figure stands as a single figure. Each marking names
+    the metrics record, states both figures, and states that the
+    feeder figure stands, under D-18 and CA-1.
+    """
+    statements = {}
+    text = ""
+    if captured is not None:
+        text = getattr(captured, "assembled_metrics", None) or ""
+    if not text or not feeder_figures:
+        return statements
+    name = _record_name(getattr(captured, "metrics_single_path", None)
+                        if captured is not None else None)
+    for code in ("T-7", "Q-1", "Q-3", "Q-4"):
+        if code not in feeder_figures:
+            continue
+        held = feeder_figures[code]
+        per_step = _share_figures(held)
+        single = _share_text(held) if not per_step else None
+        stated_steps, stated_row = _record_figures(text, code)
+        marking = None
+        for step in sorted(stated_steps):
+            feeder = per_step.get(step, single)
+            if feeder is not None and stated_steps[step] != feeder:
+                marking = ("record disagrees: %s states %s for "
+                           "Step %d as %s, while the feeder records "
+                           "state %s for Step %d; the feeder figure "
+                           "stands and the record figure is not "
+                           "followed"
+                           % (name, code, step, stated_steps[step],
+                              feeder, step))
+                break
+        if marking is None and stated_row is not None \
+                and single is not None and stated_row != single:
+            marking = ("record disagrees: %s states %s as %s, while "
+                       "the feeder records state %s; the feeder "
+                       "figure stands and the record figure is not "
+                       "followed"
+                       % (name, code, stated_row, single))
+        if marking is not None:
+            statements[code] = marking
+    return statements
+
+
+def q4_cross_check_statement(captured, covered):
+    """Return the Q-4 record disagrees marking, or None.
+
+    covered is the Q-4 feeder standing the core derived, as a
+    mapping of step to a (landed, total) pair or a share text, a
+    sequence of (step, landed, total) entries, or a single share.
+    Where the metrics record states a Q-4 figure for a step that
+    differs from the feeder share for that step, the marking names
+    the metrics record, states both figures, and states that the
+    feeder figure stands, under D-18 and CA-1.
+    """
+    if captured is None:
+        return None
+    statements = rounds_quality_cross_check_statements(
+        captured, {"Q-4": covered})
+    return statements.get("Q-4")
+
+
 def q3_contested_statement(captured, universe, origin_steps):
-    """Return no statement: Slice 4 carries no Q-3 marking."""
+    """Return the Q-3 contested origin step marking, or None.
+
+    Where a register entry states an origin step that stands
+    outside the evidenced step universe, the marking names the
+    metrics record as the disagreeing record, states the universe
+    the record supports and the origin step the entry supports,
+    and states that the feeder figure stands, under D-18 and CA-1.
+    """
+    evidenced = set()
+    if universe is not None:
+        held = getattr(universe, "evidenced", None)
+        if held is None:
+            held = getattr(universe, "steps", None)
+        if held is None:
+            held = universe
+        try:
+            for item in held:
+                if isinstance(item, int):
+                    evidenced.add(item)
+                elif isinstance(item, str):
+                    match = re.search(r"(\d+)", item)
+                    if match:
+                        evidenced.add(int(match.group(1)))
+                else:
+                    number = getattr(item, "step", None)
+                    if isinstance(number, int):
+                        evidenced.add(number)
+        except TypeError:
+            evidenced = set()
+    origins = []
+    if origin_steps is not None:
+        values = origin_steps if isinstance(
+            origin_steps, (list, tuple, set)) else [origin_steps]
+        for value in values:
+            if isinstance(value, int):
+                origins.append(value)
+            elif isinstance(value, str):
+                match = re.search(r"(\d+)", value)
+                if match:
+                    origins.append(int(match.group(1)))
+    if not evidenced or not origins:
+        return None
+    name = _record_name(getattr(captured, "metrics_single_path", None)
+                        if captured is not None else None)
+    for step in origins:
+        if step not in evidenced:
+            return ("record disagrees: %s states the step universe "
+                    "as %d step%s, while the register entry states "
+                    "origin step Step %d; the feeder figure stands "
+                    "and the record figure is not followed"
+                    % (name, len(evidenced),
+                       "" if len(evidenced) == 1 else "s", step))
     return None
 
 
