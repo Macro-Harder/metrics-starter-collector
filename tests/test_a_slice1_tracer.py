@@ -202,7 +202,14 @@ class TestSlice1Tracer(FixtureTestCase):
         self.assertIn("date-only-form", block)
 
     def test_wv22_t1_f2_both_transitions_required(self):
-        """WV22 T-1 F2: opening in form and closing date only fails the step."""
+        """WV22 T-1 F2: opening in form and closing date only fails the step.
+
+        Corrected at Step 15 round 1, item R15-03: the step fails,
+        and under the D4R-03 aggregation rule the row stands
+        present on the passing steps alone, with Step 1 named as
+        failing on the date only condition, in place of the
+        partial-span refusal this test pinned before the fix.
+        """
         ledger = ledger_text(
             "Step 1 IN PROGRESS 2026-11-01 09:00, closed 2026-11-02.\n"
             "Step 2 IN PROGRESS 2026-11-02 09:00, closed 2026-11-02 17:00.\n"
@@ -210,8 +217,13 @@ class TestSlice1Tracer(FixtureTestCase):
         root = self.build(clean_case("t1-f2-mixed", ledger=ledger))
         result = run_tool(root)
         block = row_block(result.stdout, "T-1")
-        assert_verdict(self, block, "present but not derivable", "T-1")
-        self.assertIn("partial-span", block)
+        assert_verdict(self, block, "present", "T-1")
+        self.assertNotIn("partial-span", block)
+        self.assertIn("Step 2 elapsed 8 hours", block)
+        self.assertIn("Step 3 elapsed 8 hours", block)
+        self.assertNotIn("Step 1 elapsed", block)
+        self.assertIn("Step 1", block)
+        self.assertIn("date only", block.lower())
 
     def test_wv22_t1_f1_time_outside_transitions_counts_for_nothing(self):
         """WV22 T-1 F1: a time of day outside the transition entries counts for nothing."""

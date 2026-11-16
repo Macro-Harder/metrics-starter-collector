@@ -257,14 +257,43 @@ def _stamp_value(text):
     return None
 
 
+def _span_reversed(first, second):
+    """The shared span order check, in one form for every locus.
+
+    A span stands reversed where its closing instant stands
+    earlier than its opening instant. Under the strictness
+    standard at D4R-03 a figure counts only where it is measured
+    and in the form the definition requires, and a reversed span
+    is not a duration in any form the definitions require, so a
+    reversed span forms no duration at either locus that forms
+    one: the transition series in _time_series and the decision
+    item latency here. The affected unit fails on the reversed
+    condition, is named with that condition, and is excluded
+    from every figure its row forms.
+    """
+    return isinstance(first, datetime) and \
+        isinstance(second, datetime) and second < first
+
+
 def _item_latency_hours(item):
     if not isinstance(item, dict):
         return None
     raised = item.get("raised_dt") or _stamp_value(item.get("raised"))
     ruled = item.get("ruled_dt") or _stamp_value(item.get("ruled"))
     if isinstance(raised, datetime) and isinstance(ruled, datetime):
+        if _span_reversed(raised, ruled):
+            return None
         return (ruled - raised).total_seconds() / 3600.0
     return None
+
+
+def _item_span_reversed(item):
+    """Whether one decision item stands reversed under the check."""
+    if not isinstance(item, dict):
+        return False
+    raised = item.get("raised_dt") or _stamp_value(item.get("raised"))
+    ruled = item.get("ruled_dt") or _stamp_value(item.get("ruled"))
+    return _span_reversed(raised, ruled)
 
 
 def _each_step(steps):
@@ -843,7 +872,12 @@ def _time_series(captured):
     duration for the step, else the interval duration the pair
     forms, whether a transition entry stands for the step, and
     whether a date only form stands among its tokens. Timestamps
-    of two different steps never pair.
+    of two different steps never pair. A pair that stands
+    reversed under the shared order check at _span_reversed
+    forms no elapsed figure and no active figure: the entry
+    carries the reversed mark instead, so the step fails on the
+    reversed condition and is excluded from every figure its
+    consumers form, including the build totals.
     """
     per_step, ledger = _transition_tokens(captured)
     series = {}
@@ -852,6 +886,7 @@ def _time_series(captured):
         if step not in series:
             series[step] = {"elapsed": None, "active": None,
                             "entry": False, "date_only": False,
+                            "has_full": False, "reversed": False,
                             "stated": None, "active_stated": None}
         return series[step]
 
@@ -862,10 +897,15 @@ def _time_series(captured):
         held["entry"] = True
         if any(tok == "date" for tok in toks):
             held["date_only"] = True
+        if any(isinstance(tok, datetime) for tok in toks):
+            held["has_full"] = True
         if len(toks) >= 2 and isinstance(toks[0], datetime) and \
                 isinstance(toks[1], datetime):
-            held["elapsed"] = (toks[1] - toks[0]).total_seconds() \
-                / 3600.0
+            if _span_reversed(toks[0], toks[1]):
+                held["reversed"] = True
+            else:
+                held["elapsed"] = (toks[1] - toks[0]).total_seconds() \
+                    / 3600.0
     for line in ledger.text.splitlines():
         m = re.search(r"Step (\d+)\b", line)
         if not m:
@@ -880,7 +920,9 @@ def _time_series(captured):
         elif stated:
             entry(step)["stated"] = float(stated.group(1))
     for held in series.values():
-        if held["active_stated"] is not None:
+        if held["reversed"]:
+            held["active"] = None
+        elif held["active_stated"] is not None:
             held["active"] = held["active_stated"]
         elif held["stated"] is not None:
             held["active"] = held["stated"]
@@ -889,18 +931,57 @@ def _time_series(captured):
     return series, ledger
 
 
+def _span_failure_condition(held):
+    """The condition one entered step failed, in the row form.
+
+    The reversed condition stands first, on the shared order
+    check: a step whose pair stands reversed failed on that
+    condition whatever else its entries carry. A date only entry
+    failed on the date only condition, and any other entered step
+    with no figure failed for want of a full timestamp pair.
+    """
+    if held is None:
+        return ("no transition entry stands for the step, so no "
+                "duration forms")
+    if held.get("reversed"):
+        return ("its closing transition timestamp stands earlier "
+                "than its opening transition timestamp, so the "
+                "span stands reversed and forms no duration")
+    if held.get("date_only"):
+        if held.get("has_full"):
+            return ("one of its transition entries carries a "
+                    "date only and no time of day, so no duration "
+                    "forms")
+        return ("its transition entries carry dates only and no "
+                "time of day, so no duration forms")
+    return ("no full timestamp pair stands for the step, so no "
+            "duration forms")
+
+
+def _failing_step_clauses(series, steps):
+    """One naming clause per failing step, in step order."""
+    return ["Step %d: %s" % (step, _span_failure_condition(
+        series.get(step))) for step in sorted(steps)]
+
+
 def _t1_state(captured, universe):
     """Shared T-1 reading: (kind, complete, incomplete, ledger).
 
     Kind is one of no-ledger, not-read, no-entries, date-only,
-    no-interval, partial, or complete. A step fails where a
-    transition entry stands for it and no full pair forms. Where
-    at least one pair forms and at least one entered step fails,
-    the series is partial, under reason code partial-span, and the
-    incomplete list names every universe step with no pair. Where
-    no pair forms, the row is missing: on the date only ground
-    where a date only form stands among the entered steps, and on
-    the no interval ground otherwise.
+    no-interval, partial, reversed, or complete. A step fails
+    where a transition entry stands for it and no full pair
+    forms. Where at least one pair forms and at least one
+    entered step fails, the series is partial, and the
+    incomplete list names every universe step with no pair; the
+    derivations form their present rows from the passing steps
+    alone under the aggregation rule at D4R-03. Where no pair
+    forms, the row is missing: on the date only ground where a
+    date only form stands among the entered steps, and on the
+    no interval ground otherwise, save where an entered step
+    stands reversed under the shared order check, which is the
+    reversed kind: no unit passes and a feeder record stands,
+    so the row is present but not derivable with the reversed
+    condition named, under the same aggregation rule.
     """
     series, ledger = _time_series(captured)
     if ledger is None:
@@ -919,9 +1000,46 @@ def _t1_state(captured, universe):
         return "partial", complete, incomplete, ledger
     if complete:
         return "complete", complete, [], ledger
+    if any(series[step].get("reversed") for step in failed):
+        return "reversed", {}, failed, ledger
     if any(series[step]["date_only"] for step in failed):
         return "date-only", {}, [], ledger
     return "no-interval", {}, [], ledger
+
+
+def _split_span_present(code, figures, covered, failing, series,
+                        denom, pointer, rule_name):
+    """The present row for a split span series, under D4R-03.
+
+    Where the units of a metric split, some passing and some
+    failing, the row is present where at least one unit passes:
+    the figure stands formed from the passing units alone, the
+    row states the coverage those units give as its bound in
+    the fixed three part form, and each failing unit is named
+    with the condition it failed. The reconciliation clause
+    restates the coverage bound in the same line as the value,
+    in the covered and remainder form.
+    """
+    result = DerivationResult(code, "present", figures, denom,
+                              pointer, rule_name=rule_name)
+    result.coverage = denom + "; steps counted: " + \
+        _each_step(sorted(covered))
+    clauses = _failing_step_clauses(series, failing)
+    result.bound = (
+        _steps_phrase(sorted(failing)),
+        "the interval link for " + "; ".join(clauses),
+        "a path ledger transition entry pair for each excepted "
+        "step, carrying a timestamp with a time of day on the "
+        "entry that opens the step and on the entry that closes "
+        "it, with the closing entry standing at or after the "
+        "opening entry")
+    result.reconciled_against = (
+        "the transition entries in the path ledger for each "
+        "covered step, with the coverage bound restated here: "
+        "covered %s; remainder %s"
+        % (_steps_phrase(sorted(covered)),
+           _steps_phrase(sorted(failing))))
+    return result
 
 
 def _derive_t1(captured, universe):
@@ -1001,19 +1119,32 @@ def _derive_t1(captured, universe):
             follows="no interval can form from the log as it "
                     "stands, so the row is missing",
             rule_name="T-1 feeder standing rule")
+    if kind == "reversed":
+        series, _ledger = _time_series(captured)
+        clauses = _failing_step_clauses(series, incomplete)
+        return _refusal(
+            "T-1", "present but not derivable", "no interval figure",
+            denom, pointer,
+            shows="the transition log stands as the feeder record "
+                  "and no entered step forms a duration: "
+                  + "; ".join(clauses),
+            token="missing-field",
+            follows="no unit passes and a feeder record stands, "
+                    "so the row is present but not derivable with "
+                    "the failed condition named, under the "
+                    "aggregation rule",
+            rule_name="T-1 mixed series rule")
     if kind == "partial":
         covered = sorted(complete)
-        return _refusal(
-            "T-1", "present but not derivable",
-            "intervals stand for " + _each_step(covered), denom,
-            pointer,
-            shows="the transition log yields a full timestamp "
-                  "interval for %s and no full interval for %s"
-                  % (_each_step(covered), _each_step(incomplete)),
-            token="partial-span",
-            follows="the series covers only part of the step "
-                    "universe, so no build level figure stands",
-            rule_name="T-1 mixed series rule")
+        series, _ledger = _time_series(captured)
+        failing = [step for step, held in series.items()
+                   if held["entry"] and held["elapsed"] is None]
+        figures = "; ".join(
+            "Step %d elapsed %s hours" % (s, _fmt_num(complete[s]))
+            for s in covered)
+        return _split_span_present(
+            "T-1", figures, covered, failing, series, denom,
+            pointer, "T-1 interval rule")
     figures = "; ".join(
         "Step %d elapsed %s hours" % (s, _fmt_num(complete[s]))
         for s in sorted(complete))
@@ -1080,22 +1211,29 @@ def _derive_t2(captured, universe):
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="T-2 feeder standing rule")
+    if kind == "reversed":
+        clauses = _failing_step_clauses(series, incomplete)
+        return _refusal(
+            "T-2", "present but not derivable", "no duration figure",
+            denom, pointer,
+            shows="the transition log stands as the feeder record "
+                  "and no entered step forms a duration: "
+                  + "; ".join(clauses),
+            token="missing-field",
+            follows="no unit passes and a feeder record stands, "
+                    "so the row is present but not derivable with "
+                    "the failed condition named, under the "
+                    "aggregation rule",
+            rule_name="T-2 mixed series rule")
     failed = [step for step, held in series.items()
               if held["entry"] and held["active"] is None]
     if kind == "partial" or (durations and failed):
-        wanted = list(universe.evidenced) or sorted(series)
-        incomplete = [s for s in wanted if s not in durations]
-        return _refusal(
-            "T-2", "present but not derivable",
-            "durations stand for " + _each_step(sorted(durations)),
-            denom, pointer,
-            shows="a duration forms for %s and no duration forms "
-                  "for %s" % (_each_step(sorted(durations)),
-                              _each_step(incomplete)),
-            token="partial-span",
-            follows="the series covers only part of the step "
-                    "universe, so no build level figure stands",
-            rule_name="T-2 mixed series rule")
+        figures = "; ".join(
+            "Step %d duration %s hours" % (s, _fmt_num(durations[s]))
+            for s in sorted(durations))
+        return _split_span_present(
+            "T-2", figures, sorted(durations), failed, series,
+            denom, pointer, "T-2 interval duration rule")
     if not durations:
         return _refusal(
             "T-2", "missing", "no duration figure", denom, pointer,
@@ -4800,6 +4938,11 @@ def _derive_d1(captured, universe):
             not_counted.append(
                 "%s stands open with no ruled timestamp"
                 % item["item"])
+        elif _item_span_reversed(item):
+            not_counted.append(
+                "%s stands ruled before it was raised, so its "
+                "span stands reversed under the order check and "
+                "forms no latency" % item["item"])
         elif _stamp_value(item["raised"]) == "date" or \
                 _stamp_value(item["ruled"]) == "date":
             not_counted.append(
@@ -4920,6 +5063,22 @@ def _b_series_figures(captured):
             active[step] = figures["active"]
     both = sorted(set(elapsed) & set(active))
     return elapsed, active, both
+
+
+def _reversed_step_clauses(captured):
+    """Naming clauses for the steps whose span stands reversed.
+
+    A reversed step carries no elapsed and no active figure, so
+    it is excluded from every B family figure, including the
+    B-1 totals, where a negative step must never cancel a sound
+    step. The B rows name the exclusion with the reversed
+    condition, in the form the time rows state it.
+    """
+    series, _ledger = _time_series(captured)
+    return ["Step %d excluded: %s"
+            % (step, _span_failure_condition(held))
+            for step, held in sorted(series.items())
+            if held.get("reversed")]
 
 
 def _b_composition_refusal(code, denom, pointer, captured,
@@ -5044,6 +5203,8 @@ def _derive_b1(captured, universe, t1_result, t2_result):
                "over %d steps: %s"
                % (_fmt_num(total_elapsed), _fmt_num(total_active),
                   len(both), "; ".join(parts)))
+    for clause in _reversed_step_clauses(captured):
+        figures += "; " + clause
     result = DerivationResult(
         "B-1", "present", figures, denom,
         _pointer("B-1", pointer, captured),
@@ -5180,6 +5341,8 @@ def _derive_b_ranking(captured, universe, t1_result, code,
                     "%s hours above elapsed %s hours"
                     % (step, _fmt_num(active[step]),
                        _fmt_num(elapsed[step])))
+    for clause in _reversed_step_clauses(captured):
+        figures += "; " + clause
     coverage = denom
     if len(rankable) < 3:
         figures += ("; fewer than three eligible steps: "

@@ -310,19 +310,178 @@ class TestSlice4TimeDecision(FixtureTestCase):
                        "missing", "T-2")
 
     def test_mixed_series_partial_span(self):
-        """EC-24, EC-25; WV22 T-1 F1, F2. Mixed series under partial-span."""
+        """EC-24, EC-25; WV22 T-1 F1, F2. Mixed series under D4R-03.
+
+        Corrected at Step 15 round 1, item R15-03: where the units
+        split, some passing and some failing, the row is present
+        where at least one unit passes, a figure formed from the
+        passing units alone is measured and reconciled for the
+        coverage those units give, the row states that coverage as
+        its bound and names each failing unit with the condition it
+        failed. Step 1 and Step 3 carry full timestamp pairs of
+        09:00 to 17:00 and Step 2 carries date only entries.
+        """
         files = base_files()
         files["PATH-LEDGER.md"] = path_ledger(
             "Step 1 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.\n"
             "Step 2 IN PROGRESS 2026-11-02, closed 2026-11-03.\n"
-            "Step 3 stands with no transitions.")
+            "Step 3 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.")
         result, _ = run_case(make_case(
             "mixed-partial-span", files, ["full-clock-timestamps"]))
         block = row_block(result.stdout, "T-1")
-        assert_verdict(self, block, "present but not derivable", "T-1")
-        self.assertIn("partial-span", block)
-        for name in ("Step 1", "Step 2", "Step 3"):
-            self.assertIn(name, block)
+        assert_verdict(self, block, "present", "T-1")
+        self.assertNotIn("partial-span", block)
+        self.assertIn("Step 1 elapsed 8 hours", block)
+        self.assertIn("Step 3 elapsed 8 hours", block)
+        self.assertNotIn("Step 2 elapsed", block)
+        self.assertIn("Step 2", block)
+        self.assertIn("dates only", block.lower())
+        self.assertIn("Row coverage:", block)
+        self.assertIn("Step 1", block.split("Row coverage:")[1])
+        self.assertIn("Step 3", block.split("Row coverage:")[1])
+        self.assertIn("Bound:", block)
+        self.assertIn("excepted", block)
+        self.assertIn("link excepted", block)
+        self.assertIn("cleared by", block)
+        self.assertIn("Reconciled against:", block)
+
+    def test_mixed_series_t2_present_from_passing_steps(self):
+        """EC-25; WV22 T-2 F1, F2. Mixed series T-2 under D4R-03, R15-03.
+
+        On the same mixed series as the corrected T-1 test, the
+        T-2 row is present, its durations formed from the passing
+        steps alone, with Step 2 named as failing on the date only
+        condition and the coverage stated as the row bound.
+        """
+        files = base_files()
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.\n"
+            "Step 2 IN PROGRESS 2026-11-02, closed 2026-11-03.\n"
+            "Step 3 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.")
+        result, _ = run_case(make_case(
+            "mixed-partial-span-t2", files, ["full-clock-timestamps"]))
+        block = row_block(result.stdout, "T-2")
+        assert_verdict(self, block, "present", "T-2")
+        self.assertNotIn("partial-span", block)
+        self.assertIn("Step 1 duration 8 hours", block)
+        self.assertIn("Step 3 duration 8 hours", block)
+        self.assertNotIn("Step 2 duration", block)
+        self.assertIn("Step 2", block)
+        self.assertIn("dates only", block.lower())
+        self.assertIn("Bound:", block)
+        self.assertIn("Reconciled against:", block)
+
+    def test_reversed_transition_excluded_from_time_and_b_rows(self):
+        """EC-24, EC-25, EC-37, EC-39, EC-40; R15-05 reversed span.
+
+        A closing transition earlier than its opening forms no
+        duration under D4R-03: the affected step fails, is named
+        with the reversed condition, and is excluded from every
+        figure, including the B-1 totals, which stand at the sound
+        steps alone and never let a negative step cancel a sound
+        step. Step 1 opens 17:00 and closes 09:00; Steps 2 and 3
+        stand in normal order at 09:00 to 17:00.
+        """
+        files = base_files()
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 IN PROGRESS 2026-11-01 17:00, closed 2026-11-01 09:00.\n"
+            "Step 2 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.\n"
+            "Step 3 IN PROGRESS 2026-11-01 09:00, closed 2026-11-01 17:00.")
+        result, _ = run_case(make_case(
+            "reversed-transition", files, ["full-clock-timestamps"]))
+        t1 = row_block(result.stdout, "T-1")
+        assert_verdict(self, t1, "present", "T-1")
+        self.assertIn("Step 2 elapsed 8 hours", t1)
+        self.assertIn("Step 3 elapsed 8 hours", t1)
+        self.assertNotIn("Step 1 elapsed", t1)
+        self.assertNotIn("-8", t1)
+        self.assertIn("Step 1", t1)
+        self.assertIn("reversed", t1.lower())
+        t2 = row_block(result.stdout, "T-2")
+        assert_verdict(self, t2, "present", "T-2")
+        self.assertIn("Step 2 duration 8 hours", t2)
+        self.assertIn("Step 3 duration 8 hours", t2)
+        self.assertNotIn("Step 1 duration", t2)
+        self.assertNotIn("-8", t2)
+        self.assertIn("reversed", t2.lower())
+        b1 = row_block(result.stdout, "B-1")
+        assert_verdict(self, b1, "present", "B-1")
+        self.assertIn("build elapsed 16 hours", b1)
+        self.assertIn("build active 16 hours", b1)
+        self.assertNotIn("-8", b1)
+        self.assertIn("Step 1", b1)
+        self.assertIn("reversed", b1.lower())
+        for code in ("B-3", "B-4"):
+            block = row_block(result.stdout, code)
+            assert_verdict(self, block, "present", code)
+            self.assertNotIn("-8", block, code)
+            self.assertNotIn("Step 1 elapsed -", block, code)
+            self.assertIn("Step 1", block, code)
+            self.assertIn("reversed", block.lower(), code)
+
+    def test_reversed_transition_no_passing_step_not_derivable(self):
+        """EC-24, EC-25; R15-05 reversed span, no unit passes.
+
+        Where every entered step stands reversed, no unit passes
+        and a feeder record stands, so the T-1 and T-2 rows are
+        present but not derivable under the D4R-03 aggregation
+        rule, with the reversed condition named and no figure.
+        """
+        files = base_files()
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 IN PROGRESS 2026-11-01 17:00, closed 2026-11-01 09:00.\n"
+            "Step 2 IN PROGRESS 2026-11-01 17:00, closed 2026-11-01 09:00.\n"
+            "Step 3 IN PROGRESS 2026-11-01 17:00, closed 2026-11-01 09:00.")
+        result, _ = run_case(make_case(
+            "reversed-transition-all", files, ["full-clock-timestamps"]))
+        for code in ("T-1", "T-2"):
+            block = row_block(result.stdout, code)
+            assert_verdict(self, block, "present but not derivable", code)
+            self.assertIn("reversed", block.lower(), code)
+            self.assertNotIn("-8", block, code)
+
+    def test_d1_reversed_item_not_counted(self):
+        """EC-36; WV22 D-1 F1, F5. R15-06 reversed decision item.
+
+        An item ruled before it was raised forms no latency under
+        D4R-03 and is named as not counted: Q-1 raised 2026-11-02
+        09:00 and ruled 2026-11-01 09:00 stands reversed, and Q-2
+        raised 2026-11-01 09:00 and ruled 2026-11-01 11:00 counts
+        alone, so the median and the longest stand at 2 hours and
+        no negative figure stands on the row.
+        """
+        rows = [
+            "| Q-1 | 1 | 2026-11-02 09:00 | 2026-11-02 10:00 | 2026-11-01 09:00 |",
+            "| Q-2 | 1 | 2026-11-01 09:00 | 2026-11-01 10:00 | 2026-11-01 11:00 |"]
+        result, _ = run_case(d1_case("d1-reversed-item", queue_rows=rows))
+        block = row_block(result.stdout, "D-1")
+        assert_verdict(self, block, "present", "D-1")
+        assert_median(self, block, 2)
+        self.assertRegex(block, r"longest[^\d]*2(?!\d)")
+        self.assertNotIn("-24", block)
+        self.assertNotIn("median -", block)
+        self.assertIn("Q-1", block)
+        self.assertIn("not counted", block)
+        self.assertIn("reversed", block.lower())
+
+    def test_d1_all_items_reversed_not_derivable(self):
+        """EC-36; WV22 D-1 F7. R15-06 reversed item, no item counts.
+
+        Where the only item stands ruled before it was raised, no
+        latency forms and the row is present but not derivable,
+        with the item named as not counted on the reversed
+        condition and no negative figure anywhere on the row.
+        """
+        rows = [
+            "| Q-1 | 1 | 2026-11-02 09:00 | 2026-11-02 10:00 | 2026-11-01 09:00 |"]
+        result, _ = run_case(d1_case("d1-reversed-only", queue_rows=rows))
+        block = row_block(result.stdout, "D-1")
+        assert_verdict(self, block, "present but not derivable", "D-1")
+        self.assertIn("Q-1", block)
+        self.assertIn("reversed", block.lower())
+        self.assertNotIn("-24", block)
+        self.assertNotIn("median", block.lower().split("reason:")[0]
+                         if "reason:" in block.lower() else block)
 
     # T-4 fields and feeder combinations, Part 3 form.
 

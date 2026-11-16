@@ -10,6 +10,7 @@ the one operator named file. It holds no derivation rule.
 """
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 
@@ -942,31 +943,49 @@ def deliver_report(text, root, report_path):
         raise UsageError(
             "deliver the report: destination %s: the parent "
             "directory does not stand" % (report_path,))
-    dest_resolved = destination.resolve()
-    write_through = False
-    if destination.is_symlink():
-        write_through = not dest_resolved.is_file()
-    elif destination.exists() and not destination.is_file():
-        write_through = True
-    if write_through:
-        try:
-            with open(destination, "w", encoding="utf-8",
-                      newline="\n") as handle:
-                handle.write(text)
-        except OSError as exc:
-            raise UsageError("deliver the report: destination %s: %s"
-                             % (report_path, exc))
-        return
-    target = dest_resolved if destination.is_symlink() else destination
-    staging = target.parent / (target.name + ".tmp-msc")
+    # A destination that already stands in a form other than a
+    # regular file cannot take a single write of finished bytes.
+    # It is refused here, before any opening that could block
+    # without bound, as the delivery failure form states: a usage
+    # error, no fallback destination, and the destination left
+    # as it stood. A link is judged by the form it points at.
     try:
-        staging.write_text(text, encoding="utf-8", newline="\n")
-        os.replace(str(staging), str(target))
+        standing_mode = os.stat(str(destination)).st_mode
+    except FileNotFoundError:
+        standing_mode = None
     except OSError as exc:
-        try:
-            if staging.exists():
-                staging.unlink()
-        except OSError:
-            pass
         raise UsageError("deliver the report: destination %s: %s"
                          % (report_path, exc))
+    if standing_mode is not None and \
+            not stat.S_ISREG(standing_mode):
+        raise UsageError(
+            "deliver the report: destination %s: the destination "
+            "does not stand as a regular file and cannot be "
+            "delivered to as named" % (report_path,))
+    data = text.encode("utf-8")
+    try:
+        handle = os.open(
+            str(destination),
+            os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NONBLOCK,
+            0o666)
+    except OSError as exc:
+        raise UsageError("deliver the report: destination %s: %s"
+                         % (report_path, exc))
+    try:
+        if not stat.S_ISREG(os.fstat(handle).st_mode):
+            raise UsageError(
+                "deliver the report: destination %s: the "
+                "destination does not stand as a regular file "
+                "and cannot be delivered to as named"
+                % (report_path,))
+        written = os.write(handle, data)
+        if written != len(data):
+            raise OSError("short write: %d of %d bytes written"
+                          % (written, len(data)))
+    except UsageError:
+        raise
+    except OSError as exc:
+        raise UsageError("deliver the report: destination %s: %s"
+                         % (report_path, exc))
+    finally:
+        os.close(handle)

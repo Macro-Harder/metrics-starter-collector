@@ -1525,6 +1525,89 @@ class TestSlice7Report(FixtureTestCase):
                          "exit is not 2: %r, stderr: %s"
                          % (proc.returncode, stderr[:300]))
 
+    def test_delivery_directory_destination_still_fails_cleanly(self):
+        """Delivery failure. A directory destination exits 2, intact."""
+        root = tracked_tempdir("msc_slice7_")
+        built = build_case(make_case("s7-deliver-dir", base_files()),
+                           root)
+        dest = root / "dest-dir"
+        dest.mkdir()
+        marker = dest / "kept.txt"
+        marker.write_text("kept\n", encoding="utf-8")
+        result = run_argv([built, "--report", dest])
+        self.assertEqual(result.returncode, 2,
+                         "exit is not 2: %r" % (result.returncode,))
+        self.assertTrue(dest.is_dir())
+        self.assertEqual(marker.read_text(encoding="utf-8"), "kept\n")
+        self.assertTrue(result.stderr.strip())
+        self.assertNotIn("Verdict:", result.stdout)
+
+    def test_delivery_named_regular_destination_writes_exact_bytes(self):
+        """Delivery. A named regular destination gets the exact bytes."""
+        root = tracked_tempdir("msc_slice7_")
+        built = build_case(make_case("s7-deliver-exact", base_files()),
+                           root)
+        plain = run_tool(built)
+        self.assertEqual(plain.returncode, 0, plain.stderr[:300])
+        dest = root / "report.txt"
+        result = run_argv([built, "--report", dest])
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        self.assertEqual(dest.read_bytes(),
+                         plain.stdout.encode("utf-8"))
+        self.assertFalse((root / "report.txt.tmp-msc").exists())
+
+    def test_delivery_pipe_destination_no_reader_exits_two(self):
+        """Delivery failure. A pipe with no reader exits 2, bounded."""
+        root = tracked_tempdir("msc_slice7_")
+        built = build_case(make_case("s7-deliver-pipe", base_files()),
+                           root)
+        dest = root / "report-pipe"
+        os.mkfifo(str(dest))
+        result = subprocess.run(
+            [sys.executable, "-m", "metrics_starter_collector",
+             str(built), "--report", str(dest)],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+            timeout=20)
+        self.assertEqual(result.returncode, 2,
+                         "exit is not 2: %r" % (result.returncode,))
+        self.assertTrue(result.stderr.strip())
+        self.assertNotIn("Verdict:", result.stdout)
+
+    def test_delivery_staging_link_not_written_through(self):
+        """Delivery. A link at the old staging path is never used."""
+        root = tracked_tempdir("msc_slice7_")
+        built = build_case(make_case("s7-deliver-stage-link",
+                                     base_files()), root)
+        sentinel = root / "sentinel.txt"
+        sentinel.write_text("sentinel stands\n", encoding="utf-8")
+        dest = root / "report.txt"
+        staging = root / "report.txt.tmp-msc"
+        os.symlink(str(sentinel), str(staging))
+        result = run_argv([built, "--report", dest])
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        self.assertEqual(sentinel.read_text(encoding="utf-8"),
+                         "sentinel stands\n")
+        self.assertTrue(staging.is_symlink())
+        self.assertEqual(os.readlink(str(staging)), str(sentinel))
+        self.assertFalse(dest.is_symlink())
+        self.assertIn("Verdict:", dest.read_text(encoding="utf-8"))
+
+    def test_delivery_staging_regular_file_left_unchanged(self):
+        """Delivery. A regular file at the old staging path stands."""
+        root = tracked_tempdir("msc_slice7_")
+        built = build_case(make_case("s7-deliver-stage-file",
+                                     base_files()), root)
+        dest = root / "report.txt"
+        staging = root / "report.txt.tmp-msc"
+        staging.write_text("staging stands\n", encoding="utf-8")
+        result = run_argv([built, "--report", dest])
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        self.assertTrue(staging.is_file())
+        self.assertFalse(staging.is_symlink())
+        self.assertEqual(staging.read_text(encoding="utf-8"),
+                         "staging stands\n")
+        self.assertIn("Verdict:", dest.read_text(encoding="utf-8"))
+
     # Header positions and the WV-4 disputed count rerun.
 
     def test_header_build_identity_conflict_states_each_and_conflict(self):

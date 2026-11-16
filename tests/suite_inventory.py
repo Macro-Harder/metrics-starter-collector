@@ -153,7 +153,7 @@ INVENTORY = {
         ],
     },
     "test_d_slice4_time_decision": {
-        "count": 68,
+        "count": 73,
         "cases": [
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_a7_9_b1_cross_piece_basis_mismatch_no_code_fits",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b1_both_derivation_outputs_stand_present",
@@ -190,6 +190,7 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_no_queue_complete_single_page",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_no_queue_complete_split",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_no_queue_no_decision_table_missing",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_all_items_reversed_not_derivable",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_queue_named_complete_single_page",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_queue_named_complete_split",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cell_queue_named_no_decision_table",
@@ -200,6 +201,7 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_even_count_median_is_lower_middle_never_mean",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_no_ruled_item_is_not_derivable_with_coverage",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_presented_blank_counts_for_headline_not_second",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_reversed_item_not_counted",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_row_rendered_in_full_with_cross_check_marking",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_ruled_open_and_date_only_items",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_split_median_and_longest_from_counting_items_alone",
@@ -211,6 +213,9 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f19_unrecognised_halt_wording_read_as_in_progress",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_f20_inside_feeders_govern_outside_file_changes_nothing",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_mixed_series_partial_span",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_mixed_series_t2_present_from_passing_steps",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_reversed_transition_excluded_from_time_and_b_rows",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_reversed_transition_no_passing_step_not_derivable",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t1_closing_date_only_fails_both_transitions_condition",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t2_pairing_timestamps_of_two_steps_forms_no_interval",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_banked_count_without_duration_yields_no_figure",
@@ -323,7 +328,7 @@ INVENTORY = {
         ],
     },
     "test_g_slice7_report": {
-        "count": 75,
+        "count": 80,
         "cases": [
             "tests.test_g_slice7_report.TestSlice7Report.test_ca2_12_adversarial_pair_all_17_rows_against_marks",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_completed_report_to_stdout_exits_0",
@@ -345,6 +350,11 @@ INVENTORY = {
             "tests.test_g_slice7_report.TestSlice7Report.test_delivery_failure_destination_cannot_be_written",
             "tests.test_g_slice7_report.TestSlice7Report.test_delivery_failure_parent_directory_does_not_stand",
             "tests.test_g_slice7_report.TestSlice7Report.test_delivery_failure_stdout_closes_during_printing",
+            "tests.test_g_slice7_report.TestSlice7Report.test_delivery_directory_destination_still_fails_cleanly",
+            "tests.test_g_slice7_report.TestSlice7Report.test_delivery_named_regular_destination_writes_exact_bytes",
+            "tests.test_g_slice7_report.TestSlice7Report.test_delivery_pipe_destination_no_reader_exits_two",
+            "tests.test_g_slice7_report.TestSlice7Report.test_delivery_staging_link_not_written_through",
+            "tests.test_g_slice7_report.TestSlice7Report.test_delivery_staging_regular_file_left_unchanged",
             "tests.test_g_slice7_report.TestSlice7Report.test_determinism_c_locale_byte_identical",
             "tests.test_g_slice7_report.TestSlice7Report.test_determinism_different_timezone_byte_identical",
             "tests.test_g_slice7_report.TestSlice7Report.test_determinism_report_level_same_rows_every_run",
@@ -430,4 +440,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 357
+TOTAL = 367
