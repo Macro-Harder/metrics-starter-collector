@@ -1197,6 +1197,61 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertIn("RuntimeError", segment)
         self.assertIn("q1 seam boom", segment)
 
+    def test_q1_cross_check_statement_disagreement_stands_no_error(self):
+        """Unit 10. Q-1 Module 4 statement stands, no ImportError form.
+
+        The metrics record states a Q-1 figure for Round 1 that
+        differs from the feeder post triage breakdown for that
+        round, so the Module 4 statement for Q-1 stands in the row
+        statement line, naming the metrics record, stating both
+        figures, and stating that the feeder figure stands. No
+        error form stands on the row for the seam.
+        """
+        extra = {
+            "audit/step-01-red.md": (
+                "# Round 1\n\nPost triage breakdown: Critical 2, "
+                "High 1, Medium 0, Low 0.\n")}
+        extra.update(single_page_metrics_record_files(metrics_record(
+            body="Metrics record states Q-1 for Round 1 as "
+                 "Critical 5, High 1, Medium 0, Low 0.")))
+        result = run_case(make_case("q1-cross-check-statement", extra))
+        block = row_block(result.stdout, "Q-1")
+        assert_verdict(self, block, "present", "Q-1")
+        segment = statement_segment(block)
+        self.assertIn(
+            "record disagrees: build-metrics-record.md states Q-1 "
+            "for Round 1 as Critical 5, High 1, Medium 0, Low 0, "
+            "while the feeder records state Critical 2, High 1, "
+            "Medium 0, Low 0 for Round 1; the feeder figure stands "
+            "and the record figure is not followed", segment)
+        self.assertNotIn("error: operation q1_cross_check_statement",
+                         segment)
+        self.assertNotIn("ImportError", result.stdout)
+
+    def test_q1_cross_check_statement_agreement_no_error_form(self):
+        """Unit 10. Q-1 agreement: no marking and no error form.
+
+        The metrics record states the same Q-1 figure for Round 1
+        as the feeder post triage breakdown, so no Module 4 marking
+        stands on the row, and no surfaced ImportError error form
+        stands on the row or anywhere in the report for the seam.
+        """
+        extra = {
+            "audit/step-01-red.md": (
+                "# Round 1\n\nPost triage breakdown: Critical 2, "
+                "High 1, Medium 0, Low 0.\n")}
+        extra.update(single_page_metrics_record_files(metrics_record(
+            body="Metrics record states Q-1 for Round 1 as "
+                 "Critical 2, High 1, Medium 0, Low 0.")))
+        result = run_case(make_case("q1-cross-check-agreement", extra))
+        block = row_block(result.stdout, "Q-1")
+        assert_verdict(self, block, "present", "Q-1")
+        segment = statement_segment(block)
+        self.assertNotIn("record disagrees", segment)
+        self.assertNotIn("error: operation q1_cross_check_statement",
+                         segment)
+        self.assertNotIn("ImportError", result.stdout)
+
     def test_q3_cross_check_failure_surfaced_on_row(self):
         """R15-14. Q-3 contested cross check failure stands surfaced."""
         extra = {

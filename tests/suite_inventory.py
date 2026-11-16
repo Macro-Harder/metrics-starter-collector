@@ -248,7 +248,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 61,
+        "count": 63,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -307,6 +307,8 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv6_conflicting_governing_adjudications",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv6_resolved_conflict_variant_not_blocked",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_cross_check_failure_surfaced_on_row",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_cross_check_statement_agreement_no_error_form",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_cross_check_statement_disagreement_stands_no_error",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_cross_check_failure_surfaced_on_row",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_cross_check_failure_surfaced_with_fallback_marking",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_brief_form_header_count_exception_fires_in_core",
@@ -471,4 +473,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 398
+TOTAL = 400

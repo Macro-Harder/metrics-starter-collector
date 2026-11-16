@@ -91,6 +91,17 @@ metrics record, states both figures, and states that the feeder
 figure stands. A row whose feeder figure the caller does not
 supply carries no marking from this function.
 
+q1_cross_check_statement(captured, feeder_counts) returns one
+statement text or None, the Q-1 limb of the form above.
+feeder_counts maps a round number to the feeder post triage
+breakdown counts for that round, as a mapping of severity name to
+count. Where the metrics record states a Q-1 figure, in the form
+Q-1 for Round R as a severity counts text, or Q-1 as a severity
+counts text where the feeder holds one round, and that figure
+differs from the feeder counts for that round, the statement
+names the metrics record, states both figures, and states that
+the feeder figure stands.
+
 q4_cross_check_statement(captured, covered) returns one statement
 text or None, the Q-4 limb of the form above in the signature the
 earlier slices landed. covered is the Q-4 feeder standing, as a
@@ -403,6 +414,115 @@ def rounds_quality_cross_check_statements(captured, feeder_figures):
         if marking is not None:
             statements[code] = marking
     return statements
+
+
+_Q1_SEVERITIES = ("Critical", "High", "Medium", "Low")
+
+_Q1_COUNTS_PATTERN = (
+    r"((?:(?:Critical|High|Medium|Low)\s+\d+)"
+    r"(?:,\s*(?:Critical|High|Medium|Low)\s+\d+)*,?)")
+
+
+def _q1_counts(value):
+    """Return one Q-1 breakdown as a severity counts mapping."""
+    counts = {}
+    if isinstance(value, dict):
+        for name in _Q1_SEVERITIES:
+            held = value.get(name)
+            if held is None:
+                for key, candidate in value.items():
+                    if str(key).strip().lower() == name.lower():
+                        held = candidate
+                        break
+            if held is not None:
+                try:
+                    counts[name] = int(held)
+                except (TypeError, ValueError):
+                    continue
+        return counts
+    if isinstance(value, str):
+        for name in _Q1_SEVERITIES:
+            found = re.search(name + r"\s+(\d+)", value)
+            if found:
+                counts[name] = int(found.group(1))
+    return counts
+
+
+def _q1_counts_text(counts):
+    return ", ".join("%s %d" % (name, counts[name])
+                     for name in _Q1_SEVERITIES if name in counts)
+
+
+def _q1_feeder_rounds(feeder_counts):
+    """Return a mapping of round number to feeder counts."""
+    rounds = {}
+    if not isinstance(feeder_counts, dict):
+        return rounds
+    for key, held in feeder_counts.items():
+        rnd = None
+        if isinstance(key, int):
+            rnd = key
+        elif isinstance(key, str):
+            match = re.search(r"(\d+)", key)
+            if match:
+                rnd = int(match.group(1))
+        counts = _q1_counts(held)
+        if rnd is not None and counts:
+            rounds[rnd] = counts
+    return rounds
+
+
+def q1_cross_check_statement(captured, feeder_counts):
+    """Return the Q-1 record disagrees marking, or None.
+
+    feeder_counts maps a round number to the feeder post triage
+    breakdown counts the core derived for that round. Where the
+    metrics record states a Q-1 figure for a round, in the form
+    Q-1 for Round R as a severity counts text, or states Q-1 as a
+    severity counts text where the feeder holds one round, and
+    that figure differs from the feeder counts for that round, the
+    marking names the metrics record, states both figures, and
+    states that the feeder figure stands, under D-18 and CA-1.
+    """
+    if captured is None:
+        return None
+    text = getattr(captured, "assembled_metrics", None) or ""
+    if not text:
+        return None
+    rounds = _q1_feeder_rounds(feeder_counts)
+    if not rounds:
+        return None
+    name = _record_name(getattr(captured, "metrics_single_path", None))
+    for found in re.finditer(
+            r"Q-1\s+for\s+Round\s+(\d+)\s+as\s+" + _Q1_COUNTS_PATTERN,
+            str(text)):
+        rnd = int(found.group(1))
+        feeder = rounds.get(rnd)
+        if feeder is None:
+            continue
+        stated = _q1_counts(found.group(2))
+        if stated and stated != feeder:
+            return ("record disagrees: %s states Q-1 for Round %d "
+                    "as %s, while the feeder records state %s for "
+                    "Round %d; the feeder figure stands and the "
+                    "record figure is not followed"
+                    % (name, rnd, _q1_counts_text(stated),
+                       _q1_counts_text(feeder), rnd))
+    if len(rounds) == 1:
+        rnd = next(iter(rounds))
+        feeder = rounds[rnd]
+        found = re.search(
+            r"Q-1\s+as\s+" + _Q1_COUNTS_PATTERN, str(text))
+        if found:
+            stated = _q1_counts(found.group(1))
+            if stated and stated != feeder:
+                return ("record disagrees: %s states Q-1 as %s, "
+                        "while the feeder records state %s for "
+                        "Round %d; the feeder figure stands and the "
+                        "record figure is not followed"
+                        % (name, _q1_counts_text(stated),
+                           _q1_counts_text(feeder), rnd))
+    return None
 
 
 def q4_cross_check_statement(captured, covered):
