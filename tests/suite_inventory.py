@@ -248,7 +248,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 59,
+        "count": 61,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -283,7 +283,9 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_carrier_in_record_round_record_does_not_name",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_carrier_scale_silent_case_states_no_pair",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_contested_origin_step_carried_under_d18",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_cost_ledger_is_not_a_feeder",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_printed_zero_never_stated_as_measured_zero",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_split_entry_bound_three_part_form",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_partial_coverage_without_defined_form_is_not_present",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_row_cross_check_marking_in_statement_line",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_step_stating_no_trace_applies_is_excluded",
@@ -354,7 +356,7 @@ INVENTORY = {
 ],
     },
     "test_g_slice7_report": {
-        "count": 80,
+        "count": 83,
         "cases": [
             "tests.test_g_slice7_report.TestSlice7Report.test_ca2_12_adversarial_pair_all_17_rows_against_marks",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_completed_report_to_stdout_exits_0",
@@ -417,6 +419,9 @@ INVENTORY = {
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_reason_line_anatomy_three_named_parts",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_record_cost_budget_line_and_proxy_line",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_run_cost_line_parts_in_order",
+            "tests.test_g_slice7_report.TestSlice7Report.test_record_cost_budget_position_statement_line_carried",
+            "tests.test_g_slice7_report.TestSlice7Report.test_record_cost_heading_word_is_not_a_budget_position",
+            "tests.test_g_slice7_report.TestSlice7Report.test_record_cost_proxy_final_position_governs",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_sections_stand_in_report_order",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_terms_section_last_explains_reason_terms",
             "tests.test_g_slice7_report.TestSlice7Report.test_grammar_version2_trigger_line_exact_words",
@@ -466,4 +471,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 393
+TOTAL = 398

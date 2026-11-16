@@ -975,6 +975,97 @@ class TestSlice7Report(FixtureTestCase):
         for line in restated:
             self.assertIn("proxy", line.lower())
 
+    def test_record_cost_heading_word_is_not_a_budget_position(self):
+        """R15-13; D4R-27. A gate heading word is no budget position."""
+        files = base_files()
+        files["steps/step-01-gate-record.md"] = gate_record(
+            1, extra="### 5. Budget position: LANDED\n\n"
+                     "Money: \"0 external spend for the whole "
+                     "build.\" Agent count: whole build ceiling "
+                     "260 spins.\n")
+        result, built = run_case(make_case(
+            "s7-record-cost-heading", files))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        section = section_text(result.stdout, "Record cost")
+        self.assertTrue(section, "no record cost section stands")
+        budget = [ln for ln in section.splitlines()
+                  if ln.startswith("Budget position: ")]
+        self.assertEqual(len(budget), 1)
+        self.assertEqual(
+            budget[0],
+            "Budget position: absent, no budget position stands "
+            "recorded in the tree")
+        self.assertNotIn("LANDED", section)
+        self.assertNotIn('"0 external spend', section)
+        for line in section.splitlines():
+            self.assertFalse(line.startswith("Money:"),
+                             "a garbled money line stands: " + line)
+
+    def test_record_cost_proxy_final_position_governs(self):
+        """R15-13; D4R-27. Successive proxy shares, final governs."""
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Position at this step close: 244 of 260 "
+                     "documented units on a labelled proxy basis.")
+        files["steps/step-02-record.md"] = step_record(
+            2, extra="Position at this step close: 245 of 260 "
+                     "documented units on a labelled proxy basis.")
+        files["steps/step-03-gate-ruling.md"] = gate_ruling(
+            3, extra="Final figure for the build: 248 of 260 "
+                     "documented units used. The ceiling held on "
+                     "the labelled proxy basis: the figure is a "
+                     "documented unit count used as a proxy for "
+                     "spend.")
+        result, built = run_case(make_case(
+            "s7-record-cost-proxy-final", files,
+            features=("proxy-label",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        section = section_text(result.stdout, "Record cost")
+        self.assertTrue(section, "no record cost section stands")
+        proxy = [ln for ln in section.splitlines()
+                 if ln.startswith("Proxy figure: ")]
+        self.assertEqual(len(proxy), 1, section)
+        self.assertIn("248 of 260 documented units", proxy[0])
+        self.assertIn("proxy", proxy[0].lower())
+        self.assertIn("step-03-gate-ruling.md", proxy[0])
+        self.assertNotIn("244 of 260", section)
+        self.assertNotIn("245 of 260", section)
+        b2 = row_line(result.stdout, "B-2")
+        self.assertIn("248 of 260", b2)
+        block = disagreements_block(result.stdout)
+        entries = block_entries(result.stdout)
+        proxy_entries = [e for e in entries if "proxy" in e.lower()]
+        self.assertEqual(len(proxy_entries), 1, block)
+        entry_parts, entry_order = parts_of(proxy_entries[0])
+        self.assertEqual(entry_parts["Metric"], "B-2")
+        self.assertEqual(entry_parts["Governing position"],
+                         "governed with the pattern named")
+        for figure in ("244 of 260", "245 of 260", "248 of 260"):
+            self.assertIn(figure, entry_parts["Figures"])
+        first_lines = [ln for ln in block.splitlines()
+                       if ln.startswith("Blocked metric: ")]
+        self.assertTrue(any(
+            "B-2" in ln and "no verdict was withheld" in ln.lower()
+            for ln in first_lines), block)
+
+    def test_record_cost_budget_position_statement_line_carried(self):
+        """R15-13; D4R-27. A stated budget position stands carried."""
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Budget position: money 0 external spend for "
+                     "the whole build; tokens NOT RECORDED.")
+        result, built = run_case(make_case(
+            "s7-record-cost-budget-stated", files))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        section = section_text(result.stdout, "Record cost")
+        budget = [ln for ln in section.splitlines()
+                  if ln.startswith("Budget position: ")]
+        self.assertEqual(len(budget), 1)
+        self.assertIn("money 0 external spend for the whole build",
+                      budget[0])
+        self.assertIn("step-01-record.md", budget[0])
+        self.assertNotIn("cap", budget[0].lower())
+
     def test_grammar_run_cost_line_parts_in_order(self):
         """Line grammar; EC-47. Run cost parts stand in stated order."""
         result, built = run_case(make_case("s7-grammar-runcost",

@@ -223,6 +223,51 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertIn("Step 2", segment)
         self.assertIn("build-metrics-record.md", segment)
 
+    def test_q3_split_entry_bound_three_part_form(self):
+        """R15-16; CA2-01. Split entry bound in the fixed form."""
+        case = make_case("q3-split-bound", {
+            "registers/fix-register.md": (
+                "# Fix register\n\nEntry F-1: origin step Step 1.\n\n"
+                "Entry F-2: a fix entry carrying no origin step "
+                "field.\n"),
+            "registers/defect-register.md": (
+                "# Defect register\n\nNo entries stand.\n")})
+        result = run_case(case)
+        block = row_block(result.stdout, "Q-3")
+        assert_verdict(self, block, "present", "Q-3")
+        self.assertIn("Step 1: 1 escapes", block)
+        self.assertIn("fix register entry F-2", block)
+        self.assertIn(
+            "Bound: excepted, fix register entry F-2; link "
+            "excepted, the origin step field on fix register entry "
+            "F-2; cleared by, fix register entry F-2 stating the "
+            "origin step field on the entry itself, judged at "
+            "triage, stating the step the defect was introduced "
+            "in or escaped from", block)
+        self.assertNotIn("defect register entries lacking", block)
+        self.assertNotIn("link excepted, 1 entries", block)
+        self.assertNotIn(
+            "cleared by, the counts form from the carrying "
+            "entries alone", block)
+
+    def test_q3_cost_ledger_is_not_a_feeder(self):
+        """R15-16. A cost ledger entry counts for nothing on Q-3."""
+        case = make_case("q3-ledger-not-feeder", {
+            "registers/fix-register.md": (
+                "# Fix register\n\nNo entries stand.\n"),
+            "registers/defect-register.md": (
+                "# Defect register\n\nNo entries stand.\n"),
+            "registers/cost-ledger.md": (
+                "# Cost ledger\n\nEntry L-1: origin step Step 2. "
+                "Step 1: money 10, tokens 100.\n"
+                "Budget: money 100, tokens 10000.\n")})
+        result = run_case(case)
+        block = row_block(result.stdout, "Q-3")
+        assert_verdict(self, block, "present", "Q-3")
+        self.assertIn("measured zero escapes", block)
+        self.assertNotIn("Step 2: 1 escapes", block)
+        self.assertNotIn("Step 2 escapes", block)
+
     def test_wv22_q3_f1_origin_field_absent_from_every_entry(self):
         """EC-16, EC-34; WV22 Q-3 F1. No origin field on any entry."""
         case = make_case("q3-no-origin-field", {

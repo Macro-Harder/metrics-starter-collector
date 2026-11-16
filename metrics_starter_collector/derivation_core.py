@@ -4198,10 +4198,18 @@ def _derive_q3(captured, universe):
                              for entry in lacking)
                          + "; count of lacking entries: %d"
                          % len(lacking))
-            bound = ("defect register entries lacking the origin "
-                     "step field", "%d entries" % len(lacking),
-                     "the counts form from the carrying entries "
-                     "alone")
+            excepted = "; ".join(
+                "%s entry %s" % (entry["register"], entry["id"])
+                for entry in lacking)
+            bound = (excepted,
+                     "the origin step field on " + excepted,
+                     "; ".join(
+                         "%s entry %s stating the origin step "
+                         "field on the entry itself, judged at "
+                         "triage, stating the step the defect was "
+                         "introduced in or escaped from"
+                         % (entry["register"], entry["id"])
+                         for entry in lacking))
         result = DerivationResult(
             "Q-3", "present", figures, coverage, pointer,
             rule_name="Q-3 origin step rule", bound=bound)
@@ -6080,6 +6088,7 @@ def _disagreement_lines(captured):
     restatements += r5
     blocking += [(None, entry) for entry in b5]
     blocking += _ledger_disagreement_entries(captured)
+    blocking += _proxy_disagreement_entries(captured)
     feeders = _decision_feeders(captured)
     if feeders["queue_usable"] and feeders["table_items"]:
         table = {item["item"]: item
@@ -6211,6 +6220,140 @@ def _broken_link_kind(result):
     return "not producible"
 
 
+_BUDGET_POSITION_TERMS = (
+    "money", "token", "spin", "ceiling", "spend", "budget",
+    "documented", "external", "nil", "cost")
+
+
+def _is_budget_position_value(value):
+    """Whether a Budget position value states a cost position.
+
+    A budget position is a statement of a cost position: it
+    carries a cost term or a figure. A lone status word, the
+    heading word of a gate record section stating that a budget
+    item landed, carries neither and is not a budget position,
+    however the line that carries it is labelled.
+    """
+    text = value.strip()
+    if not text:
+        return False
+    if len(text.split()) == 1 and not any(
+            char.isdigit() for char in text):
+        return False
+    lowered = text.lower()
+    return any(term in lowered for term in _BUDGET_POSITION_TERMS) \
+        or any(char.isdigit() for char in text)
+
+
+def _proxy_candidates(captured):
+    """Labelled proxy figures in the records, in capture order.
+
+    Each candidate carries its kind (share, ceiling or plain),
+    its figure text, its source path, and whether its own line
+    states it as a final position. A figure counts as labelled
+    where the proxy wording stands in its own sentence or
+    elsewhere on its own line, so a final figure whose basis
+    sentence follows it on the same line is not lost. No figure
+    is taken across a line boundary, and no figure is taken
+    from a line that carries no proxy wording at all.
+    """
+    candidates = []
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        for raw_line in piece.text.splitlines():
+            if "documented units" not in raw_line:
+                continue
+            line_proxy = "proxy" in raw_line.lower()
+            for sentence in re.split(r"(?<=[.;])\s+", raw_line):
+                if "documented units" not in sentence:
+                    continue
+                if not line_proxy and \
+                        "proxy" not in sentence.lower():
+                    continue
+                share = re.search(
+                    r"(\d+) of (\d+) documented units", sentence)
+                ceiling = re.search(
+                    r"ceiling of (\d+) documented units", sentence)
+                plain = re.search(r"(\d+) documented units",
+                                  sentence)
+                if share:
+                    kind = "share"
+                    figure = "%s of %s documented units" \
+                        % share.groups()
+                elif ceiling:
+                    kind = "ceiling"
+                    figure = ("agent count ceiling of %s "
+                              "documented units" % ceiling.group(1))
+                elif plain:
+                    kind = "plain"
+                    figure = "%s documented units" % plain.group(1)
+                else:
+                    continue
+                candidates.append({
+                    "kind": kind, "figure": figure,
+                    "path": piece.paths[0],
+                    "final": "final" in raw_line.lower()})
+    return candidates
+
+
+def _chosen_proxy_share(candidates):
+    """The governing labelled proxy share figure, or None.
+
+    Successive records restate one proxy position as the build
+    spends, so the shares are successive positions of one
+    figure, not simultaneous positions. The final position
+    governs, under the pattern that a later closing entry
+    governs over the cells it restates: the last share its own
+    line states as a final position, or the last share in
+    capture order where no share states itself as final.
+    """
+    shares = [cand for cand in candidates if cand["kind"] == "share"]
+    if not shares:
+        return None
+    finals = [cand for cand in shares if cand["final"]]
+    return finals[-1] if finals else shares[-1]
+
+
+def _proxy_disagreement_entries(captured):
+    """The disagreements entry for successive proxy shares.
+
+    Where the records state two or more distinct labelled proxy
+    share figures, the disagreement between them stands in the
+    block in the governed form: the later final position
+    governs, no verdict was withheld for it, and the B-2 row and
+    the record cost section both report the governing figure as
+    a proxy only. One entry stands, for B-2, the metric the
+    proxy figure stands as context for.
+    """
+    candidates = _proxy_candidates(captured)
+    distinct = []
+    for cand in candidates:
+        if cand["kind"] != "share":
+            continue
+        if cand["figure"] not in [held["figure"] for held in distinct]:
+            distinct.append(cand)
+    if len(distinct) < 2:
+        return []
+    chosen = _chosen_proxy_share(candidates)
+    records = []
+    for cand in distinct:
+        if cand["path"] not in records:
+            records.append(cand["path"])
+    figures = "; ".join(
+        "%s, as recorded in %s" % (cand["figure"], cand["path"])
+        for cand in distinct)
+    entry = (
+        "Records: %s | Figures: the records state successive "
+        "labelled proxy figures, %s, and the final position "
+        "governs under the later closing entry pattern, so the "
+        "report states %s as a proxy only | Metric: B-2 | "
+        "Governing position: governed with the pattern named"
+        % (" and ".join(records), figures, chosen["figure"]))
+    return [("Blocked metric: B-2, no verdict was withheld for "
+             "this disagreement", entry)]
+
+
 def _record_cost_lines(captured, universe):
     """The record cost section lines, in the D4R-27 form.
 
@@ -6219,9 +6362,11 @@ def _record_cost_lines(captured, universe):
     carries it; the token position as recorded, stated as absent
     and not as zero where none stands; the budget position line,
     carrying its record and no cap test wording in the same line
-    as any figure it states; and each labelled proxy figure in
-    the records restated with its proxy basis wording in the
-    same line.
+    as any figure it states; and the labelled proxy figures in
+    the records restated with their proxy basis wording in the
+    same line, with successive proxy share positions stated in
+    their governing final form only, as _chosen_proxy_share
+    states it, and their disagreement standing in the block.
     """
     lines = []
     data = _ledger_data(captured)
@@ -6260,12 +6405,21 @@ def _record_cost_lines(captured, universe):
     for piece in captured.pieces:
         if piece.text is None:
             continue
-        stated = re.search(r"Budget position:\s*([^.;]+)",
-                           piece.text)
-        if stated:
+        for raw_line in piece.text.splitlines():
+            if raw_line.strip().startswith("#"):
+                continue
+            stated = re.search(r"Budget position:\s*([^.;]+)",
+                               raw_line)
+            if not stated:
+                continue
+            value = stated.group(1).strip()
+            if not _is_budget_position_value(value):
+                continue
             budget_line = (
                 "Budget position: %s, as recorded in %s"
-                % (stated.group(1).strip(), piece.paths[0]))
+                % (value, piece.paths[0]))
+            break
+        if budget_line is not None:
             break
     if budget_line is None and (data["budget_money"] is not None
                                 or data["budget_tokens"] is not None):
@@ -6284,35 +6438,19 @@ def _record_cost_lines(captured, universe):
             "Budget position: absent, no budget position stands "
             "recorded in the tree")
     lines.append(budget_line)
+    candidates = _proxy_candidates(captured)
+    chosen_share = _chosen_proxy_share(candidates)
     seen_proxy = set()
-    for piece in captured.pieces:
-        if piece.text is None:
+    for cand in candidates:
+        if cand["kind"] == "share" and cand is not chosen_share:
             continue
-        for sentence in re.split(r"(?<=[.;])\s+", piece.text):
-            if "documented units" not in sentence or \
-                    "proxy" not in sentence.lower():
-                continue
-            share = re.search(r"(\d+) of (\d+) documented units",
-                              sentence)
-            ceiling = re.search(r"ceiling of (\d+) documented "
-                                r"units", sentence)
-            plain = re.search(r"(\d+) documented units", sentence)
-            if share:
-                figure = "%s of %s documented units" % share.groups()
-            elif ceiling:
-                figure = ("agent count ceiling of %s documented "
-                          "units" % ceiling.group(1))
-            elif plain:
-                figure = "%s documented units" % plain.group(1)
-            else:
-                continue
-            key = (figure, piece.paths[0])
-            if key in seen_proxy:
-                continue
-            seen_proxy.add(key)
-            lines.append(
-                "Proxy figure: %s, on a labelled proxy basis as "
-                "recorded in %s" % (figure, piece.paths[0]))
+        key = (cand["figure"], cand["path"])
+        if key in seen_proxy:
+            continue
+        seen_proxy.add(key)
+        lines.append(
+            "Proxy figure: %s, on a labelled proxy basis as "
+            "recorded in %s" % (cand["figure"], cand["path"]))
     return lines
 
 
