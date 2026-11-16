@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 44,
+        "count": 46,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -111,6 +111,8 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_impossible_time_date_does_not_leak",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_date_standing_alone_still_prints",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_listing_failure_surfaces_in_walk_note",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_run_cost_limit_listing_failure_only_names_no_walk_bound",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_run_cost_limit_walk_bound_crossing_keeps_bound_wording",
         ],
     },
     "test_c_slice3_staffing": {
@@ -491,4 +493,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 418
+TOTAL = 420

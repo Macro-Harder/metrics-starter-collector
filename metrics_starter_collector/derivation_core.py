@@ -7304,7 +7304,16 @@ def derive_report(captured):
             crossed.append("line limit 65536 bytes")
     if captured.tree_cut_kind:
         crossed.append(captured.tree_cut_kind)
-    if captured.walk_note:
+    # The whole walk bound stands in the Limit part only where
+    # the walk note states the bound crossing itself, in its
+    # reached form. A walk note stating only a directory listing
+    # failure states no crossing, so it adds no bound wording
+    # here: the Limit part then stands in its fallback form, and
+    # the listing failure stands in the coverage statement and
+    # in the Reading part, which stays partial on it.
+    if captured.walk_note and \
+            "whole walk bound" in captured.walk_note and \
+            "was reached" in captured.walk_note:
         crossed.append("whole walk bound 10000 entries")
     run_cost_line = (
         "Run cost: Files visited: %d | Files opened: %d | Bytes "

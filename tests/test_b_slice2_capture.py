@@ -1109,6 +1109,105 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertIn("forced listing failure", cov)
         self.assertIn("partial report", report.lower())
 
+    def test_run_cost_limit_listing_failure_only_names_no_walk_bound(self):
+        """Fix pass 2 unit 13. A listing failure is no bound crossing.
+
+        The forced listing failure tree of the C1P-01 test, whose
+        only walk failure is the directory listing failure: its
+        walk note states the listing failure and states no bound
+        crossing, and its coverage statement states the listing
+        failure truly. Its run cost line must therefore name no
+        whole walk bound in its Limit part, because that bound
+        was never crossed on this tree. The Limit part stands in
+        the line grammar fallback form, no limit crossed, and the
+        Reading part still stands partial on the listing failure.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_runcost_")
+        root = scratch / "walk-listing-failure-run-cost"
+        (root / "steps").mkdir(parents=True)
+        (root / "audit").mkdir(parents=True)
+        (root / "steps" / "step-01-record.md").write_text(
+            step_record(1), encoding="utf-8")
+        (root / "audit" / "step1-round-record.md").write_text(
+            "# Round record, step 1\n\nPost triage severity "
+            "breakdown, flow scale: Critical 0, High 1, "
+            "Medium 2, Low 3.\n", encoding="utf-8")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing_listdir = os.listdir
+
+        def failing_listdir(path):
+            if Path(path).name == "audit":
+                raise OSError("forced listing failure")
+            return standing_listdir(path)
+
+        os.listdir = failing_listdir
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            os.listdir = standing_listdir
+        self.assertIsNotNone(captured.walk_note)
+        self.assertIn("could not be listed", captured.walk_note)
+        self.assertIn("forced listing failure", captured.walk_note)
+        self.assertNotIn("whole walk bound", captured.walk_note)
+        cov = coverage_statement(report)
+        self.assertIn("forced listing failure", cov)
+        run_cost_lines = [line for line in report.splitlines()
+                          if line.startswith("Run cost: ")]
+        self.assertEqual(len(run_cost_lines), 1)
+        run_cost = run_cost_lines[0]
+        limit_part = run_cost.split("Limit: ", 1)[1].split(
+            " | Reading:", 1)[0]
+        self.assertNotIn("whole walk bound", run_cost)
+        self.assertEqual(limit_part, "no limit crossed")
+        self.assertIn("Reading: partial", run_cost)
+
+    def test_run_cost_limit_walk_bound_crossing_keeps_bound_wording(self):
+        """Fix pass 2 unit 13 control. A bound crossing keeps its Limit.
+
+        The bounded form of the bound crossing, as the R15-10
+        bounded test states it: the walk bound is set to 5 in
+        process, ten filler files stand at the root level ahead
+        of one recognisable piece at the same level, so the walk
+        note states the bound crossing. The bound used is 5 in
+        place of 10000 only to keep the exhibit small; the
+        crossing is the same crossing. On such a tree the run
+        cost line Limit part keeps the whole walk bound wording,
+        and the Reading part stands partial.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_runcost_bound_")
+        root = scratch / "walk-bound-run-cost"
+        root.mkdir(parents=True)
+        for number in range(10):
+            (root / ("filler-%02d.txt" % number)).write_bytes(b"")
+        (root / "step-01-record.md").write_text(
+            step_record(1), encoding="utf-8")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing = shell.WALK_BOUND
+        shell.WALK_BOUND = 5
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            shell.WALK_BOUND = standing
+        self.assertIsNotNone(captured.walk_note)
+        self.assertIn("whole walk bound", captured.walk_note)
+        self.assertIn("was reached", captured.walk_note)
+        run_cost_lines = [line for line in report.splitlines()
+                          if line.startswith("Run cost: ")]
+        self.assertEqual(len(run_cost_lines), 1)
+        run_cost = run_cost_lines[0]
+        limit_part = run_cost.split("Limit: ", 1)[1].split(
+            " | Reading:", 1)[0]
+        self.assertIn("whole walk bound", limit_part)
+        self.assertIn("Reading: partial", run_cost)
+
 
 if __name__ == "__main__":
     unittest.main()
