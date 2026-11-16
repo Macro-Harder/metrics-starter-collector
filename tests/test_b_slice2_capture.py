@@ -1208,6 +1208,155 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertIn("whole walk bound", limit_part)
         self.assertIn("Reading: partial", run_cost)
 
+    def test_floor_line_listing_failure_only_names_no_walk_crossing(self):
+        """Fix pass 2 unit 14. A listing failure is no walk crossing.
+
+        The floor form exhibit of the unit 13 deviation: a tree
+        holding no recognisable piece, whose only subdirectory
+        has its listing forced to raise OSError in process, so
+        the capture holds no pieces and a walk note stands. The
+        walk note states only the directory listing failure and
+        states no bound crossing. The floor line, the no usable
+        records line, must therefore name no walk crossing: it
+        states the note as a walk note, in the words the coverage
+        statement uses, and the listing failure sentence itself
+        stands in it truly, naming the directory and its cause.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_floorfail_")
+        root = scratch / "floor-listing-failure"
+        (root / "audit").mkdir(parents=True)
+        (root / "audit" / "step1-round-record.md").write_text(
+            "# Round record, step 1\n\nPost triage severity "
+            "breakdown, flow scale: Critical 0, High 1, "
+            "Medium 2, Low 3.\n", encoding="utf-8")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing_listdir = os.listdir
+
+        def failing_listdir(path):
+            if Path(path).name == "audit":
+                raise OSError("forced listing failure")
+            return standing_listdir(path)
+
+        os.listdir = failing_listdir
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            os.listdir = standing_listdir
+        self.assertEqual(captured.pieces, [])
+        self.assertIsNotNone(captured.walk_note)
+        self.assertIn("could not be listed", captured.walk_note)
+        self.assertIn("forced listing failure", captured.walk_note)
+        self.assertNotIn("whole walk bound", captured.walk_note)
+        lines = report.splitlines()
+        self.assertEqual(len(lines), 3)
+        floor = lines[2]
+        self.assertTrue(floor.startswith("No usable records: "))
+        self.assertNotIn("walk crossing", floor)
+        self.assertIn("walk note: ", floor)
+        self.assertIn("could not be listed", floor)
+        self.assertIn("forced listing failure", floor)
+
+    def test_floor_line_walk_bound_crossing_keeps_crossing_wording(self):
+        """Fix pass 2 unit 14 control. A bound crossing keeps its name.
+
+        The bounded form of the bound crossing on a floor tree:
+        the walk bound is set to 5 in process and ten filler
+        files stand at the root level, with no recognisable
+        piece anywhere in the tree, so the capture holds no
+        pieces and the walk note states the bound crossing.
+        The bound used is 5 in place of 10000 only to keep the
+        exhibit small; the crossing is the same crossing. On
+        such a tree the floor line keeps the walk crossing
+        wording, naming the whole walk bound in its reached
+        form, as the unit 8 floor ground states.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_floorbound_")
+        root = scratch / "floor-walk-bound"
+        root.mkdir(parents=True)
+        for number in range(10):
+            (root / ("filler-%02d.txt" % number)).write_bytes(b"")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing = shell.WALK_BOUND
+        shell.WALK_BOUND = 5
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            shell.WALK_BOUND = standing
+        self.assertEqual(captured.pieces, [])
+        self.assertIsNotNone(captured.walk_note)
+        self.assertIn("whole walk bound", captured.walk_note)
+        self.assertIn("was reached", captured.walk_note)
+        lines = report.splitlines()
+        self.assertEqual(len(lines), 3)
+        floor = lines[2]
+        self.assertTrue(floor.startswith("No usable records: "))
+        self.assertIn("walk crossing: ", floor)
+        self.assertIn("whole walk bound", floor)
+        self.assertIn("was reached", floor)
+
+    def test_floor_line_bound_and_listing_failure_keeps_crossing(self):
+        """Fix pass 2 unit 14 control. Both sentences keep the crossing.
+
+        A floor tree whose walk note carries both sentences:
+        the walk bound is set to 5 in process, ten filler files
+        stand at the root level, and the only subdirectory has
+        its listing forced to raise OSError in process, so no
+        recognisable piece stands in the capture and the note
+        states the bound crossing first and the listing failure
+        second. Because the bound crossing the first sentence
+        states did cross, the floor line keeps the walk
+        crossing wording, and the listing failure sentence
+        stands in it beside the crossing sentence.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_floorboth_")
+        root = scratch / "floor-bound-and-listing-failure"
+        (root / "audit").mkdir(parents=True)
+        (root / "audit" / "step1-round-record.md").write_text(
+            "# Round record, step 1\n", encoding="utf-8")
+        for number in range(10):
+            (root / ("filler-%02d.txt" % number)).write_bytes(b"")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing = shell.WALK_BOUND
+        standing_listdir = os.listdir
+
+        def failing_listdir(path):
+            if Path(path).name == "audit":
+                raise OSError("forced listing failure")
+            return standing_listdir(path)
+
+        shell.WALK_BOUND = 5
+        os.listdir = failing_listdir
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            shell.WALK_BOUND = standing
+            os.listdir = standing_listdir
+        self.assertEqual(captured.pieces, [])
+        self.assertIsNotNone(captured.walk_note)
+        self.assertIn("whole walk bound", captured.walk_note)
+        self.assertIn("was reached", captured.walk_note)
+        self.assertIn("could not be listed", captured.walk_note)
+        lines = report.splitlines()
+        self.assertEqual(len(lines), 3)
+        floor = lines[2]
+        self.assertTrue(floor.startswith("No usable records: "))
+        self.assertIn("walk crossing: ", floor)
+        self.assertIn("whole walk bound", floor)
+        self.assertIn("could not be listed", floor)
+        self.assertIn("forced listing failure", floor)
+
 
 if __name__ == "__main__":
     unittest.main()

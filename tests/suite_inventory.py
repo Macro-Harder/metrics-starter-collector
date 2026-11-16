@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 46,
+        "count": 49,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -113,6 +113,9 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_listing_failure_surfaces_in_walk_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_run_cost_limit_listing_failure_only_names_no_walk_bound",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_run_cost_limit_walk_bound_crossing_keeps_bound_wording",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_floor_line_listing_failure_only_names_no_walk_crossing",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_floor_line_walk_bound_crossing_keeps_crossing_wording",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_floor_line_bound_and_listing_failure_keeps_crossing",
         ],
     },
     "test_c_slice3_staffing": {
@@ -378,7 +381,7 @@ INVENTORY = {
 ],
     },
     "test_g_slice7_report": {
-        "count": 83,
+        "count": 85,
         "cases": [
             "tests.test_g_slice7_report.TestSlice7Report.test_ca2_12_adversarial_pair_all_17_rows_against_marks",
             "tests.test_g_slice7_report.TestSlice7Report.test_cmd_completed_report_to_stdout_exits_0",
@@ -419,6 +422,8 @@ INVENTORY = {
             "tests.test_g_slice7_report.TestSlice7Report.test_disagreements_ungoverned_entry_blocking_group_first_line",
             "tests.test_g_slice7_report.TestSlice7Report.test_f08_empty_directory_no_usable_records",
             "tests.test_g_slice7_report.TestSlice7Report.test_f08_unrecognised_files_only_no_usable_records",
+            "tests.test_g_slice7_report.TestSlice7Report.test_floor_renderer_listing_failure_note_names_no_crossing",
+            "tests.test_g_slice7_report.TestSlice7Report.test_floor_renderer_walk_bound_note_keeps_crossing_wording",
             "tests.test_g_slice7_report.TestSlice7Report.test_f09_one_recognisable_piece_full_set_partial_marking",
             "tests.test_g_slice7_report.TestSlice7Report.test_f15_single_page_precedence_where_both_forms_stand",
             "tests.test_g_slice7_report.TestSlice7Report.test_f15_split_record_same_rows_as_single_page",
@@ -493,4 +498,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 420
+TOTAL = 425

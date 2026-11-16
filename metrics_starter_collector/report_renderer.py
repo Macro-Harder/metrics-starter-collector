@@ -1067,16 +1067,28 @@ def _floor_lines(model):
     elif not floor.startswith("No usable records"):
         floor = "No usable records: " + floor
     if "walk" not in floor.lower():
-        # Where the model carries a walk crossing in its coverage
-        # and the floor line names none, the crossing stands named
-        # in the floor form itself, where it was crossed.
+        # Where the model carries a walk note in its coverage
+        # and the floor line names none, the note stands named
+        # in the floor form itself. The note stands as a walk
+        # crossing only where the note states the bound
+        # crossing itself, in its whole walk bound and was
+        # reached forms. A note stating only a directory
+        # listing failure states no crossing, so it stands
+        # here as a walk note, in the words the coverage
+        # statement uses, and its listing failure sentence
+        # states the failure truly in that place.
         held = _text(_get(model, "coverage"))
         marker = "walk note: "
         at = held.lower().find(marker)
         if at >= 0:
             note = held[at + len(marker):].split(";")[0].strip()
             if note:
-                floor = floor + "; walk crossing: " + note
+                if "whole walk bound" in note and \
+                        "was reached" in note:
+                    note_label = "walk crossing"
+                else:
+                    note_label = "walk note"
+                floor = floor + "; " + note_label + ": " + note
     lines.append(floor)
     return lines
 

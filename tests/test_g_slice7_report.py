@@ -232,6 +232,78 @@ class TestSlice7Report(FixtureTestCase):
         self.assertEqual(row_lines(result.stdout), [])
         self.assertIn("No usable records: ", result.stdout)
 
+    def test_floor_renderer_listing_failure_note_names_no_crossing(self):
+        """Fix pass 2 unit 14. The renderer floor form states truly.
+
+        A model handed to the renderer in the floor form, whose
+        coverage carries a walk note stating only a directory
+        listing failure and no bound crossing, and whose floor
+        line names no walk position at all: the renderer floor
+        form appends the note from the coverage. It must name
+        no walk crossing on such a note, because no bound was
+        crossed; it states the note as a walk note, in the
+        words the coverage statement uses, with the listing
+        failure sentence standing in it truly.
+        """
+        import metrics_starter_collector.derivation_core as core
+        import metrics_starter_collector.report_renderer as renderer
+        model = core.ReportModel(
+            header_lines=["Root: /floor-renderer-listing",
+                          "Build identity: no build identity was "
+                          "found inside the tree"],
+            coverage=("Coverage statement: step universe 0 steps "
+                      "evidenced (none); 0 pieces recognised in "
+                      "the capture; 17 rows in starter set order; "
+                      "walk note: the directory audit could not "
+                      "be listed: list the directory audit: forced "
+                      "listing failure; its subtree was not "
+                      "visited"),
+            inventory_lines=[], results=[], data_quality=[],
+            no_usable=True)
+        report = renderer.render_report(model)
+        lines = report.splitlines()
+        self.assertEqual(len(lines), 3)
+        floor = lines[2]
+        self.assertTrue(floor.startswith("No usable records: "))
+        self.assertNotIn("walk crossing", floor)
+        self.assertIn("walk note: ", floor)
+        self.assertIn("could not be listed", floor)
+        self.assertIn("forced listing failure", floor)
+
+    def test_floor_renderer_walk_bound_note_keeps_crossing_wording(self):
+        """Fix pass 2 unit 14 control. The renderer keeps a crossing.
+
+        A model handed to the renderer in the floor form, whose
+        coverage carries a walk note stating the bound
+        crossing, and whose floor line names no walk position
+        at all: the renderer floor form appends the crossing
+        from the coverage, keeping the walk crossing wording
+        and the whole walk bound sentence, as the unit 8 floor
+        ground states.
+        """
+        import metrics_starter_collector.derivation_core as core
+        import metrics_starter_collector.report_renderer as renderer
+        model = core.ReportModel(
+            header_lines=["Root: /floor-renderer-bound",
+                          "Build identity: no build identity was "
+                          "found inside the tree"],
+            coverage=("Coverage statement: step universe 0 steps "
+                      "evidenced (none); 0 pieces recognised in "
+                      "the capture; 17 rows in starter set order; "
+                      "walk note: the whole walk bound of 10000 "
+                      "entries was reached and entries beyond it "
+                      "were not visited"),
+            inventory_lines=[], results=[], data_quality=[],
+            no_usable=True)
+        report = renderer.render_report(model)
+        lines = report.splitlines()
+        self.assertEqual(len(lines), 3)
+        floor = lines[2]
+        self.assertTrue(floor.startswith("No usable records: "))
+        self.assertIn("walk crossing: ", floor)
+        self.assertIn("whole walk bound", floor)
+        self.assertIn("was reached", floor)
+
     def test_f09_one_recognisable_piece_full_set_partial_marking(self):
         """EC-42. One recognisable piece earns 17 rows, partial marked."""
         case = make_case("s7-just-over-floor", {

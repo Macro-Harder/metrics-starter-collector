@@ -7328,16 +7328,29 @@ def derive_report(captured):
                         no_usable=not captured.pieces,
                         run_cost_line=run_cost_line)
     if not captured.pieces and captured.walk_note:
-        # The floor form where the walk bound was crossed on a
-        # tree whose whole inventory holds no recognisable piece:
-        # the no usable records statement names the crossing where
-        # it was crossed, in the D4R-08 floor form, beside the
-        # root read and the pieces looked for.
+        # The floor form on a tree whose whole inventory holds
+        # no recognisable piece and a walk note stands: the no
+        # usable records statement names the note beside the
+        # root read and the pieces looked for, in the D4R-08
+        # floor form. The note stands as a walk crossing only
+        # where the note states the bound crossing itself, in
+        # its whole walk bound and was reached forms, as the
+        # run cost line gate above states it. A note stating
+        # only a directory listing failure states no crossing,
+        # so it stands here as a walk note, in the words the
+        # coverage statement uses, and its listing failure
+        # sentence states the failure truly in that place.
+        if "whole walk bound" in captured.walk_note and \
+                "was reached" in captured.walk_note:
+            floor_note_label = "walk crossing"
+        else:
+            floor_note_label = "walk note"
         model.no_usable_line = (
             "No usable records: the root read, %s, was looked "
             "through for the recognised record pieces, and none "
-            "was found; walk crossing: %s"
-            % (captured.root, captured.walk_note))
+            "was found; %s: %s"
+            % (captured.root, floor_note_label,
+               captured.walk_note))
     disagreement_lines = _disagreement_lines(captured)
     if disagreement_lines:
         model.disagreements_lines = disagreement_lines
