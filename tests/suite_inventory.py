@@ -261,7 +261,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 65,
+        "count": 68,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -328,10 +328,13 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_unrelated_planned_or_target_in_core_does_not_except",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_shell_vocabulary_correction_honoured_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_unplanned_or_targeted_header_line_does_not_except_in_core",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_negated_header_lines_do_not_except_in_core",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_second_table_not_counted_in_core",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_two_correction_statements_last_governs_in_core",
 ],
     },
     "test_f_slice6_cost": {
-        "count": 45,
+        "count": 46,
         "cases": [
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_feeder_mapping_d1_is_only_metrics_record_feeder",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_non_d1_figure_in_metrics_record_never_present",
@@ -378,6 +381,7 @@ INVENTORY = {
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_across_pieces_blocks_e4",
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_inside_one_piece_blocks_e4",
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_step_n_form_one_piece_blocks_e4",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_build_total_tokens_only_conflict_does_not_block_e4",
 ],
     },
     "test_g_slice7_report": {
@@ -498,4 +502,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 425
+TOTAL = 429

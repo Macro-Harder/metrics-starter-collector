@@ -1228,6 +1228,144 @@ class TestSlice5RoundsQuality(FixtureTestCase):
                 "The corrected count is 4 rows.\n" + table),
             "signal-two")
 
+    def test_signal_two_negated_header_lines_do_not_except_in_core(self):
+        """C2B-01, core limb, standing for R15-07. Brief Section 5.
+
+        Direct calls on the core check over a table of 2 data
+        rows under a header count of 99. A header line stating
+        the count with a negation governing the planned or
+        target statement states no exception, in every negated
+        form the confirmation paper exhibits: not a planned
+        count, not a target count, no planned count, never a
+        target count, not planned count without the article,
+        and a line stating that the planned count was rejected.
+        Each such line therefore still fails signal two. The
+        brief form lines, the count stated as a planned count
+        and the count stated as a target count, keep excepting.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, header in (
+                ("not-a-planned",
+                 "Rows stated in header: 99, not a planned count."),
+                ("not-a-target",
+                 "Rows stated in header: 99, not a target count."),
+                ("no-planned",
+                 "Rows stated in header: 99, no planned count."),
+                ("never-a-target",
+                 "Rows stated in header: 99, never a target count."),
+                ("not-planned",
+                 "Rows stated in header: 99, not planned count."),
+                ("rejected",
+                 "Rows stated in header: 99, the planned count "
+                 "was rejected.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertEqual(
+                    core._signal_failure(text), "signal-two")
+        for label, header in (
+                ("planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(core._signal_failure(text))
+
+    def test_signal_two_two_correction_statements_last_governs_in_core(self):
+        """C2B-02, core limb, standing for C1B-05. Brief Section 5.
+
+        Direct calls on the core check over a table of 2 data
+        rows under a header count of 99, where two correction
+        statements stand in one record. The corrected count is
+        the figure stated by the last correction statement in
+        the record, across the union of the three vocabularies:
+        the corrected count form, the count in rows form, and
+        the restates the count form. A mixture whose last
+        statement states 2 therefore stands clean, and a
+        mixture whose last statement states 4 fails signal
+        two, in both statement orders and in both mixture
+        directions. A record corrected once stands as it
+        stands today.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table = (
+            "# Step 1 audit paper\n\nSeverity breakdown table. "
+            "Rows stated in header: 99.\n"
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, corrections in (
+                ("core-then-rows-clean",
+                 "Corrected count: 4\n"
+                 "The corrected count is 2 rows.\n"),
+                ("core-then-core-clean",
+                 "Corrected count: 4\nCorrected count: 2\n"),
+                ("rows-then-core-fails",
+                 "Corrected count: 2\n"
+                 "The corrected count is 4 rows.\n"),
+                ("rows-then-core-clean",
+                 "The corrected count is 4 rows.\n"
+                 "Corrected count: 2\n"),
+                ("core-then-restates-clean",
+                 "Corrected count: 4\n"
+                 "This record restates the count as 2.\n"),
+                ("restates-then-core-fails",
+                 "This record restates the count as 2.\n"
+                 "Corrected count: 4\n")):
+            with self.subTest(form=label):
+                expected = "signal-two" if "fails" in label else None
+                self.assertEqual(
+                    core._signal_failure(corrections + table),
+                    expected)
+        self.assertIsNone(core._signal_failure(
+            "Corrected count: 2\n" + table))
+
+    def test_signal_two_second_table_not_counted_in_core(self):
+        """C2B-04, core limb. Brief Section 5, signal two.
+
+        Direct calls on the core check. The core counts the
+        same table the shell counts, the table that follows
+        the header count statement, so a piece whose first
+        table matches its stated count of 2 and which carries
+        a second table later in the same piece stands clean,
+        whether the second table is a generic table of 3 data
+        rows or a second severity table of 3 data rows. In
+        the reverse order, where the table that follows the
+        header statement holds 3 data rows against a stated
+        count of 2 and a later table holds 2, the check still
+        fails signal two, because the first table is the
+        table tested.
+        """
+        import metrics_starter_collector.derivation_core as core
+        severity_two = (
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        severity_three = (
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+        generic_three = (
+            "| Item | Value |\n| --- | --- |\n"
+            "| A | 1 |\n| B | 2 |\n| C | 3 |\n")
+        head = ("# Step 1 audit paper\n\nSeverity breakdown "
+                "table. Rows stated in header: 2.\n")
+        self.assertIsNone(core._signal_failure(
+            head + severity_two + "\nA later table.\n"
+            + generic_three))
+        self.assertIsNone(core._signal_failure(
+            head + severity_two + "\nA later table.\n"
+            + severity_three))
+        self.assertEqual(core._signal_failure(
+            head + severity_three + "\nA later table.\n"
+            + severity_two), "signal-two")
+        self.assertIsNone(core._signal_failure(
+            head + severity_two))
+
     def test_rounds_family_reads_capture_only(self):
         """Plan Section 5 named reread test for Slice 5, Contract 1."""
         parent = tracked_tempdir("msc_slice5_reread_")

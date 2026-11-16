@@ -1043,6 +1043,72 @@ class TestSlice6Cost(FixtureTestCase):
                    and "Metric: E-4" in line]
         self.assertTrue(entries, "no build total entry stands for E-4")
 
+    def test_ledger_build_total_tokens_only_conflict_does_not_block_e4(self):
+        """C2B-03; D4R-21 and D4R-24. Tokens only build total conflict.
+
+        Confirmation round 2 breaker exhibit in its own terms:
+        a cost ledger stating per step money 10, 20 and 30 with
+        tokens 1000, 2000 and 3000, Budget: money 100, tokens
+        10000, Build total stated: money 60, then Build total
+        stated: tokens 6000 and Build total stated: tokens
+        9999. The stated build total tokens position is consumed
+        by no derivation, only total_money feeds the E-4 sum
+        check, so the tokens conflict blocks nothing: E-4 stands
+        present on its complete and agreeing money figures, E-3
+        stands present, and B-2 stands present at 60 percent on
+        both sides, exactly as the confirmation paper states the
+        clean rows. No E-4 blocking entry names the tokens
+        figures. The tokens conflict itself stands recorded in
+        the disagreements block in the non blocking form: an
+        entry naming both tokens figures, carrying Metric: none
+        and the ungoverned wording, under a first line stating
+        that no verdict was withheld for it, the form the brief
+        Section 5 composition states for a disagreement that
+        neither blocks nor weakens any metric.
+        """
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 1000.\n"
+            "Step 2: money 20, tokens 2000.\n"
+            "Step 3: money 30, tokens 3000.\n"
+            "Budget: money 100, tokens 10000.\n"
+            "Build total stated: money 60.\n"
+            "Build total stated: tokens 6000.\n"
+            "Build total stated: tokens 9999.\n")
+        result, _ = run_case(make_case(
+            "ledger-total-tokens-only-conflict", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        assert_verdict(self, row_block(result.stdout, "E-4"),
+                       "present", "E-4")
+        assert_verdict(self, row_block(result.stdout, "E-3"),
+                       "present", "E-3")
+        b2 = row_block(result.stdout, "B-2")
+        assert_verdict(self, b2, "present", "B-2")
+        self.assertIn("60 percent", b2)
+        disagreements = disagreements_block(result.stdout)
+        self.assertFalse(any(
+            "build total tokens" in line.lower()
+            and "Metric: E-4" in line
+            for line in disagreements.splitlines()))
+        self.assertNotIn(
+            "Blocked metric: E-4, the verdict was withheld for "
+            "this disagreement", disagreements)
+        entries = [line for line in disagreements.splitlines()
+                   if "build total tokens" in line.lower()]
+        self.assertTrue(entries, "no tokens conflict entry stands")
+        for entry in entries:
+            self.assertIn("6000", entry)
+            self.assertIn("9999", entry)
+            self.assertIn("Metric: none", entry)
+            self.assertIn(
+                "Governing position: ungoverned with no verdict "
+                "depending on it", entry)
+        self.assertIn(
+            "Blocked metric: none, no verdict was withheld for "
+            "this disagreement", disagreements)
+
     def test_ledger_identical_duplicate_budget_no_contradiction(self):
         """C1B-02; D4R-21. A repeated identical budget is no conflict."""
         files = base_files()

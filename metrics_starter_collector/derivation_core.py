@@ -1577,6 +1577,94 @@ def _t7_round_example(captured):
 
 # ------------------------------------------------------- Slice 5 helpers
 
+def _header_count_excepted(header_line):
+    """Whether one header count statement line carries the signal
+    two exception, under the agreed negation rule.
+
+    The exception fires only where the header count stands
+    stated as a planned count or as a target count and no
+    negation governs that statement. A negation word standing
+    in the same clause before the planned or target statement,
+    as not a planned count, no planned count, never a target
+    count, or not planned count, governs the statement, and a
+    rejection word standing in the same clause after it, as
+    the planned count was rejected, governs it as well: every
+    such negated form states no exception. The brief form
+    lines, the count stated as a planned count and the count
+    stated as a target count with no negation standing, except.
+    """
+    found = re.search(
+        r"\bplanned count\b|\btarget count\b"
+        r"|\bstated as (?:a |an )?(?:planned|target)\b",
+        header_line)
+    if not found:
+        return False
+    clause_before = re.split(
+        r"[,;]", header_line[:found.start()])[-1]
+    if re.search(r"\b(?:not|no|never)\b", clause_before):
+        return False
+    clause_after = re.split(
+        r"[,;]", header_line[found.end():])[0]
+    if re.search(r"\b(?:rejected|refused|denied|negated)\b",
+                 clause_after):
+        return False
+    return True
+
+
+def _last_corrected_count(lowered):
+    """The corrected count a record states, or None.
+
+    The corrected count is the figure stated by the last
+    correction statement in the record, across the union of
+    the three vocabularies: the corrected count form, the
+    count in rows form, and the restates the count form. A
+    record corrected once is judged on that one statement,
+    exactly as it stood before; a record corrected in two
+    statements is judged on the last one, in either
+    implementation alike.
+    """
+    found = []
+    for pattern in (r"corrected count:?\s*(\d+)",
+                    r"correct\w*[^\n]*?(\d+)\s+rows",
+                    r"restates? the count[^\n\d]*(\d+)"):
+        for match in re.finditer(pattern, lowered):
+            found.append((match.start(), int(match.group(1))))
+    if not found:
+        return None
+    found.sort(key=lambda entry: entry[0])
+    return found[-1][1]
+
+
+def _following_table_data_rows(lines, start):
+    """The data row count of the table that follows a header line.
+
+    The table counted is the first markdown table at or after
+    the line after the header count statement, in the shell
+    reading form: its first pipe row is its header row and
+    stands uncounted, a separator row stands uncounted, every
+    later pipe row of that same table counts, and the count
+    stops where that table ends, so a second table later in
+    the same piece contributes no row to this count. Returns
+    None where no table follows.
+    """
+    index = start
+    while index < len(lines) and \
+            not lines[index].strip().startswith("|"):
+        index += 1
+    if index >= len(lines):
+        return None
+    rows = 0
+    index += 1
+    while index < len(lines) and \
+            lines[index].strip().startswith("|"):
+        cells = lines[index].strip().strip("|")
+        if not all(set(cell.strip()) <= set("-: ") and cell.strip()
+                   for cell in cells.split("|")):
+            rows += 1
+        index += 1
+    return rows
+
+
 def _signal_failure(text):
     """The first completeness signal a text fails, or None.
 
@@ -1595,12 +1683,23 @@ def _signal_failure(text):
     in the piece carries no exception, and neither does a
     negated or derived form in the statement itself, as
     unplanned or targeted, which states no planned or target
-    count. The governing correction stands honoured in every
+    count, and neither does a statement a negation governs,
+    as not a planned count, no planned count, never a target
+    count, not planned count, or a planned count stated as
+    rejected, each of which states the opposite of the
+    exception condition. The governing correction stands honoured in every
     vocabulary the shell reading honours, the corrected count
     followed by its number, the corrected count stated as a
     count in rows, and the restates the count form, so a
     record corrected in any of those forms is judged on the
-    same corrected count here. Signal
+    same corrected count here, and where two correction
+    statements stand in one record the corrected count is
+    the figure the last such statement states, across the
+    union of the three vocabularies alike. The rows tested
+    are the rows of the one table that follows the header
+    count statement, the same table the shell reading tests,
+    so a second table later in the piece contributes no row
+    to the count in either implementation. Signal
     three: a section a record contents list names that does not
     appear in the record, unless the contents list itself marks
     the section as deferred or not yet written, or a later
@@ -1627,36 +1726,15 @@ def _signal_failure(text):
         if header_end < 0:
             header_end = len(text)
         header_line = text[header_start:header_end].lower()
-        if not re.search(r"\bplanned count\b", header_line) \
-                and not re.search(r"\btarget count\b", header_line) \
-                and not re.search(
-                    r"\bstated as (?:a |an )?(?:planned|target)\b",
-                    header_line):
-            corrected = re.search(r"corrected count:?\s*(\d+)",
-                                  lowered)
-            count = int(corrected.group(1)) if corrected \
+        if not _header_count_excepted(header_line):
+            corrected = _last_corrected_count(lowered)
+            count = corrected if corrected is not None \
                 else int(stated.group(1))
-            if not corrected:
-                shell_count = None
-                for raw_line in text.splitlines():
-                    lowered_line = raw_line.lower()
-                    if "correct" not in lowered_line and \
-                            "restate" not in lowered_line:
-                        continue
-                    for pattern in (
-                            r"correct\w*[^\n]*?(\d+)\s+rows",
-                            r"restates? the count[^\n\d]*(\d+)"):
-                        found = re.search(pattern, lowered_line)
-                        if found:
-                            shell_count = int(found.group(1))
-                if shell_count is not None:
-                    count = shell_count
-            rows = [line for line in text.splitlines()
-                    if line.strip().startswith("|")]
-            data_rows = [row for row in rows
-                         if "Severity" not in row
-                         and "---" not in row]
-            if len(data_rows) != count:
+            lines = text.splitlines()
+            header_index = text[:stated.start()].count("\n")
+            rows = _following_table_data_rows(
+                lines, header_index + 1)
+            if rows is not None and rows != count:
                 return "signal-two"
     headings = {found.strip().lower() for found in
                 re.findall(r"^#{1,6}\s+(.+)$", text, re.M)}
@@ -2848,13 +2926,20 @@ def _ledger_position_disagreement_entries(captured):
     contradictions, in the D4R-21 form the ledger cure states:
     one blocking entry per metric the contradiction blocks, a
     budget contradiction touching B-2 and a stated build total
-    contradiction touching E-4, each with both figures standing
-    and the ungoverned wording.
+    money contradiction touching E-4, each with both figures
+    standing and the ungoverned wording. A stated build total
+    tokens contradiction touches no metric, because no
+    derivation consumes that position, so it carries no
+    blocking entry: it stands recorded in the blocking group
+    by form only, in the non blocking form the brief Section
+    5 composition states for a disagreement that neither
+    blocks nor weakens any metric, with both figures standing,
+    Metric: none, the ungoverned wording, and a first line
+    stating that no verdict was withheld for it.
     """
     data = _ledger_data(captured)
     entries = []
-    for conflicts, code in ((data["budget_conflicts"], "B-2"),
-                            (data["total_conflicts"], "E-4")):
+    for conflicts, code in ((data["budget_conflicts"], "B-2"),):
         for label, first, second in conflicts:
             figures = (
                 "the cost ledger states %s %d and %s %d for the "
@@ -2868,6 +2953,28 @@ def _ledger_position_disagreement_entries(captured):
                 "Governing position: ungoverned with no verdict "
                 "depending on it"
                 % (data["pointer"], figures, code)))
+    for label, first, second in data["total_conflicts"]:
+        figures = (
+            "the cost ledger states %s %d and %s %d for the "
+            "same position, with no governing correction and "
+            "no feeder priority between the lines"
+            % (label, first, label, second))
+        if label == "build total tokens":
+            entries.append((
+                "Blocked metric: none, no verdict was withheld "
+                "for this disagreement",
+                "Records: %s | Figures: %s | Metric: none | "
+                "Governing position: ungoverned with no verdict "
+                "depending on it"
+                % (data["pointer"], figures)))
+        else:
+            entries.append((
+                "Blocked metric: E-4, the verdict was withheld "
+                "for this disagreement",
+                "Records: %s | Figures: %s | Metric: E-4 | "
+                "Governing position: ungoverned with no verdict "
+                "depending on it"
+                % (data["pointer"], figures)))
     return entries
 
 
@@ -3130,11 +3237,14 @@ def _derive_e4(captured, universe):
                      step_money_pointer or ledger_data["pointer"],
                      captured),
             step_conflicts)
-    if ledger_data["total_conflicts"]:
+    money_total_conflicts = [
+        entry for entry in ledger_data["total_conflicts"]
+        if entry[0] == "build total money"]
+    if money_total_conflicts:
         return _ledger_position_conflict_refusal(
             "E-4", denom,
             _pointer("E-4", ledger_data["pointer"], captured),
-            ledger_data["total_conflicts"], "stated build total")
+            money_total_conflicts, "stated build total")
     merged_money = dict(step_money)
     merged_money.update(ledger_data["money"])
     if ledger_data["total_money"] is not None and \
