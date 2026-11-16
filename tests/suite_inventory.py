@@ -103,10 +103,13 @@ INVENTORY = {
         ],
     },
     "test_c_slice3_staffing": {
-        "count": 45,
+        "count": 48,
         "cases": [
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_partial_coverage_without_defined_form_is_not_present",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_row_cross_check_marking_in_statement_line",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e2_additions_only_class_states_total_position_and_reconciliation",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e2_roster_artifact_total_and_base_no_additions_figure",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e2_total_and_base_alone_no_additions_figure",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f03_metrics_record_stops_early_coverage_naming",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f04_both_gate_names_read",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f04_step_with_neither_gate_name",
@@ -440,4 +443,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 367
+TOTAL = 370

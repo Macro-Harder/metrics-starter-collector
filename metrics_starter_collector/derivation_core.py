@@ -2244,20 +2244,6 @@ def _ca9_pairs(captured):
     return pairs
 
 
-def _step_record_states_total_and_base(captured, step):
-    """True where the step own plain step record states both a
-    Total spins field and a Base field, the G-03 subtraction form."""
-    for piece in captured.step_pieces(step, CLS_STEP_RECORD):
-        if piece.text is None:
-            continue
-        if _piece_instance_key(piece) != "step-%d" % step:
-            continue
-        if _search_int(r"Total spins:\s*(\d+)", piece.text) is not None \
-                and _search_int(r"\bBase:\s*(\d+)", piece.text) is not None:
-            return True
-    return False
-
-
 def _spin_disagreements(captured):
     """Total spins disagreements between the metrics record and a
     step record, as (step, metrics figure, record figure, governed)
@@ -2302,14 +2288,18 @@ def _spin_disagreements(captured):
     return found_list
 
 
-def _e2_reconciliation(captured):
+def _e2_reconciliation(captured, totals):
     """The E-2 reconciliation clause for a present row.
 
     Where a record states a closing figure as reconciling on no
     reading, with the supported cumulative positions stated beside
     it, the clause reads the per step series with those supported
-    positions and names the rejected figure as not carried. On
-    any other tree the clause names the per step series itself.
+    positions and names the rejected figure as not carried. Where
+    a per step total spins series stands, the clause names that
+    series. Where no total spins figure stands for any step, no
+    such series stands to name, and the clause states that the
+    metric carries no total to reconcile against, in the WV2-13
+    form.
     """
     for piece in captured.pieces:
         if piece.text is None:
@@ -2333,6 +2323,9 @@ def _e2_reconciliation(captured):
                 "carried"
                 % (first[0], first[1], second[0], second[1],
                    rejected, rejected_step))
+    if not totals:
+        return ("the metric carries no total to reconcile "
+                "against")
     return ("the per step series of total spins stated in the "
             "step records and rosters for the steps counted")
 
@@ -2371,20 +2364,6 @@ def _derive_e2(captured, universe):
             m = re.match(r"(\d+)\s*/\s*(\d+)", cells[5])
             if m:
                 bases[step] = int(m.group(2))
-    for piece in captured.pieces_of(CLS_ROSTER):
-        if piece.step is None or piece.step in additions:
-            continue
-        if not any("roster-artifact" in path for path in piece.paths):
-            continue
-        step = piece.step
-        if step in totals and step in bases:
-            additions[step] = totals[step] - bases[step]
-    for step in universe.evidenced:
-        if step in additions or step not in totals or \
-                step not in bases:
-            continue
-        if _step_record_states_total_and_base(captured, step):
-            additions[step] = totals[step] - bases[step]
     if not _known_version(captured.definitions_version) and \
             _feeder_stands(captured, "E-2"):
         return _unknown_version_result(
@@ -2420,6 +2399,18 @@ def _derive_e2(captured, universe):
         else:
             coverage = denom + "; additions stated for " + \
                 _each_step(add_steps)
+        for step in add_steps:
+            if step in totals:
+                continue
+            figures += ("; Step %d total spins: not derivable, "
+                        "no total spins figure stands for that "
+                        "step" % step)
+            coverage += ("; Step %d is additions only: its "
+                         "records carry roster addition entries "
+                         "and state no total spins figure in any "
+                         "record, so the total quantity is not "
+                         "derivable for that step because no "
+                         "total stands for it" % step)
         for step in sorted(ca9):
             if step not in universe.evidenced:
                 continue
@@ -2466,19 +2457,50 @@ def _derive_e2(captured, universe):
             _pointer("E-2", pointer, captured),
             rule_name="E-2 split quantities rule")
         result.coverage = coverage
-        result.reconciled_against = _e2_reconciliation(captured)
+        result.reconciled_against = _e2_reconciliation(captured, totals)
         result.statement = _join_statements(
             _e2_figure_statement(captured, totals),
             _universe_claim_statement(captured, universe))
         return result
     if totals:
+        shows = ("total spins stand for %s and no roster additions "
+                 "over base figure stands for any step"
+                 % _each_step(sorted(totals)))
+        for step in sorted(universe.evidenced):
+            if step not in totals:
+                continue
+            if step not in bases:
+                shows += ("; Step %d: missing-field, the base "
+                          "position stands absent for that step, "
+                          "and no additions figure is printed "
+                          "for that step" % step)
+            else:
+                named = any(
+                    piece.text and "Named agents:" in piece.text
+                    for piece in captured.step_pieces(
+                        step, *_STAFFING_CLASSES))
+                if not named:
+                    shows += (
+                        "; Step %d stands in the second case: the "
+                        "stated total and the base position both "
+                        "stand, total spins Step %d: %d, with "
+                        "base: %d, and no roster addition entries "
+                        "and no named agents stand for that step "
+                        "in a countable form"
+                        % (step, step, totals[step], bases[step]))
+        for step, metrics_figure, record_figure, _governed in \
+                _spin_disagreements(captured):
+            shows += (
+                "; the metrics record states total spins through "
+                "Step %d as %d, while the step record states "
+                "total spins for Step %d as %d; the feeder figure "
+                "stands and the record figure is not followed"
+                % (step, metrics_figure, step, record_figure))
         return _refusal(
             "E-2", "present but not derivable",
             "no additions over base figure", denom,
             _pointer("E-2", pointer, captured),
-            shows="total spins stand for %s and no roster additions "
-                  "over base figure stands for any step"
-                  % _each_step(sorted(totals)),
+            shows=shows,
             token="missing-field",
             follows="a total alone never counts as additions, so "
                     "the additions figure the row requires does not "

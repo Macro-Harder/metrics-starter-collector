@@ -145,10 +145,16 @@ class TestSlice3Staffing(FixtureTestCase):
                        "present but not derivable", "F-2")
 
     def test_g03_additions_over_base_with_ca9_three_figures(self):
-        """G-03. WV22 E-2 F1, WV22 E-2 F2. Additions over base, three figures."""
+        """G-03. WV22 E-2 F1, WV22 E-2 F2. Additions over base, three figures.
+
+        Corrected at Step 15 round 1, item R15-02: the fixture
+        step now states a roster additions entry, so the present
+        verdict rests on that entry and not on a total minus
+        base derivation the brief forbids.
+        """
         case = staffing_case("g03-additions", steps=(1,))
         case["files"]["steps/step-01-record.md"] = step_record(
-            1, base=2, total_spins=7,
+            1, base=2, total_spins=7, additions=1,
             extra="Detail total spins: 7. Stated total spins: 6.")
         root = build_one(case)
         result = run_tool(root)
@@ -161,8 +167,16 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertRegex(block, r"variance[^\d]*1(?!\d)(?!\.\d)")
 
     def test_g03_step_with_no_base_named_for_additions_only(self):
-        """G-03. WV22 E-2 F3. No base named: the step stands named, no figure."""
+        """G-03. WV22 E-2 F3. No base named: the step stands named, no figure.
+
+        Corrected at Step 15 round 1, item R15-02: Step 1 now
+        states a roster additions entry, so the present verdict
+        rests on that entry and not on a total minus base
+        derivation the brief forbids.
+        """
         case = staffing_case("g03-no-base", steps=(1, 2))
+        case["files"]["steps/step-01-record.md"] = step_record(
+            1, additions=1)
         case["files"]["steps/step-02-record.md"] = (
             "# Step 2 record\n\nNo base stated. Total spins: 5.\n")
         root = build_one(case)
@@ -569,6 +583,87 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertNotRegex(block.lower(),
                             r"additions over base[^|]*9(?!\d)")
 
+    def test_e2_total_and_base_alone_no_additions_figure(self):
+        """R15-02, correctness F1. D4R-16, DG-03 second case.
+
+        Probe form of the correctness paper: three steps whose
+        step records each state Base: 2, Team staffed: 3 agents,
+        Total spins: 4, with no roster addition entries and no
+        named agents anywhere. No additions figure may be formed
+        as total minus base: the row stands present but not
+        derivable for E-2 as defined, the total quantity stands,
+        and each step stands named in the second case, with the
+        absent countable input named as the missing item.
+        """
+        case = staffing_case("e2-total-base-alone", steps=(1, 2, 3))
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present but not derivable", "E-2")
+        for n in (1, 2, 3):
+            self.assertNotRegex(block, r"Step %d: 2(?!\d)" % n)
+            self.assertIn("Step %d stands in the second case" % n, block)
+        self.assertIn("total spins", block.lower())
+        self.assertRegex(block, r"total spins Step 1:\s*4(?!\d)")
+        lowered = block.lower()
+        self.assertIn("no roster addition entries", lowered)
+        self.assertIn("no named agents", lowered)
+        self.assertIn("countable form", lowered)
+
+    def test_e2_roster_artifact_total_and_base_no_additions_figure(self):
+        """R15-02, correctness F1, roster locus. D4R-16, DG-03.
+
+        A roster artifact stands for the step, the step record
+        states a total and a base, and no roster addition entries
+        stand anywhere: the roster route forms no additions
+        figure as total minus base either, and the row stands
+        present but not derivable on the total alone.
+        """
+        case = staffing_case("e2-roster-artifact-alone", steps=(1,))
+        case["files"]["steps/step-01-roster-artifact.md"] = (
+            "# Step 1 roster artifact\n\nNamed agents: 3. Base: 2.\n")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present but not derivable", "E-2")
+        self.assertNotRegex(block, r"Step 1: 2(?!\d)")
+        self.assertIn("total spins", block.lower())
+
+    def test_e2_additions_only_class_states_total_position_and_reconciliation(self):
+        """R15-09, correctness F5. D4R-16 mirror class, WV2-13.
+
+        Probe form of the correctness paper: three steps whose
+        records each carry Roster additions over base: 1 and state
+        no total spins figure in any record. The row reports both
+        positions labelled, in the split form: the additions
+        quantity stands on its roster addition entries, the total
+        quantity is not derivable for each step because no total
+        stands for it, each step stands stated as additions only,
+        and the reconciliation clause states that the metric
+        carries no total to reconcile against, instead of naming
+        a per step total spins series that does not stand.
+        """
+        case = staffing_case("e2-additions-only", steps=(1, 2, 3))
+        for n in (1, 2, 3):
+            case["files"]["steps/step-%02d-record.md" % n] = (
+                "# Step %d record\n\nBuild: metrics fixture build.\n"
+                "Base: 2. Team staffed: 3 agents.\n"
+                "Roster additions over base: 1.\n" % n)
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "E-2")
+        assert_verdict(self, block, "present", "E-2")
+        self.assertRegex(block, r"additions over base, Step 1: 1(?!\d)")
+        lowered = block.lower()
+        for n in (1, 2, 3):
+            self.assertIn("step %d is additions only" % n, lowered)
+            self.assertRegex(
+                block, r"Step %d total spins: not derivable" % n)
+        self.assertIn("no total stands for it", lowered)
+        self.assertIn("the metric carries no total to reconcile "
+                      "against", lowered)
+        self.assertNotIn("per step series of total spins", lowered)
+
     def test_wv22_f2_f1_outcome_in_one_named_place(self):
         """WV22 F-2 F1. EC-32. Scattered outcomes count for nothing."""
         case = staffing_case("wv22-f2-f1", steps=(1,))
@@ -680,11 +775,18 @@ class TestSlice3Staffing(FixtureTestCase):
         stands credited to the described step, and the pointer on
         the row names where the figure was found: the record of the
         step that stores it.
+
+        Corrected at Step 15 round 1, item R15-02: Step 2 now
+        states a roster additions entry, so the present verdict
+        rests on that entry and not on a total minus base
+        derivation the brief forbids.
         """
         case = staffing_case("f27-credited", steps=(1, 2),
                              features=("figure-credited-to-other-step",))
         case["files"]["steps/step-01-record.md"] = step_record(
             1, extra="Total spins for Step 2: 7.")
+        case["files"]["steps/step-02-record.md"] = step_record(
+            2, additions=1)
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "E-2")

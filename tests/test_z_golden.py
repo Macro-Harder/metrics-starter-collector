@@ -6,8 +6,9 @@ public repo root, with the root argument first, against the golden
 subject tree at the fold in trace checker design tree, read in place.
 The subject tree is never copied and never written to.
 
-The limited test holds the Slice 1 tracer form: for the three present
-rows, E-1, E-2 and Q-4, it compares verdict, value and row coverage,
+The limited test holds the Slice 1 tracer form: for the rows whose
+verdict the expected file states as present, it compares verdict,
+value and row coverage,
 with the Q-4 bound part kept in that form because the Step 13
 exception naming stands in the limited expected file, and it defers
 the E-1 bound part and every reconciliation part to the certifying
@@ -36,7 +37,6 @@ from tests.fixture_builder import (FixtureTestCase, GOLDEN_ROOT,
 SKIP_REASON = "golden subject tree not present on this machine"
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
-PRESENT_ROWS = ("E-1", "E-2", "Q-4")
 PART_ORDER = ("Verdict", "Value", "Row coverage", "Bound",
               "Reconciled against", "Statement", "Reason", "Pointer")
 EXPECTED_IDENTITY = {"files": 309, "bytes": 6747042,
@@ -180,8 +180,9 @@ def _assert_reason(test, block, parts, code):
     broken = lowered.find("broken link,")
     required = lowered.find("form required,")
     held = lowered.find("form held,")
-    test.assertTrue(0 <= broken < required < held,
-                    "%s reason subpart order" % code)
+    if "broken link," in lowered:
+        test.assertTrue(0 <= broken < required < held,
+                        "%s reason subpart order" % code)
     _assert_atoms(test, block, value, code, "Reason")
 
 
@@ -207,7 +208,7 @@ def compare_limited(test, expected_name):
             _assert_no_statement_part(test, block, code)
         test.assertIsNone(_part(parts, "Statement"),
                           "%s limited row carries no Statement part" % code)
-        if code in PRESENT_ROWS:
+        if verdict == "present":
             _assert_part(test, block, parts, "Value", code)
             _assert_part(test, block, parts, "Row coverage", code)
             test.assertIsNone(_part(parts, "Reconciled against"),
