@@ -130,6 +130,21 @@ it. A placeholder zero is never printed as a value for E-4 in
 any marking this module forms: a marking states only figures
 the record and the feeder each support.
 
+Slice 7 form. This slice lands no new cross check function and
+changes no marking form the earlier slices settled. The final
+printed standing of every marking this module forms stands as
+the earlier slices settled it: a disagreement stands recorded
+inside the row statement line of the row it touches only, the
+disagreeing record named, the fact or figure each side supports
+stated, the feeder figure always standing, no marking overriding
+a feeder result, and no standalone comparison table standing
+anywhere in the report. The seam the derivation core addresses
+stands in the landed signatures stated above and in the module
+head forms for Slices 4, 5 and 6, unchanged in this slice, and
+the golden full comparison carriage in this slice rests on those
+markings standing in that printed form and on no new comparison
+function.
+
 q3_contested_statement(captured, universe, origin_steps) returns
 one statement text or None, in the signature the earlier slices
 landed. universe is the StepUniverse the core built, or an

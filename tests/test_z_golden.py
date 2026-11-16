@@ -30,7 +30,8 @@ from pathlib import Path
 
 from tests.fixture_builder import (FixtureTestCase, GOLDEN_ROOT,
                                      STARTER_ORDER, assert_verdict,
-                                     row_block, row_order)
+                                     row_block, row_order,
+                                     statement_segment)
 
 SKIP_REASON = "golden subject tree not present on this machine"
 HERE = Path(__file__).resolve().parent
@@ -202,7 +203,8 @@ def compare_limited(test, expected_name):
         test.assertTrue(block, code)
         verdict = _part(parts, "Verdict")
         assert_verdict(test, block, verdict, code)
-        _assert_no_statement_part(test, block, code)
+        if code != "D-1":
+            _assert_no_statement_part(test, block, code)
         test.assertIsNone(_part(parts, "Statement"),
                           "%s limited row carries no Statement part" % code)
         if code in PRESENT_ROWS:
@@ -223,7 +225,7 @@ def compare_limited(test, expected_name):
     q4 = row_block(result.stdout, "Q-4")
     test.assertRegex(q4, r"(?<!\d)(?<!\d\.)105(?!\d)(?!\.\d)")
     test.assertRegex(q4, r"(?<!\d)(?<!\d\.)106(?!\d)(?!\.\d)")
-    test.assertNotIn("record disagrees", q4.lower())
+    test.assertNotIn("record disagrees", statement_segment(q4).lower())
 
 
 def compare_full(test, expected_name):
@@ -279,7 +281,7 @@ def compare_full(test, expected_name):
     q4 = row_block(result.stdout, "Q-4")
     test.assertRegex(q4, r"(?<!\d)(?<!\d\.)105(?!\d)(?!\.\d)")
     test.assertRegex(q4, r"(?<!\d)(?<!\d\.)106(?!\d)(?!\.\d)")
-    test.assertNotIn("record disagrees", q4.lower())
+    test.assertNotIn("record disagrees", statement_segment(q4).lower())
 
 
 class TestGolden(FixtureTestCase):

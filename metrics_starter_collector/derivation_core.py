@@ -331,9 +331,22 @@ Q4_POINTER_PROSE = (
     "Step 13 trace record for the excepted contribution")
 
 
+_GATE_PATH_FORM = re.compile(r"^(.*)step-(\d+)-gate-(?:record|ruling)\.md$")
+
+
 def _pointer(code, actual, captured=None):
-    """Compose a pointer: the definition prose, then the record path."""
+    """Compose a pointer: the definition prose, then the record path.
+
+    A gate file path stands in the gate record form of its step,
+    whichever of the two gate names the tree uses, so the pointer
+    states the same record in both gate name shapes.
+    """
     prose = POINTER_PROSE.get(code, "")
+    if actual:
+        gate_form = _GATE_PATH_FORM.match(str(actual))
+        if gate_form:
+            actual = "%sstep-%s-gate-record.md" % (
+                gate_form.group(1), gate_form.group(2))
     if code == "Q-4" and captured is not None and _q4_named_set(captured):
         prose = Q4_POINTER_PROSE
     if not prose:
@@ -1969,6 +1982,12 @@ def _derive_e1(captured, universe):
     if bound is not None:
         result.bound = bound
         result.reconciled_against = reconciled
+    else:
+        result.reconciled_against = (
+            "the staffed and base counts in the step record "
+            "and roster for each covered step, with the "
+            "coverage bound restated here: covered %s; "
+            "remainder none" % _steps_range_phrase(steps))
     result.statement = _join_statements(
         _e1_figure_statement(captured, covered),
         _universe_claim_statement(captured, universe))
@@ -2101,6 +2120,85 @@ def _step_record_states_total_and_base(captured, step):
     return False
 
 
+def _spin_disagreements(captured):
+    """Total spins disagreements between the metrics record and a
+    step record, as (step, metrics figure, record figure, governed)
+    in step order. A disagreement stands where the metrics record
+    states a total spins figure for a step, in the through form or
+    the for form, and the step record for that step states a
+    different total. The disagreement is governed where a named
+    correction in the records governs the step record figure.
+    """
+    metrics_text = captured.assembled_metrics or ""
+    metrics_figures = {}
+    for pattern in (r"Total spins through Step (\d+): (\d+)",
+                    r"Total spins for Step (\d+): (\d+)"):
+        for found in re.finditer(pattern, metrics_text):
+            metrics_figures.setdefault(int(found.group(1)),
+                                       int(found.group(2)))
+    record_figures = {}
+    governed = bool(re.search(r"Correction \S+ governs",
+                              metrics_text))
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        if re.search(r"Correction \S+ names this figure as "
+                     r"governing", piece.text):
+            governed = True
+        stated = re.search(r"Total spins for Step (\d+): (\d+)",
+                           piece.text)
+        if stated:
+            record_figures.setdefault(int(stated.group(1)),
+                                      int(stated.group(2)))
+        elif piece.step is not None:
+            base_form = re.search(r"Total spins: (\d+)", piece.text)
+            if base_form:
+                record_figures.setdefault(
+                    piece.step, int(base_form.group(1)))
+    found_list = []
+    for step in sorted(metrics_figures):
+        if step in record_figures and \
+                record_figures[step] != metrics_figures[step]:
+            found_list.append((step, metrics_figures[step],
+                               record_figures[step], governed))
+    return found_list
+
+
+def _e2_reconciliation(captured):
+    """The E-2 reconciliation clause for a present row.
+
+    Where a record states a closing figure as reconciling on no
+    reading, with the supported cumulative positions stated beside
+    it, the clause reads the per step series with those supported
+    positions and names the rejected figure as not carried. On
+    any other tree the clause names the per step series itself.
+    """
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        found = re.search(
+            r"figure of (\d+) spins through Step (\d+)[^.]*?"
+            r"reconciles on no reading[^.]*?"
+            r"\((\d+) through Step (\d+), (\d+) through Step "
+            r"(\d+)\)", piece.text)
+        if found:
+            rejected, rejected_step = int(found.group(1)), \
+                int(found.group(2))
+            first = (int(found.group(3)), int(found.group(4)))
+            second = (int(found.group(5)), int(found.group(6)))
+            return (
+                "the per step series read with the supported "
+                "cumulative positions, %d spins through Step %d "
+                "and %d spins through Step %d, the closing figure "
+                "of %d spins through Step %d rejected in the "
+                "record as reconciling on no reading and not "
+                "carried"
+                % (first[0], first[1], second[0], second[1],
+                   rejected, rejected_step))
+    return ("the per step series of total spins stated in the "
+            "step records and rosters for the steps counted")
+
+
 def _derive_e2(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     pointer = captured.first_path(
@@ -2217,11 +2315,20 @@ def _derive_e2(captured, universe):
                         "and no named agents stand for that step "
                         "in a countable form"
                         % (step, step, totals[step], bases[step]))
+        for step, metrics_figure, record_figure, _governed in \
+                _spin_disagreements(captured):
+            figures += (
+                "; the metrics record states total spins through "
+                "Step %d as %d, while the step record states "
+                "total spins for Step %d as %d; the feeder figure "
+                "stands and the record figure is not followed"
+                % (step, metrics_figure, step, record_figure))
         result = DerivationResult(
             "E-2", "present", figures, coverage,
             _pointer("E-2", pointer, captured),
             rule_name="E-2 split quantities rule")
         result.coverage = coverage
+        result.reconciled_against = _e2_reconciliation(captured)
         result.statement = _join_statements(
             _e2_figure_statement(captured, totals),
             _universe_claim_statement(captured, universe))
@@ -2928,6 +3035,27 @@ def _derive_f2(captured, universe):
             "a gate outcome for %s stands only under a near match "
             "name outside the gate alias set, and that name is "
             "not read as a gate file" % _instance_label(key))
+    if counted and not problems:
+        # The miniature position the plan states for the target
+        # shape copy: first ruling outcomes recorded per step in
+        # one named place stand at 0, the gate outcomes standing
+        # scattered across gate records and gate rulings under
+        # both names, with counted gate files standing for only
+        # part of the evidenced universe, so no rate is derived
+        # from final closing states on that position.
+        outcomes_stand = any(
+            fact["first_ruling_outcome"] is not None
+            for fact in counted.values())
+        gate_classes = {piece.record_class for piece in gates}
+        if not outcomes_stand and \
+                counted_steps != set(universe.evidenced) and \
+                CLS_GATE_RECORD in gate_classes and \
+                CLS_GATE_RULING in gate_classes:
+            problems.append(
+                "no first ruling outcome is recorded per step "
+                "in one named place for the steps the row spans, "
+                "the gate outcomes standing scattered across "
+                "gate records and gate rulings under both names")
     if problems or not counted:
         held_clauses = []
         classes = {piece.record_class for piece in gates}
@@ -4401,7 +4529,7 @@ def _q4_disagreement_entries(captured):
             "Records: %s and %s | Figures: the record states the "
             "first trace for Step %d as %d LANDED of %d, the first "
             "trace record states %d of %d | Metric: Q-4 | "
-            "Governing position: the feeder figure stands"
+            "Governing position: governed with the pattern named"
             % (path, sources[step], step, landed, total,
                feeder_landed, feeder_total))
     return entries
@@ -4413,8 +4541,13 @@ def _slice5_disagreement_entries(captured):
     One entry per metric for Q-1, in the same records form: a
     record stating a different post triage breakdown for a
     counted round. One entry per unit for Q-4, from the stated
-    figure scan the Q-4 marking uses.
+    figure scan the Q-4 marking uses. Returns the restatement
+    group entries and the blocking group entries in two lists:
+    the Q-3 contested entry stands in the restatement group
+    where a restatement stands in the records, and in the
+    blocking group where none stands.
     """
+    restatements = []
     entries = []
     counted, _nonflow, _excluded, _incomplete = \
         _q1_direct_candidates(captured)
@@ -4436,7 +4569,7 @@ def _slice5_disagreement_entries(captured):
             "Records: %s and %s | Figures: the feeder record "
             "states post triage breakdown %s for Round %d, the "
             "other record states %s for Round %d | Metric: Q-1 | "
-            "Governing position: the feeder figure stands"
+            "Governing position: governed with the pattern named"
             % (feeder_path, other_path,
                _q1_counts_text(feeder_counts), rnd,
                _q1_counts_text(other_counts), rnd))
@@ -4444,15 +4577,27 @@ def _slice5_disagreement_entries(captured):
     universe = build_step_universe(captured)
     contested = _q3_contested_entry(captured, universe)
     if contested is not None:
-        entries.append(
-            "Records: %s and %s | Figures: the metrics record "
-            "states the step universe as %s step, the register "
-            "entry states origin step Step %d | Metric: Q-3 | "
-            "Governing position: the feeder figure stands, the "
-            "contested instance carried on the evidenced universe"
-            % (_metrics_record_name(captured), contested["path"],
-               universe.metrics_count_claim, contested["origin"]))
-    return entries
+        figures = (
+            "the metrics record states the step universe as %s "
+            "step, the register entry states origin step Step %d; "
+            "the contested instance carried on the evidenced "
+            "universe"
+            % (universe.metrics_count_claim, contested["origin"]))
+        if _q3_restatement(captured) is not None:
+            restatements.append(
+                "Records: %s and %s | Figures: %s | Metric: Q-3 | "
+                "Governing position: restatement with its "
+                "correction named"
+                % (_metrics_record_name(captured),
+                   contested["path"], figures))
+        else:
+            entries.append(
+                "Records: %s and %s | Figures: %s | Metric: Q-3 | "
+                "Governing position: governed with the pattern "
+                "named"
+                % (_metrics_record_name(captured),
+                   contested["path"], figures))
+    return restatements, entries
 
 
 def _trace_is_pin_rows(captured, step):
@@ -4501,6 +4646,12 @@ _D1_FOUNDATION_TABLE = (
     "decision table inside the root, governing under the D-09 "
     "exception where no queue file in the named form stands, and "
     "no queue file in the named form stands in the tree")
+
+_D1_FOUNDATION_TABLE_NO_QUEUE = (
+    "Foundation statement: the decision table inside the root "
+    "is the feeder this row rests on, under the exception for "
+    "a tree with no queue file, and no queue file stands in "
+    "the tree")
 
 _D1_FOUNDATION_NONE = (
     "Foundation statement: no feeder stands for this row, no "
@@ -4585,7 +4736,8 @@ def _derive_d1(captured, universe):
         items = feeders["table_items"]
         feeder_name = "metrics record decision table"
         pointer = METRICS_CANONICAL_PATH
-        foundation = _D1_FOUNDATION_TABLE
+        foundation = _D1_FOUNDATION_TABLE_NO_QUEUE \
+            if queue_piece is None else _D1_FOUNDATION_TABLE
         marking = None
         if not items:
             return _refusal(
@@ -5526,49 +5678,413 @@ def _missing_closing_steps(captured, universe):
     return [step for step in universe.evidenced if step not in have]
 
 
-def _disagreement_lines(captured):
-    """The disagreements block entries for queue and table splits.
+def _record_disagreement_entries(captured):
+    """Disagreements block entries stated in the records at large.
 
+    Returns the restatement group entries and the blocking group
+    entries, the blocking entries as (first line, entry line)
+    pairs, the first line standing only where the entry carries
+    one. Three stated forms stand scanned: a total spins figure
+    the metrics record states against a different total in the
+    step record, touching E-2 and B-2, one entry per metric
+    touched, governed where a named correction governs the step
+    record figure and ungoverned where none stands; a closure
+    state the metrics record states under the gate pattern named
+    for gate records, touching F-2, governed with the pattern
+    named; and a figure standing in a form no class in the record
+    names, the unclassifiable disagreement failure form, which
+    stands in the block and is never omitted.
+    """
+    restatements = []
+    blocking = []
+    metrics_name = _metrics_record_name(captured)
+    metrics_text = captured.assembled_metrics or ""
+    step_paths = {}
+    for piece in captured.pieces:
+        if piece.step is not None and piece.paths:
+            step_paths.setdefault(piece.step, piece.paths[0])
+    for step, metrics_figure, record_figure, governed in \
+            _spin_disagreements(captured):
+        figures = (
+            "the metrics record states total spins through "
+            "Step %d as %d, the step record states total spins "
+            "for Step %d as %d"
+            % (step, metrics_figure, step, record_figure))
+        records = "%s and %s" % (
+            metrics_name, step_paths.get(step, ""))
+        if governed:
+            figures += (
+                ", and the correction named in the records "
+                "governs the step record figure")
+            for code in ("E-2", "B-2"):
+                restatements.append(
+                    "Records: %s | Figures: %s | Metric: %s | "
+                    "Governing position: restatement with its "
+                    "correction named" % (records, figures, code))
+        else:
+            for code in ("E-2", "B-2"):
+                blocking.append((
+                    "Blocked metric: %s, no verdict was withheld "
+                    "for this disagreement" % code,
+                    "Records: %s | Figures: %s | Metric: %s | "
+                    "Governing position: ungoverned with no "
+                    "verdict depending on it"
+                    % (records, figures, code)))
+    closure = re.search(
+        r"Closure state for Step (\d+): ([A-Za-z][A-Za-z-]*), "
+        r"under the gate pattern named", metrics_text)
+    if closure:
+        step = int(closure.group(1))
+        state = closure.group(2)
+        record_path = step_paths.get(step, "")
+        record_state = None
+        for piece in captured.pieces:
+            if piece.step == step and piece.text:
+                stated = re.search(r"Closure state:\s*([A-Za-z-]+)",
+                                   piece.text)
+                if stated:
+                    record_state = stated.group(1)
+                    record_path = piece.paths[0]
+                    break
+        if record_state is not None:
+            blocking.append((
+                "Blocked metric: F-2, no verdict was withheld "
+                "for this disagreement",
+                "Records: %s and %s | Figures: the metrics "
+                "record states the closure state for Step %d as "
+                "%s under the gate pattern named for gate "
+                "records, the record states the closure state "
+                "for Step %d as %s | Metric: F-2 | Governing "
+                "position: governed with the pattern named"
+                % (metrics_name, record_path, step, state, step,
+                   record_state)))
+    if "form no class in the record names" in metrics_text:
+        unnamed_path = None
+        for piece in captured.pieces:
+            if piece.text and "in an unnamed form" in piece.text:
+                unnamed_path = piece.paths[0]
+                break
+        if unnamed_path is not None:
+            blocking.append((
+                "Blocked metric: the unclassifiable figure, no "
+                "verdict was withheld for this disagreement",
+                "Records: %s and %s | Figures: the metrics "
+                "record states a figure in a form no class in "
+                "the record names, the step record states a "
+                "figure in an unnamed form | Metric: the "
+                "unclassifiable figure | Governing position: "
+                "ungoverned with no verdict depending on it"
+                % (metrics_name, unnamed_path)))
+    return restatements, blocking
+
+
+def _disagreement_lines(captured):
+    """The disagreements block, in its two groups in order.
+
+    The restatements settled by a governing correction stand
+    first, then the contradictions that block or weaken a metric.
+    Inside its group, an entry in the blocking group carries
+    first a first line naming the blocked metric and whether a
+    verdict was withheld, where the entry carries one, and each
+    entry carries its entry line in the closed part order, with
+    its governing position in one of the three fixed wordings.
     Where the queue file inside the root governs and the decision
     table disagrees on an item, the derivation follows the queue
     figure and the table figure stands here under the governed
     wording, as DG-07 states it.
     """
+    restatements, blocking = _record_disagreement_entries(captured)
+    r5, b5 = _slice5_disagreement_entries(captured)
+    restatements += r5
+    blocking += [(None, entry) for entry in b5]
     feeders = _decision_feeders(captured)
-    entries = _slice5_disagreement_entries(captured)
-    if not feeders["queue_usable"] or not feeders["table_items"]:
-        if not entries:
-            return []
-        return ["Group: record disagreements"] + entries
-    table = {item["item"]: item for item in feeders["table_items"]}
-    ledger = _ledger_piece(captured)
-    banked_text = ledger.text if ledger is not None and \
-        ledger.text else ""
-    for item in feeders["queue_items"]:
-        other = table.get(item["item"])
-        if not other or not item["ruled"] or not other["ruled"] \
-                or item["ruled"] == other["ruled"]:
+    if feeders["queue_usable"] and feeders["table_items"]:
+        table = {item["item"]: item
+                 for item in feeders["table_items"]}
+        ledger = _ledger_piece(captured)
+        banked_text = ledger.text if ledger is not None and \
+            ledger.text else ""
+        for item in feeders["queue_items"]:
+            other = table.get(item["item"])
+            if not other or not item["ruled"] or not other["ruled"] \
+                    or item["ruled"] == other["ruled"]:
+                continue
+            figures = ("the queue file states %s ruled at %s, the "
+                       "decision table states %s ruled at %s"
+                       % (item["item"], item["ruled"], item["item"],
+                          other["ruled"]))
+            blocking.append((None,
+                "Records: DECISION-QUEUE.md and the decision "
+                "table in %s | Figures: %s | Metric: D-1 | "
+                "Governing position: governed with the pattern "
+                "named" % (_metrics_record_name(captured), figures)))
+            if item["item"] in banked_text:
+                blocking.append((None,
+                    "Records: DECISION-QUEUE.md and the decision "
+                    "table in %s | Figures: %s | Metric: T-4 | "
+                    "Governing position: governed with the "
+                    "pattern named"
+                    % (_metrics_record_name(captured), figures)))
+    lines = ["Group: restatements settled by a governing correction"]
+    lines += restatements
+    lines.append(
+        "Group: contradictions that block or weaken a metric")
+    for first_line, entry in blocking:
+        if first_line:
+            lines.append(first_line)
+        lines.append(entry)
+    return lines
+
+
+def _build_identity_statement(captured):
+    """The build identity statement for the second header line.
+
+    The identities the records inside the tree state, each stated
+    where more than one stands, with the conflict stated and none
+    taken as settled; a single identity stated as found, or as
+    copied where the records state it as a copy from another
+    tree; and the absence stated where no record inside the tree
+    states an identity.
+    """
+    identities = []
+    copied = False
+    for piece in captured.pieces:
+        if not piece.text:
             continue
-        figures = ("the queue file states %s ruled at %s, the "
-                   "decision table states %s ruled at %s"
-                   % (item["item"], item["ruled"], item["item"],
-                      other["ruled"]))
-        entries.append(
-            "Records: DECISION-QUEUE.md and the decision table in "
-            "%s | Figures: %s | Metric: D-1 | Governing position: "
-            "governed with the pattern named"
-            % (_metrics_record_name(captured), figures))
-        if item["item"] in banked_text:
-            entries.append(
-                "Records: DECISION-QUEUE.md and the decision table "
-                "in %s | Figures: %s | Metric: T-4 | Governing "
-                "position: governed with the pattern named"
-                % (_metrics_record_name(captured), figures))
-    if not entries:
-        return []
-    return ["Group: contradictions that block or weaken a metric",
-            "Blocked metric: the governed items, no verdict was "
-            "withheld for them"] + entries
+        for found in re.finditer(
+                r"^Build(?: identity)?:\s*(.+?)\s*$",
+                piece.text, re.M):
+            value = found.group(1).strip().rstrip(".")
+            if value and value not in identities:
+                identities.append(value)
+                if "copied from" in piece.text or \
+                        "a copy from" in piece.text:
+                    copied = True
+    if len(identities) > 1:
+        return ("conflict: the records inside the tree state "
+                "conflicting build identities, %s, and the "
+                "conflict stands stated with none of them taken "
+                "as settled" % "; ".join(identities))
+    if identities:
+        if copied:
+            return ("%s, stated in the records as a copy from "
+                    "another tree and not taken as this tree own "
+                    "identity" % identities[0])
+        return identities[0]
+    if captured.build_identity:
+        return str(captured.build_identity)
+    return "no build identity was found inside the tree"
+
+
+_KIND_BY_TOKEN = {
+    "missing-field": "missing field",
+    "no-feeder-record": "missing record",
+    "date-only-form": "wrong form",
+    "no-post-triage-breakdown": "wrong form",
+    "no code fits": "wrong form",
+    "wrong-form": "wrong form",
+    "unreconciled-figure": "unreconciled",
+    "unknown-definitions-version": "not producible",
+    "partial-span": "missing field",
+    "over-limit-piece": "not producible",
+    "malformed-piece": "not producible",
+    "unreadable-piece": "not producible",
+    "truncated-no-correcting-record": "not producible",
+    "no-measurement-basis": "missing field",
+    "no-named-rule": "not producible",
+    "governing-scale-conflict": "wrong form",
+    "record-disagrees": "unreconciled",
+}
+
+_KIND_ORDER = ("missing record", "missing field", "wrong form",
+               "unreconciled", "not producible")
+
+
+def _broken_link_kind(result):
+    """The broken link kind of a row that does not stand present,
+    in the five kind forms the data quality section counts.
+
+    The kind stands read from the reason code the result holds,
+    with the F-2 scattered gate outcome form, whose held form
+    names the scattering, standing as a wrong form, and with a
+    text reading of the broken link for any code outside the
+    table.
+    """
+    token = (result.code_token or "").strip()
+    if result.code == "F-2" and token == "missing-field" and \
+            "scattered" in (result.form_held or ""):
+        return "wrong form"
+    if token in _KIND_BY_TOKEN:
+        return _KIND_BY_TOKEN[token]
+    text = " ".join(part for part in (result.broken_link or "",
+                                      result.form_required or "")
+                    if part).lower()
+    if "field" in text:
+        return "missing field"
+    if "form" in text:
+        return "wrong form"
+    if "record" in text:
+        return "missing record"
+    return "not producible"
+
+
+def _record_cost_lines(captured, universe):
+    """The record cost section lines, in the D4R-27 form.
+
+    The presence or absence of a cost ledger file as a cost fact
+    in its own right; the spin count as recorded, where the tree
+    carries it; the token position as recorded, stated as absent
+    and not as zero where none stands; the budget position line,
+    carrying its record and no cap test wording in the same line
+    as any figure it states; and each labelled proxy figure in
+    the records restated with its proxy basis wording in the
+    same line.
+    """
+    lines = []
+    data = _ledger_data(captured)
+    if data["ledgers"]:
+        lines.append(
+            "Cost ledger: a cost ledger stands in the tree at %s"
+            % data["pointer"])
+    else:
+        lines.append(
+            "Cost ledger: no cost ledger file stands in the "
+            "tree, stated as a cost fact in its own right")
+    totals = _total_spins(captured, universe)
+    if totals:
+        lines.append(
+            "Spin count: total spins as recorded in the step "
+            "records and rosters, %s"
+            % ", ".join("Step %d: %d" % (step, totals[step])
+                        for step in sorted(totals)))
+    if data["tokens"]:
+        lines.append(
+            "Token position: token figures as recorded in the "
+            "cost ledger, %d in all across %d steps"
+            % (sum(data["tokens"].values()), len(data["tokens"])))
+    else:
+        lines.append(
+            "Token position: no token figure stands recorded "
+            "in the tree, stated as absent and not as zero")
+    budget_line = None
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        stated = re.search(r"Budget position:\s*([^.;]+)",
+                           piece.text)
+        if stated:
+            budget_line = (
+                "Budget position: %s, as recorded in %s"
+                % (stated.group(1).strip(), piece.paths[0]))
+            break
+    if budget_line is None and (data["budget_money"] is not None
+                                or data["budget_tokens"] is not None):
+        sides = []
+        if data["budget_money"] is not None:
+            sides.append("money budget of %d"
+                         % data["budget_money"])
+        if data["budget_tokens"] is not None:
+            sides.append("token budget of %d"
+                         % data["budget_tokens"])
+        budget_line = (
+            "Budget position: %s, as recorded in %s"
+            % (" and ".join(sides), data["pointer"]))
+    if budget_line is None:
+        budget_line = (
+            "Budget position: absent, no budget position stands "
+            "recorded in the tree")
+    lines.append(budget_line)
+    seen_proxy = set()
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        for sentence in re.split(r"(?<=[.;])\s+", piece.text):
+            if "documented units" not in sentence or \
+                    "proxy" not in sentence.lower():
+                continue
+            share = re.search(r"(\d+) of (\d+) documented units",
+                              sentence)
+            ceiling = re.search(r"ceiling of (\d+) documented "
+                                r"units", sentence)
+            plain = re.search(r"(\d+) documented units", sentence)
+            if share:
+                figure = "%s of %s documented units" % share.groups()
+            elif ceiling:
+                figure = ("agent count ceiling of %s documented "
+                          "units" % ceiling.group(1))
+            elif plain:
+                figure = "%s documented units" % plain.group(1)
+            else:
+                continue
+            key = (figure, piece.paths[0])
+            if key in seen_proxy:
+                continue
+            seen_proxy.add(key)
+            lines.append(
+                "Proxy figure: %s, on a labelled proxy basis as "
+                "recorded in %s" % (figure, piece.paths[0]))
+    return lines
+
+
+_TERM_TEXTS = {
+    "missing-field": "a field the derivation requires does not "
+                     "stand in the record",
+    "no-feeder-record": "no feeder record for the metric stands "
+                        "in the tree",
+    "date-only-form": "the record carries dates only, with no "
+                      "time of day, where a time of day is "
+                      "required",
+    "no-post-triage-breakdown": "no post triage severity "
+                                "breakdown stands in the form "
+                                "the row counts from",
+    "no code fits": "the code list holds no code naming the "
+                    "case the records stand in",
+    "partial-span": "the feeder series covers part of the span "
+                    "the row requires and no more",
+    "unreconciled-figure": "two records state figures that do "
+                           "not reconcile and neither is taken",
+    "unknown-definitions-version": "the metrics record states a "
+                                   "definitions version the "
+                                   "settled definitions do not "
+                                   "recognise",
+    "no-measurement-basis": "no measurement basis for the figure "
+                            "stands in the records",
+    "truncated-no-correcting-record": "a piece stands truncated "
+                                      "and no correcting record "
+                                      "stands for it",
+    "over-limit-piece": "a piece stands over a limit the walk "
+                        "enforces and was not read in full",
+    "malformed-piece": "a piece stands in a form the capture "
+                       "cannot read as its record kind",
+    "unreadable-piece": "a piece could not be read at all",
+    "no-named-rule": "no named rule in the settled definitions "
+                     "covers the case",
+    "governing-scale-conflict": "two records state the figure on "
+                                "different scales and no "
+                                "governing scale stands named",
+    "record-disagrees": "a record states a figure the feeder "
+                        "records disagree with, and the feeder "
+                        "figure stands",
+    "wrong-form": "the record holds the figure in a form the "
+                  "derivation cannot read",
+}
+
+
+def _terms_lines(results):
+    """One terms line for each term the report uses in a reason
+    line, in the order that term first stands used."""
+    lines = []
+    seen = set()
+    for result in results:
+        token = (result.code_token or "").strip()
+        if not token or token in seen:
+            continue
+        seen.add(token)
+        lines.append("%s: %s" % (
+            token, _TERM_TEXTS.get(
+                token, "a reason term the report uses, naming "
+                       "the broken link form for its row")))
+    return lines
 
 
 def derive_report(captured):
@@ -5798,6 +6314,70 @@ def derive_report(captured):
         result = results_by_code[code]
         result.build_state_statement = state_naming
     results = [results_by_code[code] for code in STARTER_ORDER]
+    # Slice 7 model assembly, on the final results: the D-1
+    # Statement part content, standing on the D-1 row only; the
+    # reconciliation part on present rows that carry none yet;
+    # and the broken link kind naming on rows that do not stand
+    # present, the kind the data quality census counts.
+    d1_result = results_by_code["D-1"]
+    if getattr(d1_result, "statement", None):
+        d1_result.statement_part = d1_result.statement
+    else:
+        d1_feeders = _decision_feeders(captured)
+        if d1_feeders["queue_usable"]:
+            d1_result.statement_part = _D1_FOUNDATION_QUEUE
+        elif d1_feeders["table_stands"]:
+            d1_result.statement_part = \
+                _D1_FOUNDATION_TABLE_NO_QUEUE \
+                if d1_feeders["queue_piece"] is None \
+                else _D1_FOUNDATION_TABLE
+        elif d1_feeders["queue_piece"] is not None:
+            d1_result.statement_part = _D1_FOUNDATION_UNUSABLE
+        else:
+            d1_result.statement_part = _D1_FOUNDATION_NONE
+    q4_result = results_by_code["Q-4"]
+    if q4_result.verdict == "present" and \
+            not getattr(q4_result, "reconciled_against", None):
+        q4_clause = "the sum test ran per step"
+        q4_bound = q4_result.bound
+        q4_single = None
+        if q4_bound:
+            q4_single = re.match(r"the Step (\d+) contribution",
+                                 q4_bound[0])
+        if q4_single:
+            q4_step = int(q4_single.group(1))
+            q4_traces, _q4_sources, _q4_styles = \
+                _first_traces(captured)
+            q4_landed = q4_traces[q4_step][0] \
+                if q4_step in q4_traces else 0
+            q4_clause += (
+                " and Step %d stands excepted, its LANDED count "
+                "of %d standing in both forms and no percentage "
+                "printed for Step %d, with no record disagrees "
+                "qualifier carried on this row on that ground"
+                % (q4_step, q4_landed, q4_step))
+        elif q4_bound:
+            q4_clause += (
+                " and the excepted contributions stand excepted, "
+                "with no record disagrees qualifier carried on "
+                "this row on that ground")
+        q4_result.reconciled_against = q4_clause
+    for result in results:
+        if result.verdict == "present":
+            if not getattr(result, "reconciled_against", None):
+                result.reconciled_against = (
+                    "the metric carries no total to reconcile "
+                    "against")
+        else:
+            kind = _broken_link_kind(result)
+            if kind and kind not in (result.reason_text() or ""):
+                if result.broken_link:
+                    result.broken_link = \
+                        result.broken_link.rstrip() + \
+                        " (" + kind + ")"
+                elif result.follows is not None:
+                    result.follows = result.follows.rstrip() + \
+                        " (" + kind + ")"
     latest = captured.latest_timestamp
     latest_text = latest if latest else "none found in the capture"
     coverage = (
@@ -5835,28 +6415,103 @@ def derive_report(captured):
                      % (step, step))
     if captured.walk_note:
         coverage += "; walk note: " + captured.walk_note
-    header_lines = ["# Metrics starter set report",
-                    "Root: " + str(captured.root),
+    # The header lines in the line grammar order: root identity,
+    # build identity under its full label, the captured read
+    # statement, the three line universe proof, the coverage
+    # statement, the partial marking, the open state line where
+    # the build stands in progress, the live line from the latest
+    # record timestamp in the capture and never a run time, the
+    # reading moment line, the piece lines, and the version 2
+    # trigger line where that state is found.
+    partial_pieces = [piece for piece in captured.pieces
+                      if _piece_not_read_in_full(piece)]
+    uncovered_steps = _missing_closing_steps(captured, universe)
+    smaller_sets = []
+    for set_name, set_steps in (
+            ("PATH-LEDGER.md", universe.ledger),
+            (_metrics_record_name(captured), universe.metrics)):
+        if set_steps and set(set_steps) != set(universe.evidenced) \
+                and len(set_steps) < len(universe.evidenced):
+            smaller_sets.append((set_name, set_steps))
+    # The partial reading position, stated in the coverage
+    # statement in the header and in the run cost line together:
+    # the reading stands partial where the capture stands cut by
+    # a limit or the walk bound, where any piece stands not read
+    # in full, where a smaller evidenced set stands beside the
+    # taken set, where a step in the taken set carries no closing
+    # gate record, or where no step stands evidenced at all.
+    is_partial = bool(partial_pieces or captured.tree_cut_paths
+                      or captured.walk_note or smaller_sets
+                      or uncovered_steps
+                      or not universe.evidenced)
+    header_lines = ["Root: " + str(captured.root),
+                    "Build identity: "
+                    + _build_identity_statement(captured),
                     "Captured read: the report derives from the "
                     "one captured read of the tree, taken in a "
                     "single walk"]
-    if captured.build_identity:
-        header_lines.append("Build: " + str(captured.build_identity))
-    header_lines.append("Latest record timestamp: " + str(latest_text))
+    if universe.evidenced:
+        header_lines.append(
+            "Coverage taken set: %s, %d steps evidenced by step "
+            "records and gate files"
+            % (_steps_phrase(universe.evidenced),
+               len(universe.evidenced)))
+    else:
+        header_lines.append(
+            "Coverage taken set: no steps evidenced in the "
+            "capture")
+    for set_name, set_steps in smaller_sets:
+        header_lines.append(
+            "Coverage smaller set: %s, stated in %s, which "
+            "stops there" % (_steps_phrase(set_steps), set_name))
+    if uncovered_steps:
+        header_lines.append(
+            "Coverage uncovered steps: %s, with no gate record "
+            "standing in the capture"
+            % _steps_phrase(uncovered_steps))
+    else:
+        header_lines.append(
+            "Coverage uncovered steps: none, every step in the "
+            "taken set carries a gate record in the capture")
     header_lines.append(coverage)
-    # The partial reading position, stated in the coverage
-    # statement in the header: the reading stands partial where
-    # the capture stands cut by a limit or the walk bound, or
-    # where any piece stands not read in full, and every such
-    # piece is named here with its state and its capture reason.
-    partial_pieces = [piece for piece in captured.pieces
-                      if _piece_not_read_in_full(piece)]
-    is_partial = bool(partial_pieces or captured.tree_cut_paths
-                      or captured.walk_note)
     if is_partial:
         header_lines.append("Coverage partial: partial report")
     else:
         header_lines.append("Coverage partial: full report")
+    if state_word != "halted":
+        if uncovered_steps:
+            header_lines.append(
+                "Coverage open state: the build stands in "
+                "progress, with %s not yet closed"
+                % _steps_phrase(uncovered_steps))
+        else:
+            header_lines.append(
+                "Coverage open state: the build stands in "
+                "progress, with no step standing unclosed in "
+                "the capture")
+    header_lines.append("Latest record timestamp: " + str(latest_text))
+    gate_steps = [piece.step for piece in captured.pieces
+                  if piece.record_class in GATE_CLASSES
+                  and piece.step is not None]
+    if gate_steps:
+        last_closed = max(gate_steps)
+        if state_word == "halted":
+            header_lines.append(
+                "Record state: the records evidence a closed "
+                "build, the last closed step the records "
+                "evidence is Step %d, whole build report at the "
+                "coverage found" % last_closed)
+        else:
+            header_lines.append(
+                "Record state: the records evidence a build in "
+                "progress, the last closed step the records "
+                "evidence is Step %d, whole build report at the "
+                "coverage found" % last_closed)
+    else:
+        header_lines.append(
+            "Record state: the records evidence a build in "
+            "progress, no step stands closed in the records, "
+            "whole build report at the coverage found")
     for piece in partial_pieces:
         reason = (piece.not_read_reason or "").strip()
         if not reason:
@@ -5876,6 +6531,11 @@ def derive_report(captured):
                captured.tree_cut_kind or "tree limit",
                captured.tree_bytes, captured.tree_files,
                captured.tree_byte_limit, captured.tree_file_limit))
+    if captured.assembled_metrics and \
+            "every step to close" in captured.assembled_metrics:
+        header_lines.append(
+            "Version 2 trigger state found: the metrics record "
+            "covers every step to close.")
     inventory_lines = ["## Piece inventory"]
     for piece in captured.pieces:
         inventory_lines.append(
@@ -5907,9 +6567,31 @@ def derive_report(captured):
             "rounds case What follows: no code fits the case is "
             "recorded in the data quality section as a code list "
             "gap for T-7")
-    if not entries:
-        entries = ["No data quality entries: every piece in the "
-                   "capture was read in full."]
+    # The data quality section in its Slice 7 form: the five
+    # broken link kind count lines in kind order, with no total,
+    # counted over the rows that stand present but not derivable;
+    # the A7-5 datum line, in this section only, stating the
+    # definitions version the report was read on as the capture
+    # records it, or that the tree stated none; and the entries
+    # themselves after them.
+    kind_counts = {kind: 0 for kind in _KIND_ORDER}
+    for result in results:
+        if result.verdict == "present but not derivable":
+            kind_counts[_broken_link_kind(result)] += 1
+    dq_lines = ["%s: %d" % (kind, kind_counts[kind])
+                for kind in _KIND_ORDER]
+    if captured.definitions_version:
+        dq_lines.append(
+            "Datum line: the report was read on definitions "
+            "version %s, on the settled forms of this version "
+            "of the tool" % captured.definitions_version)
+    else:
+        dq_lines.append(
+            "Datum line: the report was read on no stated "
+            "definitions version, the tree stated none, on the "
+            "settled forms of this version of the tool")
+    dq_lines += entries
+    entries = dq_lines
     # The run cost line, the second place the partial reading
     # position stands: its counters are the counts the one
     # CapturedRead itself carries, and its Reading part states
@@ -5946,6 +6628,8 @@ def derive_report(captured):
     disagreement_lines = _disagreement_lines(captured)
     if disagreement_lines:
         model.disagreements_lines = disagreement_lines
+    model.record_cost_lines = _record_cost_lines(captured, universe)
+    model.terms_lines = _terms_lines(results)
     return model
 
 

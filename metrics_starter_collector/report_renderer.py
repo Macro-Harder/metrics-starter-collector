@@ -151,6 +151,36 @@ stand named at their uses below, as for the earlier slices:
 statement, statement line, statement text, cross check
 statement, cross check marking, cross check, marking, build
 state statement and state statement for the statement line.
+
+Slice 7 form, report completeness. The printed form stands in
+full in this slice, in the line grammar order: the Root line
+first and the build identity line second, under the full label
+Build identity, the value standing exactly as the model supplies
+it, with the short label form the model carried in the earlier
+slices printed under the full label here, and, where the model
+carries no build identity line at all, the absence stated in the
+grammar words, that no build identity was found inside the tree.
+The floor form stands in its three lines only: the Root line,
+the build identity line, and the No usable records line. After
+the verdict rows the four sections stand in report order whether
+or not the model carries lines for them: Disagreements, with its
+two groups standing restatements first where the model carries
+both group lines, and with both group lines standing in that
+order where the model carries no entry; Data quality, with a
+count per broken link kind in kind order where the model carries
+its counts in that form; Record cost, with its lines as the
+model supplies them and the run cost line standing after them;
+and Terms last, with one line for each term a printed reason
+line uses, in first use order, from the reason anatomy glossary
+this module holds, where the model carries no terms lines of its
+own. The cross check marking stands printed inside row statement
+lines only, as the earlier slices settled, and no standalone
+comparison table stands anywhere in the report. The renderer
+still computes no figure and holds no derivation rule: every
+count, figure and statement it prints stands in the model it is
+handed, and the only texts it supplies are the grammar labels,
+the section headings, the group lines of an empty block, and the
+glossary explanations of the reason anatomy terms.
 """
 import re
 
@@ -892,8 +922,12 @@ def _header_lines(model):
             continue
         if stripped.startswith("Root:") and root_line is None:
             root_line = stripped
-        elif stripped.startswith("Build identity:") and build_line is None:
+        elif stripped.startswith("Build identity:") and \
+                build_line is None:
             build_line = stripped
+        elif stripped.startswith("Build:") and build_line is None:
+            build_line = "Build identity: " + \
+                stripped[len("Build:"):].strip()
         else:
             rest.append(line)
     if root_line is None:
@@ -904,6 +938,9 @@ def _header_lines(model):
         identity = _text(_get(model, "build_identity"))
         if identity:
             build_line = "Build identity: " + identity
+    if build_line is None:
+        build_line = ("Build identity: no build identity was "
+                      "found inside the tree")
     lines = []
     if root_line is not None:
         lines.append(root_line)
@@ -973,7 +1010,12 @@ def _data_quality_lines(model):
     one line for each kind, the kind as its label and its count as
     its value.
     """
-    held = _get(model, "data_quality", "data_quality_lines")
+    counts = _get(model, "data_quality_counts", "broken_link_counts",
+                  "data_quality_kinds")
+    if isinstance(counts, dict):
+        held = counts
+    else:
+        held = _get(model, "data_quality", "data_quality_lines")
     if isinstance(held, dict):
         lines = []
         for kind in DATA_QUALITY_KIND_ORDER:
@@ -983,13 +1025,32 @@ def _data_quality_lines(model):
             if kind not in DATA_QUALITY_KIND_ORDER:
                 lines.append("%s: %s" % (kind, held[kind]))
         return lines
-    return _lines(held)
+    lines = _lines(held)
+    count_lines = {}
+    for line in lines:
+        match = re.match(r"^(missing record|missing field|wrong form|"
+                         r"unreconciled|not producible): \d+$",
+                         line.strip())
+        if match:
+            count_lines[match.group(1)] = line.strip()
+    if len(count_lines) == len(DATA_QUALITY_KIND_ORDER):
+        return ([count_lines[kind] for kind in DATA_QUALITY_KIND_ORDER]
+                + [line for line in lines
+                   if line.strip() not in count_lines.values()])
+    return lines
 
 
 def _floor_lines(model):
     """Return the no usable records form: three lines, no rows."""
     header = _header_lines(model)
-    lines = header[:2]
+    lines = []
+    for line in header:
+        if line.startswith("Root:") and not lines:
+            lines.append(line)
+        elif line.startswith("Build identity:") and len(lines) == 1:
+            lines.append(line)
+    if len(lines) < 2:
+        lines = header[:2]
     floor = _text(_get(model, "no_usable_line", "floor_line"))
     if not floor:
         for line in header[2:] + _data_quality_lines(model):
@@ -1009,6 +1070,71 @@ def _floor_lines(model):
     return lines
 
 
+GROUP_RESTATEMENTS = ("Group: restatements settled by a "
+                      "governing correction")
+GROUP_BLOCKING = ("Group: contradictions that block or weaken "
+                  "a metric")
+
+REASON_TERMS = (
+    ("broken link", "the link that broke, naming the missing "
+     "record, the missing field, or the wrong form where the "
+     "break stands in one of those forms"),
+    ("form required", "the form the derivation required"),
+    ("form held", "the form or the absence the record actually "
+     "held"),
+)
+
+
+def _disagreement_lines(model):
+    """Return the disagreements block lines in group order.
+
+    Lines stand as the model holds them, with one printed form
+    correction: where the model carries both Slice 7 group lines,
+    the restatements group segment stands before the blocking
+    group segment, each segment keeping its own lines in their
+    held order. Where the model carries no line at all, both
+    group lines stand in that order with no entry under either.
+    """
+    held = _section_lines(model, "disagreements_lines",
+                          "disagreements")
+    if not held:
+        return [GROUP_RESTATEMENTS, GROUP_BLOCKING]
+    starts = {}
+    for index, line in enumerate(held):
+        stripped = line.strip()
+        if stripped == GROUP_RESTATEMENTS:
+            starts.setdefault("restatements", index)
+        elif stripped == GROUP_BLOCKING:
+            starts.setdefault("blocking", index)
+    if len(starts) != 2 or starts["restatements"] < starts["blocking"]:
+        return held
+    head = held[:starts["blocking"]]
+    blocking = held[starts["blocking"]:starts["restatements"]]
+    restatements = held[starts["restatements"]:]
+    return head + restatements + blocking
+
+
+def _terms_lines(model, row_lines):
+    """Return the Terms lines: model lines, or the glossary form.
+
+    Where the model carries no terms lines, one line stands for
+    each reason anatomy term a printed row line uses, in the
+    order that term first stands used, the term as its label and
+    its glossary explanation as its value.
+    """
+    held = _section_lines(model, "terms_lines", "terms")
+    if held:
+        return held
+    used = []
+    for line in row_lines:
+        lowered = line.lower()
+        for term, _expl in REASON_TERMS:
+            if term + "," in lowered and term not in used:
+                used.append(term)
+    explanations = dict(REASON_TERMS)
+    return ["%s: %s" % (term, explanations[term]) for term in used]
+
+
 def render_report(model):
     """Print the ReportModel and return the report text."""
     if _get(model, "no_usable"):
@@ -1017,21 +1143,17 @@ def render_report(model):
     lines.extend(_header_lines(model))
     lines.extend(_inventory_lines(model))
     results = _get(model, "results", "rows", "derivations") or []
+    printed_rows = []
     for result in results:
-        lines.extend(_row_lines(result))
-    disagreements = _section_lines(model, "disagreements_lines",
-                                   "disagreements")
-    if disagreements:
-        lines.append("Disagreements")
-        lines.extend(disagreements)
-    data_quality = _data_quality_lines(model)
-    if data_quality:
-        lines.append("Data quality")
-        lines.extend(data_quality)
-    record_cost = _section_lines(model, "record_cost_lines", "record_cost")
-    if record_cost:
-        lines.append("Record cost")
-        lines.extend(record_cost)
+        printed_rows.extend(_row_lines(result))
+    lines.extend(printed_rows)
+    lines.append("Disagreements")
+    lines.extend(_disagreement_lines(model))
+    lines.append("Data quality")
+    lines.extend(_data_quality_lines(model))
+    lines.append("Record cost")
+    lines.extend(_section_lines(model, "record_cost_lines",
+                                "record_cost"))
     piece_lines, limits = _coverage_piece_data(model)
     partial = _partial_line(model, piece_lines)
     run_cost = _get(model, "run_cost_line", "run_cost")
@@ -1069,9 +1191,7 @@ def render_report(model):
             parts.append("Limit: " + "; ".join(limits))
         parts.append("Reading: partial")
         lines.append(" | ".join(parts))
-    terms = _section_lines(model, "terms_lines", "terms")
-    if terms:
-        lines.append("Terms")
-        lines.extend(terms)
+    lines.append("Terms")
+    lines.extend(_terms_lines(model, printed_rows))
     lines = [line for line in lines if line.strip()]
     return "\n".join(lines) + "\n"

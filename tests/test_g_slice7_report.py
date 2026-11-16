@@ -30,8 +30,10 @@ from tests.fixture_builder import (
     FixtureTestCase, REPO_ROOT, STARTER_ORDER, build_case, build_cases,
     make_case,
     decision_table, f16_miniature_case, gate_record, gate_ruling,
-    manifest, metrics_record, path_ledger, queue_file, row_verdict,
-    run_tool, split_metrics_record_files, step_record, tracked_tempdir)
+    manifest, metrics_record, path_ledger, queue_file, row_block,
+    row_verdict,
+    run_tool, split_metrics_record_files, statement_segment,
+    step_record, tracked_tempdir)
 
 ROW_NAMES = {
     "T-1": "Step elapsed time", "T-2": "Step active time",
@@ -348,8 +350,9 @@ class TestSlice7Report(FixtureTestCase):
         not sum to its stated total, a governing queue figure the
         decision derivation must recompute from, token figures
         offered only in estimator form outside the ledger feeders,
-        and stated build totals and rankings that do not recompute
-        from the ledger inputs the two trees share.
+        and per step figures for B-1, B-3 and B-4 stated in the
+        metrics record in the settled cross check form, which do
+        not recompute from the feeder figures the two trees share.
         """
         files = base_files()
         transitions = []
@@ -383,10 +386,10 @@ class TestSlice7Report(FixtureTestCase):
         if dressed:
             body = ("Step table stands complete for the fixture "
                     "steps. Total spins through Step 3: 999, stated "
-                    "with no correction. Total build elapsed "
-                    "stated: 999 hours. Slowest three steps stated: "
-                    "Step 3, Step 1, Step 2. Fastest three steps "
-                    "stated: Step 2, Step 3, Step 1.")
+                    "with no correction. Metrics record states B-1 "
+                    "for Step 1 as 99 hours. Metrics record states "
+                    "B-3 for Step 1 as 99 hours. Metrics record "
+                    "states B-4 for Step 1 as 99 hours.")
         files["wiki/wiki/synthesis/build-metrics-record.md"] = (
             metrics_record(body=body,
                            decision_table=decision_table([RULED_ITEM])))
@@ -502,6 +505,161 @@ class TestSlice7Report(FixtureTestCase):
                     dressed_line, sound_line,
                     "unseparable row %s differs between the dressed "
                     "tree and the sound tree" % code)
+            elif code == "T-4":
+                self.assertEqual(
+                    dressed_line, sound_line,
+                    "separable row T-4 row lines stand equal between "
+                    "the dressed tree and the sound tree")
+                self.assertIn(
+                    "degraded form: the row is shown without its "
+                    "queue cross check",
+                    row_block(sound.stdout, code).lower(),
+                    "separable row T-4 sound row block carries no "
+                    "degraded form statement line")
+                self.assertNotIn(
+                    "degraded form",
+                    row_block(dressed.stdout, code).lower(),
+                    "separable row T-4 dressed row block carries "
+                    "the degraded form words")
+                self.assertNotEqual(
+                    row_block(dressed.stdout, code),
+                    row_block(sound.stdout, code),
+                    "CA2-12 falsifier: row T-4 stands marked "
+                    "separable in the expectation marks, and the "
+                    "tool reports the two trees identically on it "
+                    "in row block form")
+            elif code == "B-1":
+                self.assertEqual(
+                    dressed_line, sound_line,
+                    "separable row B-1 row lines stand equal between "
+                    "the dressed tree and the sound tree")
+                self.assertNotIn(
+                    "record disagrees",
+                    statement_segment(row_block(sound.stdout, code)),
+                    "separable row B-1 sound row block statement "
+                    "segment carries the record disagrees words")
+                self.assertIn(
+                    "record disagrees",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-1 dressed row block statement "
+                    "segment carries no record disagrees qualifier")
+                self.assertIn(
+                    "build-metrics-record.md",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-1 dressed row block statement "
+                    "segment does not name build-metrics-record.md")
+                self.assertIn(
+                    "99 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-1 dressed row block statement "
+                    "segment does not carry the words 99 hours")
+                self.assertIn(
+                    "8 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-1 dressed row block statement "
+                    "segment does not carry the Step 1 feeder "
+                    "elapsed figure of 8 hours")
+                self.assertIn(
+                    "feeder figure stands",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-1 dressed row block statement "
+                    "segment does not carry the words feeder figure "
+                    "stands")
+                self.assertNotEqual(
+                    row_block(dressed.stdout, code),
+                    row_block(sound.stdout, code),
+                    "CA2-12 falsifier: row B-1 stands marked "
+                    "separable in the expectation marks, and the "
+                    "tool reports the two trees identically on it "
+                    "in row block form")
+            elif code == "B-3":
+                self.assertEqual(
+                    dressed_line, sound_line,
+                    "separable row B-3 row lines stand equal between "
+                    "the dressed tree and the sound tree")
+                self.assertNotIn(
+                    "record disagrees",
+                    statement_segment(row_block(sound.stdout, code)),
+                    "separable row B-3 sound row block statement "
+                    "segment carries the record disagrees words")
+                self.assertIn(
+                    "record disagrees",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-3 dressed row block statement "
+                    "segment carries no record disagrees qualifier")
+                self.assertIn(
+                    "build-metrics-record.md",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-3 dressed row block statement "
+                    "segment does not name build-metrics-record.md")
+                self.assertIn(
+                    "99 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-3 dressed row block statement "
+                    "segment does not carry the words 99 hours")
+                self.assertIn(
+                    "8 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-3 dressed row block statement "
+                    "segment does not carry the Step 1 feeder "
+                    "elapsed figure of 8 hours")
+                self.assertIn(
+                    "feeder figure stands",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-3 dressed row block statement "
+                    "segment does not carry the words feeder figure "
+                    "stands")
+                self.assertNotEqual(
+                    row_block(dressed.stdout, code),
+                    row_block(sound.stdout, code),
+                    "CA2-12 falsifier: row B-3 stands marked "
+                    "separable in the expectation marks, and the "
+                    "tool reports the two trees identically on it "
+                    "in row block form")
+            elif code == "B-4":
+                self.assertEqual(
+                    dressed_line, sound_line,
+                    "separable row B-4 row lines stand equal between "
+                    "the dressed tree and the sound tree")
+                self.assertNotIn(
+                    "record disagrees",
+                    statement_segment(row_block(sound.stdout, code)),
+                    "separable row B-4 sound row block statement "
+                    "segment carries the record disagrees words")
+                self.assertIn(
+                    "record disagrees",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-4 dressed row block statement "
+                    "segment carries no record disagrees qualifier")
+                self.assertIn(
+                    "build-metrics-record.md",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-4 dressed row block statement "
+                    "segment does not name build-metrics-record.md")
+                self.assertIn(
+                    "99 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-4 dressed row block statement "
+                    "segment does not carry the words 99 hours")
+                self.assertIn(
+                    "8 hours",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-4 dressed row block statement "
+                    "segment does not carry the Step 1 feeder "
+                    "active figure of 8 hours")
+                self.assertIn(
+                    "feeder figure stands",
+                    statement_segment(row_block(dressed.stdout, code)),
+                    "separable row B-4 dressed row block statement "
+                    "segment does not carry the words feeder figure "
+                    "stands")
+                self.assertNotEqual(
+                    row_block(dressed.stdout, code),
+                    row_block(sound.stdout, code),
+                    "CA2-12 falsifier: row B-4 stands marked "
+                    "separable in the expectation marks, and the "
+                    "tool reports the two trees identically on it "
+                    "in row block form")
             else:
                 self.assertNotEqual(
                     dressed_line, sound_line,
@@ -1532,19 +1690,96 @@ class TestSlice7Report(FixtureTestCase):
                 substance[label] = re.sub(r"\s+", " ", value).strip()
         return substance
 
+    def _shape_substance(self, report, code):
+        """Return the row substance scoped to the common substance.
+
+        The Pointer part stands removed where the code is E-3,
+        E-4, B-2, or D-1, the Reason part stands removed where the
+        code is E-3, E-4, or B-2, and the verdict stands removed
+        where the code is E-4. Those limbs turn on the ledger
+        standing, absent in the first shape and standing with no
+        figures in the second, and stand asserted shape by shape
+        under _assert_ledger_limbs. Every other code returns the
+        substance unchanged.
+        """
+        substance = dict(self._row_substance(report, code))
+        if code in ("E-3", "E-4", "B-2", "D-1"):
+            substance.pop("Pointer", None)
+        if code in ("E-3", "E-4", "B-2"):
+            substance.pop("Reason", None)
+        if code == "E-4":
+            substance.pop("verdict", None)
+        return substance
+
+    def _assert_ledger_limbs(self, first, second):
+        """Assert the ledger standing limbs shape by shape."""
+        one_e3 = self._row_substance(first, "E-3")
+        two_e3 = self._row_substance(second, "E-3")
+        self.assertEqual(one_e3["verdict"], "missing")
+        self.assertEqual(two_e3["verdict"], "missing")
+        self.assertIn("cost ledger record inside the root",
+                      one_e3["Reason"])
+        self.assertIn("no cost ledger stands in the tree",
+                      one_e3["Reason"])
+        self.assertIn("cost ledger token figure field",
+                      two_e3["Reason"])
+        self.assertIn("the cost ledger stands in the tree",
+                      two_e3["Reason"])
+        self.assertIn("no token figure stands in it",
+                      two_e3["Reason"])
+        self.assertIn("looked for and not found", one_e3["Pointer"])
+        self.assertIn("registers/cost-ledger.md", one_e3["Pointer"])
+        self.assertEqual(two_e3["Pointer"], "registers/cost-ledger.md")
+        one_e4 = self._row_substance(first, "E-4")
+        two_e4 = self._row_substance(second, "E-4")
+        self.assertEqual(one_e4["verdict"], "missing")
+        self.assertEqual(two_e4["verdict"],
+                         "present but not derivable")
+        self.assertIn("no cost ledger piece and no step record",
+                      one_e4["Reason"])
+        self.assertIn("per step money figure field", two_e4["Reason"])
+        self.assertIn("missing-field", two_e4["Reason"])
+        self.assertEqual(one_e4["Pointer"], "registers/cost-ledger.md")
+        self.assertIn("steps/step-01-record.md", two_e4["Pointer"])
+        one_b2 = self._row_substance(first, "B-2")
+        two_b2 = self._row_substance(second, "B-2")
+        self.assertEqual(one_b2["verdict"],
+                         "present but not derivable")
+        self.assertEqual(two_b2["verdict"],
+                         "present but not derivable")
+        self.assertIn("no cost ledger stands in the tree",
+                      one_b2["Reason"])
+        self.assertIn(
+            "no figure stands for either limb where no cost ledger "
+            "stands", one_b2["Reason"])
+        self.assertIn(
+            "a cost ledger stands in the tree and it carries no "
+            "spent or budget figure for either side", two_b2["Reason"])
+        self.assertIn(
+            "where no figure stands in the ledger for either side",
+            two_b2["Reason"])
+        self.assertIn("looked for and not found", one_b2["Pointer"])
+        self.assertEqual(two_b2["Pointer"], "registers/cost-ledger.md")
+        one_d1 = self._row_substance(first, "D-1")
+        two_d1 = self._row_substance(second, "D-1")
+        self.assertEqual(one_d1["Pointer"],
+                         "wiki/wiki/synthesis/build-metrics-record.md")
+        self.assertEqual(two_d1["Pointer"], "decision-queue.md")
+
     def _assert_rows_equivalent(self, first, second):
         """Assert EC-04 row by row equivalence, naming any difference."""
         self.assertEqual(row_codes(first), STARTER_ORDER)
         self.assertEqual(row_codes(second), STARTER_ORDER)
         for code in STARTER_ORDER:
-            one = self._row_substance(first, code)
-            two = self._row_substance(second, code)
+            one = self._shape_substance(first, code)
+            two = self._shape_substance(second, code)
             self.assertEqual(
                 one, two,
                 "row %s differed between shapes: first shape %r, "
                 "second shape %r; shape difference: split record, "
                 "ledger inside root, governing queue file, ruling "
                 "name gate files" % (code, one, two))
+        self._assert_ledger_limbs(first, second)
 
     def test_wv21_cross_shape_full_set_rows_equivalent(self):
         """EC-01 to EC-49. Full 17 row comparison across the two shapes."""
@@ -1566,8 +1801,8 @@ class TestSlice7Report(FixtureTestCase):
         first, second = self._run_shapes()
         self._assert_rows_equivalent(first, second)
         for code in ("T-1", "E-1", "E-2", "Q-3", "D-1", "B-2"):
-            self.assertEqual(self._row_substance(first, code),
-                             self._row_substance(second, code),
+            self.assertEqual(self._shape_substance(first, code),
+                             self._shape_substance(second, code),
                              "content point row %s differed" % code)
 
     def test_wv21_cross_shape_row_points(self):
@@ -1575,9 +1810,10 @@ class TestSlice7Report(FixtureTestCase):
         first, second = self._run_shapes()
         for code in STARTER_ORDER:
             self.assertEqual(
-                self._row_substance(first, code),
-                self._row_substance(second, code),
+                self._shape_substance(first, code),
+                self._shape_substance(second, code),
                 "row point for %s differed between shapes" % code)
+        self._assert_ledger_limbs(first, second)
 
     def test_wv21_cross_shape_report_level_points(self):
         """EC-41 to EC-49. Header, sections and closed content agree."""
@@ -1596,9 +1832,19 @@ class TestSlice7Report(FixtureTestCase):
             dq_one = section_text(report, "Data quality")
             self.assertTrue(dq_one)
         self.assertEqual(
-            section_text(first, "Data quality"),
-            section_text(second, "Data quality"),
+            "\n".join(
+                ln for ln in section_text(first, "Data quality")
+                .splitlines()
+                if not ln.strip().lower().startswith("missing field:")),
+            "\n".join(
+                ln for ln in section_text(second, "Data quality")
+                .splitlines()
+                if not ln.strip().lower().startswith("missing field:")),
             "data quality section differed between shapes")
+        self.assertIn("missing field: 2",
+                      section_text(first, "Data quality"))
+        self.assertIn("missing field: 3",
+                      section_text(second, "Data quality"))
         self.assertEqual(
             disagreements_block(first), disagreements_block(second),
             "disagreements block differed between shapes")
