@@ -993,6 +993,262 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertTrue(entry)
         self.assertIn("truncated", entry.lower())
 
+    def test_signal_two_negated_header_lines_do_not_except_at_capture(self):
+        """C2B-01, shell limb, standing for R15-07. Brief Section 5.
+
+        The finding negated header lines in the shell form, by
+        direct call and through the module entry route. A header
+        line stating the count with a negation governing the
+        planned or target statement states no exception, in
+        every negated form the confirmation paper exhibits:
+        not a planned count, not a target count, no planned
+        count, never a target count, not planned count without
+        the article, and a line stating that the planned count
+        was rejected. Each such line therefore still fails
+        signal two at capture: the piece stands truncated, the
+        signal stands named, and D-1 falls to missing. The
+        brief form lines, the count stated as a planned count
+        and the count stated as a target count, keep excepting
+        at capture, as direct calls and the standing brief form
+        test state.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        negated = (
+            ("not-a-planned",
+             "Rows stated in header: 99, not a planned count."),
+            ("not-a-target",
+             "Rows stated in header: 99, not a target count."),
+            ("no-planned",
+             "Rows stated in header: 99, no planned count."),
+            ("never-a-target",
+             "Rows stated in header: 99, never a target count."),
+            ("not-planned",
+             "Rows stated in header: 99, not planned count."),
+            ("rejected",
+             "Rows stated in header: 99, the planned count "
+             "was rejected."))
+        for label, header in negated:
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNotNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        for label, header in negated:
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files(
+                    "", header + "\n")
+                root = build(make_case(
+                    "negated-capture-" + label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("Verdict: missing", block)
+
+    def test_signal_two_two_correction_statements_last_governs_at_capture(self):
+        """C2B-02, shell side verification, standing for C1B-05.
+
+        Direct calls on the shell check over a table of 2 data
+        rows under a header count of 99, where two correction
+        statements stand in one record. The shell correction
+        scan takes the figure stated by the last correction
+        statement in the record, across the union of the three
+        vocabularies: the corrected count form, the count in
+        rows form, and the restates the count form. A mixture
+        whose last statement states 2 therefore stands clean
+        at capture, and a mixture whose last statement states
+        4 fails signal two, in both statement orders and in
+        both mixture directions, in agreement with the core.
+        Two statements standing on one line are judged on the
+        last statement on that line in the same form, because
+        the last statement in the record governs by its place
+        in the record, not by vocabulary order.
+        A record corrected once stands as it stands today.
+        Through the module entry route, a mixture whose last
+        statement states 2 stands read in full with D-1
+        present but not derivable, and a mixture whose last
+        statement states 4 stands truncated on signal two
+        with D-1 missing.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table = (
+            "# Step 1 audit paper\n\nSeverity breakdown table. "
+            "Rows stated in header: 99.\n"
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, corrections in (
+                ("core-then-rows-clean",
+                 "Corrected count: 4\n"
+                 "The corrected count is 2 rows.\n"),
+                ("core-then-core-clean",
+                 "Corrected count: 4\nCorrected count: 2\n"),
+                ("rows-then-core-fails",
+                 "Corrected count: 2\n"
+                 "The corrected count is 4 rows.\n"),
+                ("rows-then-core-clean",
+                 "The corrected count is 4 rows.\n"
+                 "Corrected count: 2\n"),
+                ("core-then-restates-clean",
+                 "Corrected count: 4\n"
+                 "This record restates the count as 2.\n"),
+                ("restates-then-core-fails",
+                 "This record restates the count as 2.\n"
+                 "Corrected count: 4\n")):
+            with self.subTest(form=label, route="direct"):
+                if "fails" in label:
+                    self.assertIsNotNone(
+                        shell._signal_two_failure(corrections + table))
+                else:
+                    self.assertIsNone(
+                        shell._signal_two_failure(corrections + table))
+        self.assertIsNone(shell._signal_two_failure(
+            "Corrected count: 2\n" + table))
+        for label, corrections in (
+                ("same-line-core-then-rows-clean",
+                 "Corrected count: 4, the corrected count "
+                 "is 2 rows.\n"),
+                ("same-line-rows-then-core-clean",
+                 "The corrected count is 4 rows, corrected "
+                 "count: 2.\n"),
+                ("same-line-core-then-core-clean",
+                 "Corrected count: 4, corrected count: 2.\n")):
+            with self.subTest(form=label, route="direct"):
+                self.assertIsNone(
+                    shell._signal_two_failure(corrections + table))
+        for label, corrections, clean in (
+                ("entry-core-then-rows-clean",
+                 "Corrected count: 4\n"
+                 "The corrected count is 2 rows.\n", True),
+                ("entry-rows-then-core-fails",
+                 "Corrected count: 2\n"
+                 "The corrected count is 4 rows.\n", False)):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files(
+                    corrections, "Rows stated in header: 99\n")
+                root = build(make_case(label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                if clean:
+                    self.assertNotIn("signal-two", result.stdout)
+                    self.assertNotIn("truncated", entry.lower())
+                    self.assertIn("present but not derivable", block)
+                else:
+                    self.assertIn("signal-two", result.stdout)
+                    self.assertIn("truncated", entry.lower())
+                    self.assertIn("Verdict: missing", block)
+
+    def test_signal_two_second_table_not_counted_at_capture(self):
+        """C2B-04, shell side verification. Brief Section 5.
+
+        Direct calls on the shell check. The shell counts the
+        table that follows the header count statement, so a
+        piece whose first table matches its stated count of 2
+        and which carries a second table later in the same
+        piece stands clean at capture, whether the second
+        table is a generic table of 3 data rows or a second
+        severity table of 3 data rows, in agreement with the
+        core. In the reverse order, where the table that
+        follows the header statement holds 3 data rows against
+        a stated count of 2 and a later table holds 2, the
+        check still fails signal two, because the first table
+        is the table tested. Through the module entry route,
+        a metrics record whose decision table of 2 data rows
+        matches its stated count and which carries a later
+        generic table of 3 data rows stands read in full with
+        D-1 present but not derivable, and the same record
+        with the generic table standing first, before the
+        decision table, stands truncated on signal two with
+        D-1 missing.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        severity_two = (
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        severity_three = (
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+        generic_three = (
+            "| Item | Value |\n| --- | --- |\n"
+            "| A | 1 |\n| B | 2 |\n| C | 3 |\n")
+        head = ("# Step 1 audit paper\n\nSeverity breakdown "
+                "table. Rows stated in header: 2.\n")
+        self.assertIsNone(shell._signal_two_failure(
+            head + severity_two + "\nA later table.\n"
+            + generic_three))
+        self.assertIsNone(shell._signal_two_failure(
+            head + severity_two + "\nA later table.\n"
+            + severity_three))
+        self.assertIsNotNone(shell._signal_two_failure(
+            head + severity_three + "\nA later table.\n"
+            + severity_two))
+        self.assertIsNone(shell._signal_two_failure(
+            head + severity_two))
+        decision_table = (
+            "## Decision table\n\n"
+            "| Item | Origin step | Raised | Presented | Ruled |\n"
+            "| --- | --- | --- | --- | --- |\n"
+            "| Q-1 | 3 | 2026-11-01 |  |  |\n"
+            "| Q-2 | 3 | 2026-11-01 |  |  |\n")
+        generic_table = (
+            "\nA later table.\n\n"
+            "| Item | Value |\n"
+            "| --- | --- |\n"
+            "| A | 1 |\n| B | 2 |\n| C | 3 |\n")
+        for label, body, clean in (
+                ("entry-first-matches",
+                 "Rows stated in header: 2\n" + decision_table
+                 + generic_table, True),
+                ("entry-first-mismatches",
+                 "Rows stated in header: 2\n" + generic_table
+                 + "\n" + decision_table, False)):
+            with self.subTest(form=label, route="entry"):
+                metrics = (
+                    "# Build metrics record\n\n"
+                    "Build: metrics fixture build.\n\n"
+                    "Step table stands.\n" + body)
+                files = {
+                    "wiki/wiki/synthesis/build-metrics-record.md":
+                        metrics}
+                root = build(make_case(label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                if clean:
+                    self.assertNotIn("signal-two", result.stdout)
+                    self.assertNotIn("truncated", entry.lower())
+                    self.assertIn("present but not derivable", block)
+                else:
+                    self.assertIn("signal-two", result.stdout)
+                    self.assertIn("truncated", entry.lower())
+                    self.assertIn("Verdict: missing", block)
+
     def test_latest_timestamp_impossible_time_date_does_not_leak(self):
         """C1B-04. A refused full stamp leaks no date into the header.
 

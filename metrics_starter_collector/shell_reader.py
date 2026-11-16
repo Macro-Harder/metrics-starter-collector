@@ -128,10 +128,14 @@ _HEADER_COUNT = (
     re.compile(r"rows stated in header:\s*(\d+)"),
     re.compile(r"(\d+)\s+rows stated in (the )?header"),
     re.compile(r"header[^\n:]*:\s*(\d+)\s+rows"))
+# The correction vocabularies stand in the order the Derivation
+# core collects them, so where two matches share one starting
+# place in the record the last correction figure taken here is
+# the figure the core takes.
 _CORRECTED_COUNT = (
+    re.compile(r"corrected count:?\s*(\d+)"),
     re.compile(r"correct\w*[^\n]*?(\d+)\s+rows"),
-    re.compile(r"restates? the count[^\n\d]*(\d+)"),
-    re.compile(r"corrected count:?\s*(\d+)"))
+    re.compile(r"restates? the count[^\n\d]*(\d+)"))
 
 
 def _signal_one_failure(text):
@@ -207,6 +211,40 @@ def _table_data_rows(lines, start):
     return rows
 
 
+def _header_count_excepted(header_line):
+    """Whether one header count statement line carries the signal
+    two exception, under the agreed negation rule.
+
+    The exception fires only where the header count stands
+    stated as a planned count or as a target count and no
+    negation governs that statement. A negation word standing
+    in the same clause before the planned or target statement,
+    as not a planned count, no planned count, never a target
+    count, or not planned count, governs the statement, and a
+    rejection word standing in the same clause after it, as
+    the planned count was rejected, governs it as well: every
+    such negated form states no exception. The brief form
+    lines, the count stated as a planned count and the count
+    stated as a target count with no negation standing, except.
+    """
+    found = re.search(
+        r"\bplanned count\b|\btarget count\b"
+        r"|\bstated as (?:a |an )?(?:planned|target)\b",
+        header_line)
+    if not found:
+        return False
+    clause_before = re.split(
+        r"[,;]", header_line[:found.start()])[-1]
+    if re.search(r"\b(?:not|no|never)\b", clause_before):
+        return False
+    clause_after = re.split(
+        r"[,;]", header_line[found.end():])[0]
+    if re.search(r"\b(?:rejected|refused|denied|negated)\b",
+                 clause_after):
+        return False
+    return True
+
+
 def _signal_two_failure(text):
     """The signal two completeness failure in a text, or None.
 
@@ -222,26 +260,36 @@ def _signal_two_failure(text):
     target count, on the word bounded forms planned count and
     target count and on the stated as a planned or stated as a
     target form, so a negated form, as unplanned, and a derived
-    form, as targeted, state no exception. Where a governing
+    form, as targeted, state no exception, and neither does a
+    statement a negation governs, as not a planned count, no
+    planned count, never a target count, not planned count, or
+    a planned count stated as rejected, each of which states
+    the opposite of the exception condition. Where a governing
     correction in the record restates the count, the corrected
     count is the count tested, and the correction stands
     honoured in every vocabulary the Derivation core honours:
     a count in rows, the restates the count form, and the
     corrected count followed by its number, so a record
     corrected in any of them is judged on the same corrected
-    count here as in the core.
+    count here as in the core, and where two correction
+    statements stand in one record the corrected count is
+    the figure the last such statement states, across the
+    union of the three vocabularies alike. The rows tested
+    are the rows of the one table that follows the header
+    count statement, so a second table later in the piece
+    contributes no row to this count.
     """
     lines = text.splitlines()
+    lowered = text.lower()
+    found_corrections = []
+    for pattern in _CORRECTED_COUNT:
+        for found in pattern.finditer(lowered):
+            found_corrections.append(
+                (found.start(), int(found.group(1))))
     corrected = None
-    for line in lines:
-        lowered_line = line.lower()
-        if "correct" not in lowered_line and \
-                "restate" not in lowered_line:
-            continue
-        for pattern in _CORRECTED_COUNT:
-            found = pattern.search(lowered_line)
-            if found:
-                corrected = int(found.group(1))
+    if found_corrections:
+        found_corrections.sort(key=lambda entry: entry[0])
+        corrected = found_corrections[-1][1]
     for index, line in enumerate(lines):
         stripped = line.strip()
         stated = None
@@ -253,11 +301,7 @@ def _signal_two_failure(text):
         if stated is None:
             continue
         lowered_line = stripped.lower()
-        if re.search(r"\bplanned count\b", lowered_line) \
-                or re.search(r"\btarget count\b", lowered_line) \
-                or re.search(
-                    r"\bstated as (?:a |an )?(?:planned|target)\b",
-                    lowered_line):
+        if _header_count_excepted(lowered_line):
             continue
         tested = corrected if corrected is not None else stated
         rows = _table_data_rows(lines, index + 1)
