@@ -58,11 +58,18 @@ def _latest_timestamp(texts):
     each candidate is validated by forming its datetime, in the
     same form the Derivation core validates the same stamps, and
     a candidate that forms no datetime, an impossible date or an
-    impossible time of day, is no timestamp and never wins.
+    impossible time of day, is no timestamp and never wins. A
+    date that stands in a text only as the date part of a full
+    stamp candidate is no date standing alone: where that full
+    stamp is refused, its date part does not key either, and a
+    date keys at the start of its day only where it stands in
+    the text apart from any full stamp.
     """
     winner = None
     winner_key = None
     for text in texts:
+        full_starts = {found.start()
+                       for found in _FULL_STAMP.finditer(text)}
         for found in _FULL_STAMP.finditer(text):
             year, month, day = (int(part) for part
                                 in found.group(1).split("-"))
@@ -79,6 +86,8 @@ def _latest_timestamp(texts):
                 winner_key = key
                 winner = found.group(0)
         for found in _DATE_ONLY.finditer(text):
+            if found.start() in full_starts:
+                continue
             year, month, day = (int(part) for part
                                 in found.group(1).split("-"))
             try:
@@ -121,7 +130,8 @@ _HEADER_COUNT = (
     re.compile(r"header[^\n:]*:\s*(\d+)\s+rows"))
 _CORRECTED_COUNT = (
     re.compile(r"correct\w*[^\n]*?(\d+)\s+rows"),
-    re.compile(r"restates? the count[^\n\d]*(\d+)"))
+    re.compile(r"restates? the count[^\n\d]*(\d+)"),
+    re.compile(r"corrected count:?\s*(\d+)"))
 
 
 def _signal_one_failure(text):
@@ -207,9 +217,19 @@ def _signal_two_failure(text):
     statement itself: the planned or target wording must stand
     in that statement, and a mention of a planned count or a
     target count anywhere else in the piece carries no
-    exception. Where a governing correction in the record
-    restates the count, the corrected count is the count
-    tested.
+    exception. The exception fires only where the header count
+    stands stated in that statement as a planned count or as a
+    target count, on the word bounded forms planned count and
+    target count and on the stated as a planned or stated as a
+    target form, so a negated form, as unplanned, and a derived
+    form, as targeted, state no exception. Where a governing
+    correction in the record restates the count, the corrected
+    count is the count tested, and the correction stands
+    honoured in every vocabulary the Derivation core honours:
+    a count in rows, the restates the count form, and the
+    corrected count followed by its number, so a record
+    corrected in any of them is judged on the same corrected
+    count here as in the core.
     """
     lines = text.splitlines()
     corrected = None
@@ -233,7 +253,11 @@ def _signal_two_failure(text):
         if stated is None:
             continue
         lowered_line = stripped.lower()
-        if "planned" in lowered_line or "target" in lowered_line:
+        if re.search(r"\bplanned count\b", lowered_line) \
+                or re.search(r"\btarget count\b", lowered_line) \
+                or re.search(
+                    r"\bstated as (?:a |an )?(?:planned|target)\b",
+                    lowered_line):
             continue
         tested = corrected if corrected is not None else stated
         rows = _table_data_rows(lines, index + 1)
@@ -500,6 +524,13 @@ def _walk_entries(root_path, root_resolved):
     capture as a not visited piece, so its rows take the partial
     form and never the missing form and never the floor form.
 
+    A directory that cannot be listed does not vanish in
+    silence: the failure surfaces in the walk note in the error
+    form, naming the operation, the directory, and the cause,
+    and stating that its subtree was not visited, so the
+    capture and its coverage statement carry the failure in
+    the open and the reading stands partial on it.
+
     Returns (entries, damaged, walk_note, unvisited). Entries are
     the relative paths of files the capture may use, with link
     targets inside the root followed at most once. Damaged maps
@@ -517,13 +548,22 @@ def _walk_entries(root_path, root_resolved):
     not as a piece of its own.
     """
     ordered = []
+    listing_failures = []
     level = [root_path]
     while level:
         next_level = []
         for directory in level:
             try:
                 names = sorted(os.listdir(str(directory)))
-            except OSError:
+            except OSError as exc:
+                if directory == root_path:
+                    shown = str(directory)
+                else:
+                    shown = str(directory.relative_to(root_path))
+                listing_failures.append(
+                    "the directory %s could not be listed: "
+                    "list the directory %s: %s; its subtree "
+                    "was not visited" % (shown, shown, exc))
                 continue
             for name in names:
                 full = directory / name
@@ -532,12 +572,14 @@ def _walk_entries(root_path, root_resolved):
                 if not full.is_symlink() and full.is_dir():
                     next_level.append(full)
         level = next_level
-    walk_note = None
+    walk_notes = []
     if len(ordered) > WALK_BOUND:
-        walk_note = (
+        walk_notes.append(
             "the whole walk bound of %d entries was reached "
             "and entries beyond it were not visited"
             % WALK_BOUND)
+    walk_notes.extend(listing_failures)
+    walk_note = "; ".join(walk_notes) if walk_notes else None
     entries = []
     damaged = {}
     unvisited = {}

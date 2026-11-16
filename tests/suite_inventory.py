@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 39,
+        "count": 44,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -106,6 +106,11 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_level_by_level_bound_reaches_shallow_piece",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_brief_form_header_count_exception_fires",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_unrelated_target_count_sentence_does_not_except",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_unplanned_or_targeted_header_line_does_not_except",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_core_vocabulary_correction_honoured_at_capture",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_impossible_time_date_does_not_leak",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_date_standing_alone_still_prints",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_listing_failure_surfaces_in_walk_note",
         ],
     },
     "test_c_slice3_staffing": {
@@ -486,4 +491,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 413
+TOTAL = 418

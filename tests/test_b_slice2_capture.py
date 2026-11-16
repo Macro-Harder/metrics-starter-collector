@@ -921,6 +921,194 @@ class TestSlice2Capture(FixtureTestCase):
                 self.assertTrue(block)
                 self.assertIn("present but not derivable", block)
 
+    def test_signal_two_unplanned_or_targeted_header_line_does_not_except(self):
+        """C1B-03, shell limb. Negated and derived header wording.
+
+        Confirmation exhibit C1B-03 in the shell form: a metrics
+        record holding a decision table of 2 data rows and the
+        header line Rows stated in header: 99, unplanned. states
+        the opposite of the brief Section 5 exception condition,
+        and the header line Rows stated in header: 99, targeted
+        for review. states nothing about the count as a target
+        count. Neither line excepts: the piece stands truncated
+        on signal two, the signal stands named, and D-1 falls to
+        missing, exactly as the plain miscount does.
+        """
+        for label, header_line in (
+                ("unplanned",
+                 "Rows stated in header: 99, unplanned.\n"),
+                ("targeted",
+                 "Rows stated in header: 99, targeted for "
+                 "review.\n")):
+            with self.subTest(form=label):
+                files = self._signal_two_metrics_files(
+                    "", header_line)
+                root = build(make_case(
+                    "negated-header-" + label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("Verdict: missing", block)
+
+    def test_signal_two_core_vocabulary_correction_honoured_at_capture(self):
+        """C1B-05, shell limb. The core correction vocabulary.
+
+        A record corrected in the core vocabulary, the line
+        Corrected count: 2 standing over a header count of 99
+        and a decision table of 2 data rows, is judged on the
+        corrected count at capture as it is in the core: the
+        piece stands read in full, no signal two stands named,
+        and D-1 stands present but not derivable from its table.
+        A core vocabulary correction stating a count of 4 the
+        table does not hold still fails signal two, because the
+        corrected count is the count tested.
+        """
+        files = self._signal_two_metrics_files(
+            "Corrected count: 2\n", "Rows stated in header: 99\n")
+        root = build(make_case("core-correction", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("signal-two", result.stdout)
+        entry = piece_entry_for(
+            result.stdout, "build-metrics-record.md")
+        self.assertTrue(entry)
+        self.assertNotIn("truncated", entry.lower())
+        block = row_block(result.stdout, "D-1")
+        self.assertTrue(block)
+        self.assertIn("present but not derivable", block)
+        files = self._signal_two_metrics_files(
+            "Corrected count: 4\n", "Rows stated in header: 99\n")
+        root = build(make_case("core-correction-wrong", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("signal-two", result.stdout)
+        entry = piece_entry_for(
+            result.stdout, "build-metrics-record.md")
+        self.assertTrue(entry)
+        self.assertIn("truncated", entry.lower())
+
+    def test_latest_timestamp_impossible_time_date_does_not_leak(self):
+        """C1B-04. A refused full stamp leaks no date into the header.
+
+        Confirmation exhibit C1B-04 in its own terms: the Step 1
+        record carries the line Far review stamp 2026-12-31
+        25:00 noted in passing, an impossible time of day, and
+        no record in the tree states 2026-12-31 standing alone.
+        The header latest stamp is the tree real latest stamp,
+        the Step 3 closing stamp of the path ledger, and the
+        refused stamp date stands nowhere in that line. Direct
+        calls on _latest_timestamp agree: a candidate set
+        holding 2027-01-01 24:00 and a real 2026-11-03 17:00
+        stamp returns the real stamp.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        self.assertEqual(
+            shell._latest_timestamp([
+                "Far review stamp 2027-01-01 24:00 noted.\n",
+                "Real stamp 2026-11-03 17:00 stands.\n"]),
+            "2026-11-03 17:00")
+        files = {
+            "steps/step-01-record.md": (
+                step_record(1)
+                + "Far review stamp 2026-12-31 25:00 noted in "
+                  "passing.\n"),
+        }
+        root = build(make_case("latest-stamp-leak", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        latest_lines = [line for line in result.stdout.splitlines()
+                        if line.startswith("Latest record timestamp:")]
+        self.assertEqual(len(latest_lines), 1)
+        self.assertIn("2026-11-03 17:00", latest_lines[0])
+        self.assertNotIn("2026-12-31", latest_lines[0])
+
+    def test_latest_timestamp_date_standing_alone_still_prints(self):
+        """C1B-04 control. A date standing alone keys as itself.
+
+        The control the finding states: a date standing alone in
+        a record, with no time of day beside it in that record,
+        still keys at the start of its day and prints as itself
+        in the header, ahead of every earlier full stamp.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        self.assertEqual(
+            shell._latest_timestamp(
+                ["Review date 2026-12-31 noted in passing.\n"]),
+            "2026-12-31")
+        files = {
+            "steps/step-01-record.md": (
+                step_record(1)
+                + "Review date 2026-12-31 noted in passing.\n"),
+        }
+        root = build(make_case("latest-stamp-alone", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        latest_lines = [line for line in result.stdout.splitlines()
+                        if line.startswith("Latest record timestamp:")]
+        self.assertEqual(len(latest_lines), 1)
+        self.assertEqual(
+            latest_lines[0], "Latest record timestamp: 2026-12-31")
+
+    def test_walk_listing_failure_surfaces_in_walk_note(self):
+        """C1P-01. A directory that cannot be listed does not vanish.
+
+        The listing of the audit directory, holding one round
+        record, is forced to raise OSError in process, against a
+        tree also holding one step record. The walk still returns
+        the step record, and the failure surfaces in the capture
+        in the walk note, naming the directory and the cause, in
+        the plan Section 4 error form: the rendered report
+        carries that note in its coverage statement and stands
+        as a partial report, so the round record subtree does
+        not vanish in silence.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_walkfail_")
+        root = scratch / "walk-listing-failure"
+        (root / "steps").mkdir(parents=True)
+        (root / "audit").mkdir(parents=True)
+        (root / "steps" / "step-01-record.md").write_text(
+            step_record(1), encoding="utf-8")
+        (root / "audit" / "step1-round-record.md").write_text(
+            "# Round record, step 1\n\nPost triage severity "
+            "breakdown, flow scale: Critical 0, High 1, "
+            "Medium 2, Low 3.\n", encoding="utf-8")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing_listdir = os.listdir
+
+        def failing_listdir(path):
+            if Path(path).name == "audit":
+                raise OSError("forced listing failure")
+            return standing_listdir(path)
+
+        os.listdir = failing_listdir
+        try:
+            entries, damaged, walk_note, unvisited = \
+                shell._walk_entries(root, root.resolve())
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            os.listdir = standing_listdir
+        self.assertIn("steps/step-01-record.md", entries)
+        self.assertNotIn("audit/step1-round-record.md", entries)
+        self.assertIsNotNone(walk_note)
+        self.assertIn("audit", walk_note)
+        self.assertIn("forced listing failure", walk_note)
+        self.assertIn("audit", captured.walk_note)
+        self.assertIn("forced listing failure", captured.walk_note)
+        cov = coverage_statement(report)
+        self.assertIn("walk note", cov)
+        self.assertIn("forced listing failure", cov)
+        self.assertIn("partial report", report.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
