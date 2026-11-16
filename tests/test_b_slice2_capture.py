@@ -842,6 +842,85 @@ class TestSlice2Capture(FixtureTestCase):
         cov = coverage_statement(result.stdout)
         self.assertNotIn("audit | audit paper", cov)
 
+    def _signal_two_metrics_files(self, extra_before, header_line):
+        table = (
+            "## Decision table\n\n"
+            "| Item | Origin step | Raised | Presented | Ruled |\n"
+            "| --- | --- | --- | --- | --- |\n"
+            "| Q-1 | 3 | 2026-11-01 |  |  |\n"
+            "| Q-2 | 3 | 2026-11-01 |  |  |\n")
+        metrics = (
+            "# Build metrics record\n\n"
+            "Build: metrics fixture build.\n\n"
+            "Step table stands.\n" + extra_before + header_line
+            + table)
+        return {"wiki/wiki/synthesis/build-metrics-record.md": metrics}
+
+    def test_signal_two_unrelated_target_count_sentence_does_not_except(self):
+        """R15-07. Breaker exhibit B15R1-B4, shell implementation.
+
+        A metrics record holding a decision table of 2 data rows
+        and a header line stating 99 rows stands truncated on
+        signal two, and the D-1 row falls to missing. One
+        unrelated sentence placed before the header line, stating
+        a target count or a planned count for planning and saying
+        nothing about the header count, does not carry the brief
+        Section 5 exception: the exception attaches to the header
+        count statement, so the piece still stands truncated, the
+        signal still stands named, and D-1 still stands missing.
+        """
+        for label, sentence in (
+                ("target", "A target count is kept for planning.\n"),
+                ("planned", "A planned count is kept for planning.\n")):
+            with self.subTest(sentence=label):
+                files = self._signal_two_metrics_files(
+                    sentence, "Rows stated in header: 99\n")
+                root = build(make_case(
+                    "unrelated-" + label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("Verdict: missing", block)
+
+    def test_signal_two_brief_form_header_count_exception_fires(self):
+        """R15-07. The brief form of the signal two exception.
+
+        Where the header count statement itself states the count
+        as a planned count or as a target count, the signal does
+        not fire under brief Section 5: the piece stands read in
+        full, no signal two stands named for it, and the D-1 row
+        stands present but not derivable from its decision table,
+        complete on that ground.
+        """
+        for label, header_line in (
+                ("planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count.\n"),
+                ("target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count.\n")):
+            with self.subTest(form=label):
+                files = self._signal_two_metrics_files(
+                    "", header_line)
+                root = build(make_case(
+                    "brief-form-" + label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertNotIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("present but not derivable", block)
+
 
 if __name__ == "__main__":
     unittest.main()

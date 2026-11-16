@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 37,
+        "count": 39,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -104,6 +104,8 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_invalid_calendar_stamp_never_printed",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_bound_before_any_piece_partial_not_floor",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_level_by_level_bound_reaches_shallow_piece",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_brief_form_header_count_exception_fires",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_unrelated_target_count_sentence_does_not_except",
         ],
     },
     "test_c_slice3_staffing": {
@@ -246,7 +248,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 57,
+        "count": 59,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -305,6 +307,8 @@ INVENTORY = {
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_cross_check_failure_surfaced_on_row",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_cross_check_failure_surfaced_on_row",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_cross_check_failure_surfaced_with_fallback_marking",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_brief_form_header_count_exception_fires_in_core",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_unrelated_planned_or_target_in_core_does_not_except",
 ],
     },
     "test_f_slice6_cost": {
@@ -459,4 +463,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 386
+TOTAL = 390

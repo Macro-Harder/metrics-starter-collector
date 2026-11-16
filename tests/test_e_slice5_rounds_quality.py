@@ -1067,6 +1067,60 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertEqual(row_verdict(row_block(first.stdout, "Q-3")),
                          row_verdict(row_block(second.stdout, "Q-3")))
 
+    def test_signal_two_unrelated_planned_or_target_in_core_does_not_except(self):
+        """R15-07. Breaker exhibit B15R1-B4, core implementation.
+
+        The core completeness check, _signal_failure, is called
+        direct on a miscounted audit paper text: a severity table
+        of 3 data rows under a header count of 5. An unrelated
+        sentence placed before the header line, carrying the word
+        planned, the words target count, or the words planned
+        count and saying nothing about the header count, does not
+        carry the brief Section 5 exception: the exception
+        attaches to the header count statement, so the check
+        still returns signal-two for every such text.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table = (
+            "# Step 1 audit paper\n\nSeverity breakdown table. "
+            "Rows stated in header: 5.\n"
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+        self.assertEqual(core._signal_failure(table), "signal-two")
+        for label, sentence in (
+                ("planned", "Planned work is noted elsewhere.\n"),
+                ("target", "A target count is kept for planning.\n"),
+                ("planned-count",
+                 "A planned count is kept for planning.\n")):
+            with self.subTest(sentence=label):
+                self.assertEqual(
+                    core._signal_failure(sentence + table),
+                    "signal-two")
+
+    def test_signal_two_brief_form_header_count_exception_fires_in_core(self):
+        """R15-07. The brief form of the exception, core check.
+
+        Where the header count statement itself states the count
+        as a planned count or as a target count, the core check
+        returns no failure for the miscounted table, in the brief
+        Section 5 form.
+        """
+        import metrics_starter_collector.derivation_core as core
+        for label, stated in (
+                ("planned",
+                 "Rows stated in header: 5, stated as a planned "
+                 "count."),
+                ("target",
+                 "Rows stated in header: 5, stated as a target "
+                 "count.")):
+            with self.subTest(form=label):
+                text = (
+                    "# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. " + stated + "\n"
+                    "| Severity | Count |\n| --- | --- |\n"
+                    "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+                self.assertIsNone(core._signal_failure(text))
+
     def test_rounds_family_reads_capture_only(self):
         """Plan Section 5 named reread test for Slice 5, Contract 1."""
         parent = tracked_tempdir("msc_slice5_reread_")

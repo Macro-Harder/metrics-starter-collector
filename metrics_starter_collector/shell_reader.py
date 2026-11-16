@@ -203,7 +203,11 @@ def _signal_two_failure(text):
     Signal two: a table whose row count disagrees with a count
     stated in its own header. The signal does not fire where
     the header count is stated in the record as a planned or
-    target count. Where a governing correction in the record
+    target count. The exception attaches to the header count
+    statement itself: the planned or target wording must stand
+    in that statement, and a mention of a planned count or a
+    target count anywhere else in the piece carries no
+    exception. Where a governing correction in the record
     restates the count, the corrected count is the count
     tested.
     """
@@ -230,9 +234,6 @@ def _signal_two_failure(text):
             continue
         lowered_line = stripped.lower()
         if "planned" in lowered_line or "target" in lowered_line:
-            continue
-        if "planned count" in text.lower() or \
-                "target count" in text.lower():
             continue
         tested = corrected if corrected is not None else stated
         rows = _table_data_rows(lines, index + 1)

@@ -1587,7 +1587,11 @@ def _signal_failure(text):
     disagrees with a count stated in its own header, unless the
     header count is stated as a planned or target count, or a
     governing correction in the record restates the count, in
-    which case the corrected count is the count tested. Signal
+    which case the corrected count is the count tested. The
+    planned or target exception attaches to the header count
+    statement itself: the wording must stand in that statement,
+    and a mention of planned or of a target count anywhere else
+    in the piece carries no exception. Signal
     three: a section a record contents list names that does not
     appear in the record, unless the contents list itself marks
     the section as deferred or not yet written, or a later
@@ -1608,17 +1612,25 @@ def _signal_failure(text):
         if ordered != list(range(1, ordered[-1] + 1)):
             return "signal-one"
     stated = re.search(r"Rows stated in header:\s*(\d+)", text)
-    if stated and "planned" not in lowered \
-            and "target count" not in lowered:
-        corrected = re.search(r"corrected count:?\s*(\d+)", lowered)
-        count = int(corrected.group(1)) if corrected \
-            else int(stated.group(1))
-        rows = [line for line in text.splitlines()
-                if line.strip().startswith("|")]
-        data_rows = [row for row in rows
-                     if "Severity" not in row and "---" not in row]
-        if len(data_rows) != count:
-            return "signal-two"
+    if stated:
+        header_start = text.rfind("\n", 0, stated.start()) + 1
+        header_end = text.find("\n", stated.start())
+        if header_end < 0:
+            header_end = len(text)
+        header_line = text[header_start:header_end].lower()
+        if "planned" not in header_line \
+                and "target" not in header_line:
+            corrected = re.search(r"corrected count:?\s*(\d+)",
+                                  lowered)
+            count = int(corrected.group(1)) if corrected \
+                else int(stated.group(1))
+            rows = [line for line in text.splitlines()
+                    if line.strip().startswith("|")]
+            data_rows = [row for row in rows
+                         if "Severity" not in row
+                         and "---" not in row]
+            if len(data_rows) != count:
+                return "signal-two"
     headings = {found.strip().lower() for found in
                 re.findall(r"^#{1,6}\s+(.+)$", text, re.M)}
     for line in text.splitlines():
