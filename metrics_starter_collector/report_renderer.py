@@ -123,6 +123,34 @@ whole and unshortened, so a completeness signal a data quality
 entry names, and the correcting record position a second tree
 of a pair carries, stand in the report in the words the model
 holds. The renderer forms no Slice 5 wording of its own.
+
+Slice 6 form, cost rows and the B-2 row reasons. The statement
+line form above stands for a row of any verdict in this slice
+as it stood for Slices 3, 4 and 5: where the core hands over a
+cross check marking for E-3, E-4 or B-2, that marking stands in
+the statement field of the affected row and the renderer prints
+it as the statement line of that row, with the disagreeing
+record named and the fact or figure each side supports, as the
+model holds them, and both figures and the cause where the
+model states them, and no standalone comparison table stands
+anywhere in the report for these rows. The B-2 row carries its
+side segments as the model holds them in its Value part, the
+token side segment and the money side segment stated separately
+in the forms the derivations give them, with no combined figure
+or percentage printed in a side segment by this renderer, which
+computes nothing. The undefined and absent positions print in
+the forms the model holds them, never as a zero percent and
+never as a full percent formed here, and a placeholder zero is
+never printed as a value for E-4. The B-2 row carries the build
+state naming the model holds, the open state naming on an in
+progress tree in the F-16 form or the halt naming on a halted
+tree in the F-17 form where a recognised piece states the halt
+in its own words, in the same statement line form as the other
+B family rows. The fields this renderer consumes for this form
+stand named at their uses below, as for the earlier slices:
+statement, statement line, statement text, cross check
+statement, cross check marking, cross check, marking, build
+state statement and state statement for the statement line.
 """
 import re
 
@@ -388,7 +416,7 @@ def _statement_line_text(result, code, statement_part):
     held = []
     for name in ("statement", "statement_line", "statement_text",
                  "cross_check_statement", "cross_check_marking",
-                 "marking", "build_state_statement",
+                 "cross_check", "marking", "build_state_statement",
                  "state_statement"):
         text = _text(_get(result, name))
         if text and text not in held:

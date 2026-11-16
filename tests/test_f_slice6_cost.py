@@ -87,9 +87,15 @@ def has_number(block, number):
 def row_substance(block):
     """Return the EC-04 parts of one row block, in Slice 7 helper form.
 
-    The parts are the verdict, the value or its stated absence, the
-    denominator or coverage position, the pointer, and, where the
-    verdict is not present, the reason. Values are lowercased with
+    The parts are taken by label from the first line of the
+    block, the verdict, the Value part where the row carries
+    one, the denominator or coverage position, the pointer,
+    and, where the verdict is not present, the Reason part of
+    that same line, with a separate line beginning with the
+    label Reason read only where the row line carries no
+    Reason part, and a row that is not present carries no
+    Value part, its stated absence of a value standing in its
+    Reason part. Values are lowercased with
     whitespace collapsed, as the Slice 7 _row_substance helper
     normalises. No Numerator or Denominator label stands on these
     rows, so a share figure stands inside its value part, as the
@@ -104,13 +110,17 @@ def row_substance(block):
             if lowered.startswith("pointer:"):
                 substance["pointer"] = re.sub(
                     r"\s+", " ", chunk.split(":", 1)[1]).strip().lower()
-            elif lowered.startswith("denominator"):
+            elif lowered.startswith("value:"):
+                substance["value"] = re.sub(
+                    r"\s+", " ", chunk.split(":", 1)[1]).strip().lower()
+            elif lowered.startswith("denominator") or lowered.startswith(
+                    "row coverage"):
                 substance["coverage"] = re.sub(
                     r"\s+", " ", chunk).strip().lower()
-        if len(chunks) > 3:
-            substance["value"] = re.sub(
-                r"\s+", " ", chunks[3]).strip().lower()
-    if substance["verdict"] != "present":
+            elif lowered.startswith("reason:"):
+                substance["reason"] = re.sub(
+                    r"\s+", " ", chunk).strip().lower()
+    if substance["verdict"] != "present" and "reason" not in substance:
         for line in lines:
             if line.lower().startswith("reason:"):
                 substance["reason"] = re.sub(
@@ -562,11 +572,8 @@ class TestSlice6Cost(FixtureTestCase):
             "difference: cost ledger inside the root in shape B")
         self.assertIn("step-01-record.md", b2_a.get("pointer", ""))
         self.assertIn("cost-ledger.md", b2_b.get("pointer", ""))
-        self.assertEqual(b2_a.get("value"), "no percentage stands")
-        self.assertEqual(
-            b2_b.get("value"),
-            "money spent 60 against a money budget of 100, "
-            "60 percent; token spent and token budget figures absent")
+        self.assertNotIn("value", b2_a)
+        self.assertNotIn("value", b2_b)
         for substance in (b2_a, b2_b):
             self.assertIn("missing-field",
                           substance.get("reason", ""))
@@ -575,6 +582,15 @@ class TestSlice6Cost(FixtureTestCase):
                       b2_a.get("reason", ""))
         self.assertIn("either limb", b2_a.get("reason", ""))
         self.assertIn("absent for the token limb",
+                      b2_b.get("reason", ""))
+        self.assertIn("percentage is undefined",
+                      b2_a.get("reason", ""))
+        self.assertIn("no figure stands for either limb",
+                      b2_a.get("reason", ""))
+        self.assertIn(
+            "money limb yields its figure from the ledger figures",
+            b2_b.get("reason", ""))
+        self.assertIn("no combined figure stands",
                       b2_b.get("reason", ""))
 
     def test_wv21_queue_habit_equivalent_content_same_rows(self):

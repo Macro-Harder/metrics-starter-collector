@@ -97,6 +97,39 @@ earlier slices landed. covered is the Q-4 feeder standing, as a
 mapping of step to a (landed, total) pair or a share text, a
 sequence of (step, landed, total) entries, or a single share.
 
+Slice 6 form. This module builds the marking for the rows Slice 6
+certifies, E-3, E-4 and B-2, under decisions D-18 and proposal
+CA-1, in the same form Slice 4 uses for the D-1 row: any
+disagreement stands in the statement line of the affected row,
+the disagreeing record is named, the fact or figure each side
+supports is stated, and, where CA-1 applies, both figures and
+the cause are stated. The feeder figure always stands and no
+marking overrides a feeder result, and no standalone comparison
+table stands anywhere in the report for these rows. The seam the
+derivation core addresses stands in these forms:
+
+cost_cross_check_statements(captured, feeder_figures=None,
+**legacy_figures) returns a mapping of metric code to statement
+text, for E-3, E-4 and B-2. feeder_figures maps a code to its
+feeder figure, a single figure or a mapping of step to figure,
+and for B-2 a mapping holding its money spent and token spent
+figures under money and token named keys, the two sides stated
+separately.
+
+b2_cross_check_statement(captured, money_spent=None,
+token_spent=None) returns one statement text or None, the B-2
+limb of the form above, each side stated separately.
+
+cost_row_cross_check_statement(captured, code, feeder_figure)
+returns one statement text or None, the single row limb of the
+form above for E-3 and E-4.
+
+The comparison reads the one CapturedRead, its assembled metrics
+record text and its metrics record path, and no source outside
+it. A placeholder zero is never printed as a value for E-4 in
+any marking this module forms: a marking states only figures
+the record and the feeder each support.
+
 q3_contested_statement(captured, universe, origin_steps) returns
 one statement text or None, in the signature the earlier slices
 landed. universe is the StepUniverse the core built, or an
@@ -469,10 +502,183 @@ def d1_cross_check_statement(feeder_result, table_items,
     return None
 
 
-def cost_cross_check_statements(captured, e3_tokens, e4_money,
-                                b2_money_spent, b2_token_spent):
-    """Return no statements: Slice 4 carries no cost marking."""
-    return {}
+def _cost_record_figures(text, code):
+    """Return (per step figures, labelled figures) the record states.
+
+    Labelled figures stand in the forms CODE money spent as N,
+    CODE token total as N and CODE as N. Per step figures stand in
+    the form CODE for Step S as N.
+    """
+    per_step = {}
+    labelled = {}
+    if not text:
+        return per_step, labelled
+    text = str(text)
+    for found in re.finditer(
+            re.escape(code) +
+            r"(?:\s+[A-Za-z]+)?\s+for\s+Step\s+(\d+)\s+as\s+"
+            r"(\d+(?:\.\d+)?)", text):
+        per_step[int(found.group(1))] = float(found.group(2))
+    for label, pattern in (
+            ("money", r"\s+money\s+(?:spent\s+)?as\s+(\d+(?:\.\d+)?)"),
+            ("token", r"\s+tokens?\s+(?:total\s+)?as\s+(\d+(?:\.\d+)?)"),
+            ("row", r"\s+as\s+(\d+(?:\.\d+)?)")):
+        found = re.search(re.escape(code) + pattern, text)
+        if found:
+            labelled[label] = float(found.group(1))
+    return per_step, labelled
+
+
+def _b2_side_figures(feeder_figures):
+    """Return (money spent, token spent) from a B-2 feeder holding."""
+    money = None
+    token = None
+    if isinstance(feeder_figures, dict):
+        for key, value in feeder_figures.items():
+            lowered = str(key).lower()
+            figure = _figure_value(value)
+            if figure is None:
+                continue
+            if "money" in lowered and "spent" in lowered:
+                money = figure
+            elif "token" in lowered and "spent" in lowered:
+                token = figure
+            elif "money" in lowered and money is None:
+                money = figure
+            elif "token" in lowered and token is None:
+                token = figure
+    else:
+        figure = _figure_value(feeder_figures)
+        if figure is not None:
+            money = figure
+    return money, token
+
+
+def b2_cross_check_statement(captured, money_spent=None,
+                             token_spent=None):
+    """Return the B-2 record disagrees marking, or None.
+
+    Where the assembled metrics record states a B-2 money spent
+    figure or a B-2 token total figure that differs from the
+    feeder figure for that side, the marking names the metrics
+    record, states both figures for that side, and states that
+    the feeder figure stands, under D-18 and CA-1. The money side
+    and the token side stand stated separately in the marking.
+    """
+    if captured is None:
+        return None
+    text = getattr(captured, "assembled_metrics", None) or ""
+    if not text:
+        return None
+    name = _record_name(getattr(captured, "metrics_single_path", None))
+    _per_step, labelled = _cost_record_figures(text, "B-2")
+    parts = []
+    if money_spent is not None and "money" in labelled:
+        feeder = _figure_value(money_spent)
+        if feeder is not None and labelled["money"] != feeder:
+            parts.append(
+                "record disagrees: %s states B-2 money spent as %s, "
+                "while the feeder records state money spent %s; the "
+                "feeder figure stands and the record figure is not "
+                "followed"
+                % (name, _fmt_num(labelled["money"]), _fmt_num(feeder)))
+    if token_spent is not None and "token" in labelled:
+        feeder = _figure_value(token_spent)
+        if feeder is not None and labelled["token"] != feeder:
+            parts.append(
+                "record disagrees: %s states B-2 token total as %s, "
+                "while the feeder records state token total %s; the "
+                "feeder figure stands and the record figure is not "
+                "followed"
+                % (name, _fmt_num(labelled["token"]), _fmt_num(feeder)))
+    if not parts:
+        return None
+    return "; ".join(parts)
+
+
+def cost_row_cross_check_statement(captured, code, feeder_figure):
+    """Return the record disagrees marking for one cost row, or None.
+
+    feeder_figure stands as a single figure for the row, or as a
+    mapping of step to figure. Where the assembled metrics record
+    states a figure for the row, per step or as a row figure, that
+    differs from the feeder figure, the marking names the metrics
+    record, states both figures, and states that the feeder figure
+    stands, under D-18 and CA-1.
+    """
+    if captured is None:
+        return None
+    text = getattr(captured, "assembled_metrics", None) or ""
+    if not text:
+        return None
+    name = _record_name(getattr(captured, "metrics_single_path", None))
+    per_step = _step_figures(feeder_figure)
+    single = _figure_value(feeder_figure) if not per_step else None
+    stated_steps, labelled = _cost_record_figures(text, code)
+    for step in sorted(stated_steps):
+        feeder = per_step.get(step, single)
+        if feeder is not None and stated_steps[step] != feeder:
+            return ("record disagrees: %s states %s for Step %d as "
+                    "%s, while the feeder records state %s for "
+                    "Step %d; the feeder figure stands and the "
+                    "record figure is not followed"
+                    % (name, code, step, _fmt_num(stated_steps[step]),
+                       _fmt_num(feeder), step))
+    stated_row = labelled.get("row")
+    if stated_row is not None and single is not None \
+            and stated_row != single:
+        return ("record disagrees: %s states %s as %s, while the "
+                "feeder records state %s; the feeder figure stands "
+                "and the record figure is not followed"
+                % (name, code, _fmt_num(stated_row), _fmt_num(single)))
+    return None
+
+
+def cost_cross_check_statements(captured, feeder_figures=None,
+                                **legacy_figures):
+    """Return the Slice 6 markings for E-3, E-4 and B-2.
+
+    feeder_figures maps a metric code to its feeder figure: for
+    E-3 and E-4 a single figure or a mapping of step to figure,
+    and for B-2 a mapping holding its money spent and token spent
+    figures under money and token named keys, the two sides stated
+    separately. The legacy keyword forms e3_tokens, e4_money,
+    b2_money_spent and b2_token_spent stand accepted in the same
+    places. A marking stands only where the assembled metrics
+    record states a figure for the row that differs from the
+    feeder figure. Each marking names the metrics record, states
+    both figures, and states that the feeder figure stands, under
+    D-18 and CA-1. The comparison reads the one CapturedRead and
+    no source outside it.
+    """
+    statements = {}
+    if captured is None:
+        return statements
+    held = {}
+    if isinstance(feeder_figures, dict):
+        held.update(feeder_figures)
+    if "e3_tokens" in legacy_figures:
+        held.setdefault("E-3", legacy_figures["e3_tokens"])
+    if "e4_money" in legacy_figures:
+        held.setdefault("E-4", legacy_figures["e4_money"])
+    b2_money = legacy_figures.get("b2_money_spent")
+    b2_token = legacy_figures.get("b2_token_spent")
+    if "B-2" in held:
+        side_money, side_token = _b2_side_figures(held["B-2"])
+        if b2_money is None:
+            b2_money = side_money
+        if b2_token is None:
+            b2_token = side_token
+    for code in ("E-3", "E-4"):
+        if code in held:
+            marking = cost_row_cross_check_statement(
+                captured, code, held[code])
+            if marking is not None:
+                statements[code] = marking
+    marking = b2_cross_check_statement(captured, b2_money, b2_token)
+    if marking is not None:
+        statements["B-2"] = marking
+    return statements
 
 
 def t4_cross_check_statement(feeder_durations, metrics_text,

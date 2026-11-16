@@ -2264,8 +2264,167 @@ def _derive_e2(captured, universe):
 
 # ------------------------------------------------------------ cost rows
 
+def _ledger_data(captured):
+    """The cost ledger figures, read from ledger feeders only.
+
+    Per step money and token figures, the budget figures and any
+    stated build total stand parsed from the cost ledger pieces
+    inside the root, in the forms the ledger states them: the
+    Step N form with money and tokens on one line, the older
+    Tokens for Step N and Money for Step N forms, and the Step N
+    tokens and Step N money spent forms. A figure credited on one
+    step line to the step it describes counts for the step it
+    describes, because the describing step form states that step
+    in the same Step N position. No other record kind is read
+    here, under D4R-24.
+    """
+    ledgers = captured.pieces_of(CLS_COST_LEDGER)
+    pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
+    money = {}
+    tokens = {}
+    budget_money = None
+    budget_tokens = None
+    total_money = None
+    total_tokens = None
+    for piece in ledgers:
+        if piece.text is None:
+            continue
+        text = piece.text
+        for m in re.finditer(
+                r"[Ss]tep (\d+):\s*money (\d+)"
+                r"(?:\s*,\s*tokens (\d+))?", text):
+            money[int(m.group(1))] = int(m.group(2))
+            if m.group(3) is not None:
+                tokens[int(m.group(1))] = int(m.group(3))
+        for m in re.finditer(
+                r"[Ss]tep (\d+):\s*tokens (\d+)"
+                r"(?:\s*,\s*money (\d+))?", text):
+            tokens[int(m.group(1))] = int(m.group(2))
+            if m.group(3) is not None:
+                money[int(m.group(1))] = int(m.group(3))
+        for m in re.finditer(r"[Ss]tep (\d+) tokens:\s*(\d+)", text):
+            tokens[int(m.group(1))] = int(m.group(2))
+        for m in re.finditer(
+                r"[Ss]tep (\d+) money(?: spent)?:\s*(\d+)", text):
+            money[int(m.group(1))] = int(m.group(2))
+        for m in re.finditer(r"Tokens for [Ss]tep (\d+):\s*(\d+)",
+                             text):
+            tokens[int(m.group(1))] = int(m.group(2))
+        for m in re.finditer(r"Money for [Ss]tep (\d+):\s*(\d+)",
+                             text):
+            money[int(m.group(1))] = int(m.group(2))
+        for m in re.finditer(
+                r"Budget:\s*money (\d+)(?:\s*,\s*tokens (\d+))?",
+                text):
+            budget_money = int(m.group(1))
+            if m.group(2) is not None:
+                budget_tokens = int(m.group(2))
+        for m in re.finditer(
+                r"Budget:\s*tokens (\d+)(?:\s*,\s*money (\d+))?",
+                text):
+            budget_tokens = int(m.group(1))
+            if m.group(2) is not None:
+                budget_money = int(m.group(2))
+        for m in re.finditer(r"Build total stated:\s*money (\d+)",
+                             text):
+            total_money = int(m.group(1))
+        for m in re.finditer(r"Build total stated:\s*tokens (\d+)",
+                             text):
+            total_tokens = int(m.group(1))
+    return {"ledgers": ledgers, "pointer": pointer, "money": money,
+            "tokens": tokens, "budget_money": budget_money,
+            "budget_tokens": budget_tokens,
+            "total_money": total_money, "total_tokens": total_tokens}
+
+
+def _step_record_money(captured):
+    """Per step money figures stated in step record positions.
+
+    A figure counts only where the step record position states
+    the figure for that step itself, in the form Money spent for
+    this step itself or Money spent for Step N. A whole build
+    statement in a step record states no per step figure and is
+    never taken here, as brief Section 5 line 193 states.
+    """
+    money = {}
+    pointer = None
+    for piece in captured.pieces_of(CLS_STEP_RECORD):
+        if piece.text is None:
+            continue
+        found = False
+        for m in re.finditer(
+                r"Money spent for this step itself:\s*(\d+)",
+                piece.text):
+            if piece.step is not None:
+                money[piece.step] = int(m.group(1))
+                found = True
+        for m in re.finditer(
+                r"Money spent for [Ss]tep (\d+):\s*(\d+)",
+                piece.text):
+            money[int(m.group(1))] = int(m.group(2))
+            found = True
+        if found and pointer is None:
+            pointer = piece.paths[0]
+    return money, pointer
+
+
 def _derive_e3(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
+    ledger_tokens = _ledger_data(captured)["tokens"]
+    if ledger_tokens and all(step in ledger_tokens
+                             for step in universe.evidenced):
+        figures = "; ".join(
+            "Step %d tokens %d" % (s, ledger_tokens[s])
+            for s in sorted(ledger_tokens))
+        return DerivationResult(
+            "E-3", "present", figures, denom,
+            _ledger_data(captured)["pointer"],
+            rule_name="E-3 token rule")
+    if ledger_tokens:
+        covered = sorted(ledger_tokens)
+        missing = [step for step in sorted(universe.evidenced)
+                   if step not in ledger_tokens]
+        return _refusal(
+            "E-3", "present but not derivable", "no token figure",
+            denom, _ledger_data(captured)["pointer"],
+            shows="a cost ledger inside the root meters tokens "
+                  "for part of the step universe only, so the "
+                  "span the ledger covers stands partial",
+            token="partial-span",
+            follows="the covered span stands named and no zero "
+                    "figure stands for a step the ledger does "
+                    "not cover, so no figure stands for the row",
+            rule_name="E-3 partial span rule",
+            broken="the token figure field for %s, which the "
+                   "ledger span does not cover"
+                   % _each_step(missing),
+            required="a cost ledger entry for each step in the "
+                     "universe carrying its token figure",
+            held="the ledger covers %s, with %s standing in the "
+                 "ledger; no token figure stands for the steps "
+                 "outside the covered span"
+                 % (_each_step(covered),
+                    "; ".join("Step %d tokens %d"
+                              % (s, ledger_tokens[s])
+                              for s in covered)))
+    ledger_pieces = captured.pieces_of(CLS_COST_LEDGER)
+    if ledger_pieces:
+        return _refusal(
+            "E-3", "missing", "no token figure", denom,
+            ledger_pieces[0].paths[0],
+            shows="a cost ledger piece stands in the capture and "
+                  "it carries no token figure in any form the "
+                  "row can read, so no token figure stands in "
+                  "any feeder record",
+            token="no-feeder-record",
+            follows="no feeder record for the metric exists in "
+                    "the tree, so the row is missing",
+            rule_name="E-3 feeder standing rule",
+            broken="the cost ledger token figure field",
+            required="a cost ledger entry for the step carrying "
+                     "its token figure",
+            held="the cost ledger stands in the tree and no "
+                 "token figure stands in it")
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
     tokens = {}
@@ -2280,16 +2439,6 @@ def _derive_e3(captured, universe):
                             for s in sorted(tokens))
         return DerivationResult("E-3", "present", figures, denom,
                                 pointer, rule_name="E-3 token rule")
-    if ledgers:
-        return _refusal(
-            "E-3", "present but not derivable", "no token figure",
-            denom, pointer,
-            shows="a cost ledger piece stands and it carries no "
-                  "per step token figure",
-            token="missing-field",
-            follows="the token field the row requires does not "
-                    "stand in the feeder record, so no figure stands",
-            rule_name="E-3 token field rule")
     statement = None
     assembled = captured.assembled_metrics or ""
     if "cost-ledger" in assembled:
@@ -2334,7 +2483,7 @@ def _derive_e3(captured, universe):
 
 def _money_mentions(captured):
     texts = []
-    for piece in captured.pieces_of(CLS_STEP_RECORD, CLS_COST_LEDGER):
+    for piece in captured.pieces:
         if piece.text:
             texts.append(piece.text)
     if captured.assembled_metrics:
@@ -2345,6 +2494,81 @@ def _money_mentions(captured):
 
 def _derive_e4(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
+    ledger_data = _ledger_data(captured)
+    step_money, step_money_pointer = _step_record_money(captured)
+    merged_money = dict(step_money)
+    merged_money.update(ledger_data["money"])
+    if ledger_data["total_money"] is not None and \
+            ledger_data["money"] and \
+            sum(ledger_data["money"].values()) != \
+            ledger_data["total_money"]:
+        return _refusal(
+            "E-4", "present but not derivable",
+            "no per step money figure", denom,
+            _pointer("E-4", ledger_data["pointer"], captured),
+            shows="the ledger per step money figures and the "
+                  "ledger build total stated in the same ledger "
+                  "disagree, and no reconciliation by selection "
+                  "stands",
+            token="unreconciled-figure",
+            follows="the per step figures and the build total "
+                    "cannot both stand, so no figure stands "
+                    "for the row",
+            rule_name="E-4 unreconciled figure rule",
+            broken="the reconciliation between the ledger per "
+                   "step money figures and the ledger build "
+                   "total",
+            required="a ledger whose per step money figures "
+                     "and stated build total agree",
+            held="the ledger per step figures sum to %d and "
+                 "the ledger build total stated is %d"
+                 % (sum(ledger_data["money"].values()),
+                    ledger_data["total_money"]))
+    if merged_money and all(step in merged_money
+                            for step in universe.evidenced):
+        figures = "; ".join(
+            "Step %d money %d" % (s, merged_money[s])
+            for s in sorted(merged_money))
+        present_pointer = ledger_data["pointer"] \
+            if ledger_data["money"] else \
+            (step_money_pointer or ledger_data["pointer"])
+        return DerivationResult("E-4", "present", figures, denom,
+                                present_pointer,
+                                rule_name="E-4 money rule")
+    if merged_money:
+        covered = sorted(merged_money)
+        missing = [step for step in sorted(universe.evidenced)
+                   if step not in merged_money]
+        partial_pointer = ledger_data["pointer"] \
+            if ledger_data["money"] else \
+            (step_money_pointer or ledger_data["pointer"])
+        return _refusal(
+            "E-4", "present but not derivable",
+            "no per step money figure", denom,
+            _pointer("E-4", partial_pointer, captured),
+            shows="a per step money series stands for part of "
+                  "the step universe only, so the series stands "
+                  "partial at row level",
+            token="partial-span",
+            follows="the covered span stands named and no "
+                    "figure stands for a step the series does "
+                    "not cover, so no figure stands for the row",
+            rule_name="E-4 partial series rule",
+            broken="the per step money figure field for %s, "
+                   "which the series does not cover"
+                   % _each_step(missing),
+            required="a money figure stated by a feeder for "
+                     "each step itself, in a cost ledger inside "
+                     "the root or in a step record position for "
+                     "that step",
+            held="the series covers %s, with %s standing in "
+                 "feeders for those steps themselves; no per "
+                 "step money figure stands for the steps "
+                 "outside the covered span"
+                 % (_each_step(covered),
+                    "; ".join("Step %d money %d"
+                              % (s, merged_money[s])
+                              for s in covered)))
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
     money = {}
@@ -4822,23 +5046,294 @@ def _derive_b_ranking(captured, universe, t1_result, code,
     return result
 
 
+def _b2_side_state(spent, budget, per_step, universe):
+    """Class one side of B-2 from its ledger figures alone.
+
+    The token side and the money side are classed separately,
+    each from its own ledger figures: absent where no figure for
+    the side stands in a ledger feeder, undefined where a spent
+    figure stands and the budget is absent or stands at zero,
+    yield where the per step figures cover the universe and a
+    budget above zero stands, and partial where the span the
+    ledger covers is part of the universe only.
+    """
+    if spent is None and budget is None:
+        return "absent"
+    if budget is None or budget == 0:
+        return "undefined"
+    if per_step and all(step in per_step
+                        for step in universe.evidenced):
+        return "yield"
+    return "partial"
+
+
 def _derive_b2(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    ledgers = captured.pieces_of(CLS_COST_LEDGER)
-    pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
-    joined = _money_mentions(captured)
+    data = _ledger_data(captured)
+    ledgers = data["ledgers"]
+    pointer = data["pointer"]
+    tokens = data["tokens"]
+    money_figures = data["money"]
+    token_spent = sum(tokens.values()) if tokens else None
+    money_spent = sum(money_figures.values()) if money_figures else None
+    token_budget = data["budget_tokens"]
+    money_budget = data["budget_money"]
+    token_state = _b2_side_state(token_spent, token_budget, tokens,
+                                 universe)
+    money_state = _b2_side_state(money_spent, money_budget,
+                                 money_figures, universe)
     if ledgers:
+        if token_state == "yield" and money_state == "yield":
+            figures = (
+                "money spent %d against a money budget of %d, %s "
+                "percent; token spent %d against a token budget "
+                "of %d, %s percent"
+                % (money_spent, money_budget,
+                   _fmt_num(money_spent * 100.0 / money_budget),
+                   token_spent, token_budget,
+                   _fmt_num(token_spent * 100.0 / token_budget)))
+            result = DerivationResult(
+                "B-2", "present", figures, denom, pointer,
+                rule_name="B-2 budget share rule")
+            if any(piece.text and "proxy" in piece.text.lower()
+                   for piece in captured.pieces):
+                result.statement = (
+                    "proxy position: a labelled proxy figure "
+                    "stands in the records, reported as a proxy "
+                    "only, in its own terms, and never as a token "
+                    "figure or a money figure")
+            return result
+        if token_state == "undefined" or money_state == "undefined":
+            clauses = []
+            if token_state == "undefined" and token_budget == 0:
+                clauses.append(
+                    "the token percentage is undefined against a "
+                    "token budget standing at zero in the ledger, "
+                    "with token spent %d standing in the ledger"
+                    % token_spent)
+            elif token_state == "undefined":
+                clauses.append(
+                    "the token percentage is undefined because "
+                    "no token budget figure stands in the "
+                    "ledger, with token spent %d standing in "
+                    "the ledger" % token_spent)
+            elif token_state == "absent":
+                clauses.append(
+                    "the token percentage is undefined because "
+                    "no token spent or token budget figure "
+                    "stands in the ledger")
+            elif token_state == "yield":
+                clauses.append(
+                    "the token side stands on ledger figures, "
+                    "with token spent %d against a token budget "
+                    "of %d" % (token_spent, token_budget))
+            else:
+                clauses.append(
+                    "the token side stands on a partial ledger "
+                    "span, with token spent %d on the covered "
+                    "span" % token_spent)
+            if money_state == "undefined" and money_budget == 0:
+                clauses.append(
+                    "the money percentage is undefined against a "
+                    "money budget standing at zero in the "
+                    "ledger, with money spent %d standing in "
+                    "the ledger" % money_spent)
+            elif money_state == "undefined":
+                clauses.append(
+                    "the money percentage is undefined because "
+                    "no money budget figure stands in the "
+                    "ledger, with money spent %d standing in "
+                    "the ledger" % money_spent)
+            elif money_state == "absent":
+                clauses.append(
+                    "the money percentage is undefined because "
+                    "no money spent or money budget figure "
+                    "stands in the ledger")
+            elif money_state == "yield":
+                clauses.append(
+                    "the money side stands on ledger figures, "
+                    "with money spent %d against a money budget "
+                    "of %d" % (money_spent, money_budget))
+            else:
+                clauses.append(
+                    "the money side stands on a partial ledger "
+                    "span, with money spent %d on the covered "
+                    "span" % money_spent)
+            figure_parts = []
+            if token_spent is not None:
+                if token_budget is not None:
+                    figure_parts.append(
+                        "token spent %d against a token budget "
+                        "of %d" % (token_spent, token_budget))
+                else:
+                    figure_parts.append(
+                        "token spent %d with no token budget "
+                        "figure" % token_spent)
+            else:
+                figure_parts.append(
+                    "token spent and token budget figures absent")
+            if money_spent is not None:
+                if money_budget is not None:
+                    figure_parts.append(
+                        "money spent %d against a money budget "
+                        "of %d" % (money_spent, money_budget))
+                else:
+                    figure_parts.append(
+                        "money spent %d with no money budget "
+                        "figure" % money_spent)
+            else:
+                figure_parts.append(
+                    "money spent and money budget figures absent")
+            return _refusal(
+                "B-2", "present but not derivable",
+                "; ".join(figure_parts), denom, pointer,
+                shows="; ".join(clauses),
+                token="missing-field",
+                follows="a side in that position does not yield "
+                        "its figure, so no figure stands for "
+                        "the row",
+                rule_name="B-2 undefined percentage rule")
+        if token_state == "absent" or money_state == "absent":
+            if token_state == "absent" and money_state == "absent":
+                return _refusal(
+                    "B-2", "present but not derivable",
+                    "no percentage stands", denom, pointer,
+                    shows="a cost ledger stands in the tree and "
+                          "it carries no spent or budget figure "
+                          "for either side; the token percentage "
+                          "is undefined because both the spent "
+                          "figure and the budget figure are "
+                          "absent for tokens; the money "
+                          "percentage is undefined because the "
+                          "budget figure is absent for money",
+                    token="missing-field",
+                    follows="the row follows the weaker limb, "
+                            "and no figure stands for either "
+                            "limb where no figure stands in the "
+                            "ledger for either side",
+                    rule_name="B-2 absent budget rule")
+            if token_state == "absent":
+                if money_state == "yield":
+                    yielding = (
+                        "money spent %d against a money budget "
+                        "of %d, %s percent"
+                        % (money_spent, money_budget,
+                           _fmt_num(money_spent * 100.0
+                                    / money_budget)))
+                elif money_spent is not None:
+                    yielding = (
+                        "money spent %d on the covered span the "
+                        "ledger states" % money_spent)
+                else:
+                    yielding = (
+                        "a money budget of %d standing in the "
+                        "ledger with no per step money figure"
+                        % money_budget)
+                return _refusal(
+                    "B-2", "present but not derivable",
+                    yielding + "; token spent and token budget "
+                               "figures absent",
+                    denom, _pointer("B-2", pointer, captured),
+                    shows="one limb of the row yields its figure "
+                          "from the ledger and the other limb "
+                          "has no figure in any ledger feeder",
+                    token="missing-field",
+                    follows="the row follows the weaker limb, "
+                            "so no combined figure stands",
+                    rule_name="B-2 weaker limb rule",
+                    broken="the token figure fields for spent "
+                           "and budget, absent for the token "
+                           "limb",
+                    required="spent and budget figures taken "
+                             "from ledger feeders inside the "
+                             "root only, on both sides",
+                    held="the money limb yields its figure "
+                         "from the ledger figures and the token "
+                         "limb does not, so the row follows the "
+                         "weaker limb; the token spent and token "
+                         "budget figures stand absent for the "
+                         "token limb")
+            if token_state == "yield":
+                yielding = (
+                    "token spent %d against a token budget of "
+                    "%d, %s percent"
+                    % (token_spent, token_budget,
+                       _fmt_num(token_spent * 100.0
+                                / token_budget)))
+            elif token_spent is not None:
+                yielding = (
+                    "token spent %d on the covered span the "
+                    "ledger states" % token_spent)
+            else:
+                yielding = (
+                    "a token budget of %d standing in the "
+                    "ledger with no per step token figure"
+                    % token_budget)
+            return _refusal(
+                "B-2", "present but not derivable",
+                yielding + "; money spent and money budget "
+                           "figures absent",
+                denom, _pointer("B-2", pointer, captured),
+                shows="one limb of the row yields its figure "
+                      "from the ledger and the other limb has "
+                      "no figure in any ledger feeder",
+                token="missing-field",
+                follows="the row follows the weaker limb, so "
+                        "no combined figure stands",
+                rule_name="B-2 weaker limb rule",
+                broken="the money figure fields for spent and "
+                       "budget, absent for the money limb",
+                required="spent and budget figures taken from "
+                         "ledger feeders inside the root only, "
+                         "on both sides",
+                held="the token limb yields its figure from "
+                     "the ledger figures and the money limb "
+                     "does not, so the row follows the weaker "
+                     "limb; the money spent and money budget "
+                     "figures stand absent for the money limb")
+        covered = sorted(set(tokens) | set(money_figures))
+        missing = [step for step in sorted(universe.evidenced)
+                   if step not in covered]
+        figure_parts = []
+        if token_spent is not None:
+            figure_parts.append(
+                "token spent %d on the covered span" % token_spent)
+        elif token_budget is not None:
+            figure_parts.append(
+                "a token budget of %d with no per step token "
+                "figure" % token_budget)
+        if money_spent is not None:
+            figure_parts.append(
+                "money spent %d on the covered span" % money_spent)
+        elif money_budget is not None:
+            figure_parts.append(
+                "a money budget of %d with no per step money "
+                "figure" % money_budget)
         return _refusal(
-            "B-2", "present but not derivable", "no budget share "
-            "figure", denom, pointer,
-            shows="a cost ledger piece stands and the budget "
-                  "figures the row forms its shares from do not "
-                  "stand in a measured form",
-            token="no-measurement-basis",
-            follows="a share formed from figures with no "
-                    "measurement basis does not stand, so no figure "
-                    "stands",
-            rule_name="B-2 measurement basis rule")
+            "B-2", "present but not derivable",
+            "; ".join(figure_parts), denom, pointer,
+            shows="a cost ledger inside the root meters part "
+                  "of the step universe only, so the span the "
+                  "ledger covers stands partial on the token "
+                  "field and on the money field",
+            token="partial-span",
+            follows="the covered span stands named and no "
+                    "figure stands for a step the ledger does "
+                    "not cover, so no combined figure stands",
+            rule_name="B-2 partial span rule",
+            broken="the per step figure field for %s, which "
+                   "the ledger span does not cover"
+                   % _each_step(missing),
+            required="a complete cost ledger span covering "
+                     "every step in the universe, on both "
+                     "sides",
+            held="the ledger covers %s, with %s standing on "
+                 "the covered span; the row follows the weaker "
+                 "limb, and no figure stands for a step the "
+                 "ledger does not cover"
+                 % (_each_step(covered),
+                    "; ".join(figure_parts)))
+    joined = _money_mentions(captured)
     proxy = None
     rulings = [piece for piece in captured.pieces_of(CLS_GATE_RULING)
                if piece.text is not None]
@@ -4895,6 +5390,22 @@ def _derive_b2(captured, universe):
                      "with a percentage formed only against a "
                      "standing budget",
             held=held)
+    if captured.pieces_of(CLS_STEP_RECORD):
+        step_pointer = captured.first_path(CLS_STEP_RECORD) or pointer
+        return _refusal(
+            "B-2", "present but not derivable",
+            "no percentage stands", denom,
+            _pointer("B-2", step_pointer, captured),
+            shows="no cost ledger stands in the tree; the token "
+                  "percentage is undefined because both the spent "
+                  "figure and the budget figure are absent for "
+                  "tokens; the money percentage is undefined "
+                  "because the budget figure is absent for money",
+            token="missing-field",
+            follows="the row follows the weaker limb, and no "
+                    "figure stands for either limb where no "
+                    "cost ledger stands",
+            rule_name="B-2 absent budget rule")
     return _refusal(
         "B-2", "missing", "no budget share figure", denom, pointer,
         shows="no cost ledger piece and no budget figure stands in "
@@ -5108,6 +5619,51 @@ def derive_report(captured):
                     result.statement = statement
     except Exception:
         pass
+    # The cross check marking for the cost rows, consumed through
+    # the Module 4 role in the same form: the seam wiring of the
+    # Builder C function cost_cross_check_statements, called with
+    # the one CapturedRead and a feeder figures mapping holding,
+    # for E-3, the per step token figures from the ledger; for
+    # E-4, the per step money figures from the ledger and the
+    # step record positions together; and for B-2, a mapping
+    # holding its money spent and token spent totals under money
+    # and token named keys, the token side and the money side
+    # stated separately. Any marking the function supplies for a
+    # row that carries none yet stands in the statement line of
+    # that row, never overriding a feeder result.
+    if _known_version(captured.definitions_version):
+        try:
+            from metrics_starter_collector.cross_check import \
+                cost_cross_check_statements
+            cost_data = _ledger_data(captured)
+            cost_step_money, _cost_pointer = \
+                _step_record_money(captured)
+            cost_money = dict(cost_step_money)
+            cost_money.update(cost_data["money"])
+            cost_feeders = {}
+            if cost_data["tokens"]:
+                cost_feeders["E-3"] = dict(cost_data["tokens"])
+            if cost_money:
+                cost_feeders["E-4"] = dict(cost_money)
+            b2_sides = {}
+            if cost_data["money"]:
+                b2_sides["money spent"] = sum(
+                    cost_data["money"].values())
+            if cost_data["tokens"]:
+                b2_sides["token spent"] = sum(
+                    cost_data["tokens"].values())
+            if b2_sides:
+                cost_feeders["B-2"] = b2_sides
+            cost_markings = cost_cross_check_statements(
+                captured, cost_feeders)
+            if isinstance(cost_markings, dict):
+                for code, statement in cost_markings.items():
+                    result = results_by_code.get(code)
+                    if result is not None and statement and \
+                            not getattr(result, "statement", None):
+                        result.statement = statement
+        except Exception:
+            pass
     # The unknown definitions version position for the Slice 4
     # rows: where the metrics record states a version the settled
     # definitions do not recognise, the rows whose feeder records
@@ -5130,6 +5686,32 @@ def derive_report(captured):
                 results_by_code[code] = _unknown_version_result(
                     captured, code, current.denominator,
                     current.pointer)
+        # The Slice 6 rows on the same variant: E-4 and B-2,
+        # whose feeder records stand where a cost ledger stands
+        # inside the root, and E-4 also where a step record
+        # position states a per step figure, are present but not
+        # derivable on the unknown version ground; E-3, whose
+        # feeder is a token figure in the ledger and none stands
+        # on the money only variant, stays missing in the form
+        # its own derivation gives it.
+        cost_data = _ledger_data(captured)
+        cost_step_money, _cost_step_pointer = \
+            _step_record_money(captured)
+        if cost_data["ledgers"] or cost_step_money:
+            current = results_by_code["E-4"]
+            results_by_code["E-4"] = _unknown_version_result(
+                captured, "E-4", current.denominator,
+                current.pointer)
+        if cost_data["ledgers"]:
+            current = results_by_code["B-2"]
+            results_by_code["B-2"] = _unknown_version_result(
+                captured, "B-2", current.denominator,
+                current.pointer)
+        if cost_data["tokens"]:
+            current = results_by_code["E-3"]
+            results_by_code["E-3"] = _unknown_version_result(
+                captured, "E-3", current.denominator,
+                current.pointer)
         current = results_by_code["T-2"]
         results_by_code["T-2"] = _refusal(
             "T-2", "missing", "no step duration figure",
@@ -5212,7 +5794,7 @@ def derive_report(captured):
         state_naming = ("build state naming: the build stands in "
                         "progress, and no recognised piece states "
                         "a halt in its own words")
-    for code in ("B-1", "B-3", "B-4"):
+    for code in ("B-1", "B-2", "B-3", "B-4"):
         result = results_by_code[code]
         result.build_state_statement = state_naming
     results = [results_by_code[code] for code in STARTER_ORDER]
