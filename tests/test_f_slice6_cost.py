@@ -791,6 +791,278 @@ class TestSlice6Cost(FixtureTestCase):
         self.assertFalse(any("cost ledger" in line
                              for line in block.splitlines()))
 
+    def test_step_record_money_conflict_inside_one_piece_blocks_e4(self):
+        """C1B-01; D4R-21. Step record overwrite, itself form, one piece.
+
+        Confirmation round 1 breaker exhibit: the Step 1 record
+        states Money spent for this step itself: 10 and then
+        Money spent for this step itself: 77, with Steps 2 and
+        3 stating 20 and 30 in the same form and no cost ledger
+        standing. The two figures are contradictory with no
+        governing correction between them, so E-4 stands
+        present but not derivable with both figures standing,
+        in the row reason and in the disagreements block, and
+        the later figure is never presented as measured.
+        """
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Money spent for this step itself: 10.\n"
+                     "Money spent for this step itself: 77.")
+        files["steps/step-02-record.md"] = step_record(
+            2, extra="Money spent for this step itself: 20.")
+        files["steps/step-03-record.md"] = step_record(
+            3, extra="Money spent for this step itself: 30.")
+        result, _ = run_case(make_case(
+            "step-record-money-conflict-one-piece", files,
+            ("per-step-money-figures",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "E-4")
+        assert_verdict(self, block, "present but not derivable", "E-4")
+        self.assertIn("unreconciled-figure", block)
+        self.assertIn("Step 1 money 10", block)
+        self.assertIn("Step 1 money 77", block)
+        self.assertNotIn("Step 1 money 77, Step 2 money 20", block)
+        disagreements = disagreements_block(result.stdout)
+        self.assertIn(
+            "Blocked metric: E-4, the verdict was withheld for "
+            "this disagreement", disagreements)
+        entries = [line for line in disagreements.splitlines()
+                   if "step record" in line.lower()
+                   and "Metric: E-4" in line]
+        self.assertTrue(entries, "no step record entry stands for E-4")
+        for entry in entries:
+            self.assertIn(
+                "Governing position: ungoverned with no verdict "
+                "depending on it", entry)
+        self.assertIn("Step 1 money 10", disagreements)
+        self.assertIn("Step 1 money 77", disagreements)
+        self.assertFalse(any("Metric: B-2" in line
+                             for line in entries))
+
+    def test_step_record_money_conflict_across_pieces_blocks_e4(self):
+        """C1B-01; D4R-21. Step record overwrite across pieces.
+
+        The Step 1 record states 10 for itself, and a later
+        piece, the Step 2 record, states Money spent for
+        Step 1: 77. The conflict stands across pieces in the
+        same form: E-4 blocked, both figures standing.
+        """
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Money spent for this step itself: 10.")
+        files["steps/step-02-record.md"] = step_record(
+            2, extra="Money spent for this step itself: 20.\n"
+                     "Money spent for Step 1: 77.")
+        files["steps/step-03-record.md"] = step_record(
+            3, extra="Money spent for this step itself: 30.")
+        result, _ = run_case(make_case(
+            "step-record-money-conflict-across-pieces", files,
+            ("per-step-money-figures",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "E-4")
+        assert_verdict(self, block, "present but not derivable", "E-4")
+        self.assertIn("unreconciled-figure", block)
+        self.assertIn("Step 1 money 10", block)
+        self.assertIn("Step 1 money 77", block)
+        disagreements = disagreements_block(result.stdout)
+        self.assertIn("Step 1 money 10", disagreements)
+        self.assertIn("Step 1 money 77", disagreements)
+        self.assertIn("Metric: E-4", disagreements)
+
+    def test_step_record_money_conflict_step_n_form_one_piece_blocks_e4(self):
+        """C1B-01; D4R-21. Step record overwrite, Step N form, one piece.
+
+        The Step 1 record states Money spent for Step 1: 10
+        and then Money spent for Step 1: 77 in the one piece,
+        the second stated form of the same defect.
+        """
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Money spent for Step 1: 10.\n"
+                     "Money spent for Step 1: 77.")
+        files["steps/step-02-record.md"] = step_record(
+            2, extra="Money spent for this step itself: 20.")
+        files["steps/step-03-record.md"] = step_record(
+            3, extra="Money spent for this step itself: 30.")
+        result, _ = run_case(make_case(
+            "step-record-money-conflict-step-n-form", files,
+            ("per-step-money-figures",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "E-4")
+        assert_verdict(self, block, "present but not derivable", "E-4")
+        self.assertIn("Step 1 money 10", block)
+        self.assertIn("Step 1 money 77", block)
+
+    def test_step_record_identical_duplicate_money_no_contradiction(self):
+        """C1B-01; D4R-21. A repeated identical figure is no conflict."""
+        files = base_files()
+        files["steps/step-01-record.md"] = step_record(
+            1, extra="Money spent for this step itself: 10.\n"
+                     "Money spent for this step itself: 10.")
+        files["steps/step-02-record.md"] = step_record(
+            2, extra="Money spent for this step itself: 20.")
+        files["steps/step-03-record.md"] = step_record(
+            3, extra="Money spent for this step itself: 30.")
+        result, _ = run_case(make_case(
+            "step-record-identical-duplicate", files,
+            ("per-step-money-figures",)))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        assert_verdict(self, row_block(result.stdout, "E-4"),
+                       "present", "E-4")
+        disagreements = disagreements_block(result.stdout)
+        self.assertFalse(any("step record" in line.lower()
+                             and "Metric: E-4" in line
+                             for line in disagreements.splitlines()))
+
+    def test_ledger_contradictory_budget_lines_block_b2(self):
+        """C1B-02; D4R-21. Contradictory budget lines, budget limb.
+
+        Confirmation round 1 breaker exhibit: per step money
+        summing to 60, then Budget: money 100, tokens 10000,
+        then Budget: money 500, tokens 10000. The two budget
+        lines are contradictory with no governing correction
+        between them, so B-2 stands present but not derivable
+        with both budget figures standing, in the row reason
+        and in the disagreements block, and no share against
+        the later budget is printed. E-3 and E-4, which the
+        budget does not feed, stand present.
+        """
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Budget: money 100, tokens 10000.\n"
+            "Budget: money 500, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-budget-conflict", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "B-2")
+        assert_verdict(self, block, "present but not derivable", "B-2")
+        self.assertIn("unreconciled-figure", block)
+        self.assertTrue(has_number(block, "100"))
+        self.assertTrue(has_number(block, "500"))
+        self.assertNotIn("12 percent", result.stdout)
+        self.assertNotIn(
+            "money spent 60 against a money budget of 500", block)
+        assert_verdict(self, row_block(result.stdout, "E-3"),
+                       "present", "E-3")
+        assert_verdict(self, row_block(result.stdout, "E-4"),
+                       "present", "E-4")
+        disagreements = disagreements_block(result.stdout)
+        self.assertIn(
+            "Blocked metric: B-2, the verdict was withheld for "
+            "this disagreement", disagreements)
+        entries = [line for line in disagreements.splitlines()
+                   if "budget" in line.lower()
+                   and "Metric: B-2" in line]
+        self.assertTrue(entries, "no budget entry stands for B-2")
+        for entry in entries:
+            self.assertIn(
+                "Governing position: ungoverned with no verdict "
+                "depending on it", entry)
+        self.assertFalse(any("budget" in line.lower()
+                             and "Metric: E-4" in line
+                             for line in disagreements.splitlines()))
+
+    def test_ledger_build_total_conflict_later_total_agrees_blocks_e4(self):
+        """C1B-02; D4R-21. Stated build totals, 999 then 60 limb.
+
+        A ledger stating Build total stated: money 999 and
+        then Build total stated: money 60, with per step money
+        summing to 60, stands in conflict on the stated totals
+        themselves: E-4 stands present but not derivable with
+        both stated totals standing, where the unfixed product
+        presented E-4 in silence on the later total. B-2,
+        which the stated totals do not feed, stands present.
+        """
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Build total stated: money 999.\n"
+            "Build total stated: money 60.\n"
+            "Budget: money 100, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-total-conflict-later-agrees", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "E-4")
+        assert_verdict(self, block, "present but not derivable", "E-4")
+        self.assertIn("unreconciled-figure", block)
+        self.assertTrue(has_number(block, "999"))
+        self.assertTrue(has_number(block, "60"))
+        self.assertIn("no governing correction", block.lower())
+        assert_verdict(self, row_block(result.stdout, "B-2"),
+                       "present", "B-2")
+        disagreements = disagreements_block(result.stdout)
+        entries = [line for line in disagreements.splitlines()
+                   if "build total" in line.lower()
+                   and "Metric: E-4" in line]
+        self.assertTrue(entries, "no build total entry stands for E-4")
+        for entry in entries:
+            self.assertIn(
+                "Governing position: ungoverned with no verdict "
+                "depending on it", entry)
+
+    def test_ledger_build_total_conflict_first_total_agrees_blocks_e4(self):
+        """C1B-02; D4R-21. Stated build totals, 60 then 999 limb.
+
+        The same two stated totals in the other order: the
+        first stated total is named as a stated figure in the
+        conflict, with both figures standing, and the refusal
+        stands in the conflict form, not only as a sum against
+        the later total.
+        """
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Build total stated: money 60.\n"
+            "Build total stated: money 999.\n"
+            "Budget: money 100, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-total-conflict-first-agrees", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        block = row_block(result.stdout, "E-4")
+        assert_verdict(self, block, "present but not derivable", "E-4")
+        self.assertIn("unreconciled-figure", block)
+        self.assertTrue(has_number(block, "999"))
+        self.assertTrue(has_number(block, "60"))
+        self.assertIn("no governing correction", block.lower())
+        disagreements = disagreements_block(result.stdout)
+        entries = [line for line in disagreements.splitlines()
+                   if "build total" in line.lower()
+                   and "Metric: E-4" in line]
+        self.assertTrue(entries, "no build total entry stands for E-4")
+
+    def test_ledger_identical_duplicate_budget_no_contradiction(self):
+        """C1B-02; D4R-21. A repeated identical budget is no conflict."""
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Budget: money 100, tokens 10000.\n"
+            "Budget: money 100, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-budget-identical-duplicate", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        assert_verdict(self, row_block(result.stdout, "B-2"),
+                       "present", "B-2")
+        disagreements = disagreements_block(result.stdout)
+        self.assertFalse(any("budget" in line.lower()
+                             for line in disagreements.splitlines()))
+
     def test_cost_cross_check_failure_surfaced_on_rows(self):
         """R15-14. Cost cross check failure stands surfaced on the rows."""
         files = base_files()

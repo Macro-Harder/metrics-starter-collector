@@ -1589,9 +1589,18 @@ def _signal_failure(text):
     governing correction in the record restates the count, in
     which case the corrected count is the count tested. The
     planned or target exception attaches to the header count
-    statement itself: the wording must stand in that statement,
-    and a mention of planned or of a target count anywhere else
-    in the piece carries no exception. Signal
+    statement itself: the count must stand stated in that
+    statement as a planned count or as a target count, and a
+    mention of planned or of a target count anywhere else
+    in the piece carries no exception, and neither does a
+    negated or derived form in the statement itself, as
+    unplanned or targeted, which states no planned or target
+    count. The governing correction stands honoured in every
+    vocabulary the shell reading honours, the corrected count
+    followed by its number, the corrected count stated as a
+    count in rows, and the restates the count form, so a
+    record corrected in any of those forms is judged on the
+    same corrected count here. Signal
     three: a section a record contents list names that does not
     appear in the record, unless the contents list itself marks
     the section as deferred or not yet written, or a later
@@ -1618,12 +1627,30 @@ def _signal_failure(text):
         if header_end < 0:
             header_end = len(text)
         header_line = text[header_start:header_end].lower()
-        if "planned" not in header_line \
-                and "target" not in header_line:
+        if not re.search(r"\bplanned count\b", header_line) \
+                and not re.search(r"\btarget count\b", header_line) \
+                and not re.search(
+                    r"\bstated as (?:a |an )?(?:planned|target)\b",
+                    header_line):
             corrected = re.search(r"corrected count:?\s*(\d+)",
                                   lowered)
             count = int(corrected.group(1)) if corrected \
                 else int(stated.group(1))
+            if not corrected:
+                shell_count = None
+                for raw_line in text.splitlines():
+                    lowered_line = raw_line.lower()
+                    if "correct" not in lowered_line and \
+                            "restate" not in lowered_line:
+                        continue
+                    for pattern in (
+                            r"correct\w*[^\n]*?(\d+)\s+rows",
+                            r"restates? the count[^\n\d]*(\d+)"):
+                        found = re.search(pattern, lowered_line)
+                        if found:
+                            shell_count = int(found.group(1))
+                if shell_count is not None:
+                    count = shell_count
             rows = [line for line in text.splitlines()
                     if line.strip().startswith("|")]
             data_rows = [row for row in rows
@@ -2594,17 +2621,29 @@ def _ledger_data(captured):
     D4R-21, not a resolution: the first figure stands in the
     returned figures, every differing later figure stands in the
     returned conflicts list in statement order, and no figure
-    for a contradicted step is taken by any derivation.
+    for a contradicted step is taken by any derivation. The
+    budget figures and the stated build totals stand recorded
+    in the same form: a first figure for a position stands in
+    the returned figures, a later line stating a different
+    figure for the same position is recorded in the returned
+    budget conflicts or stated build total conflicts, in
+    statement order, as (position, first figure, later
+    figure), and a later line restating the identical figure
+    records nothing.
     """
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
     money = {}
     tokens = {}
     conflicts = []
-    budget_money = None
-    budget_tokens = None
-    total_money = None
-    total_tokens = None
+    budget_conflicts = []
+    total_conflicts = []
+    position_values = {"budget_money": None, "budget_tokens": None,
+                       "total_money": None, "total_tokens": None}
+    position_labels = {"budget_money": "money budget",
+                       "budget_tokens": "token budget",
+                       "total_money": "build total money",
+                       "total_tokens": "build total tokens"}
 
     def record(store, kind, step, value):
         if step in store and store[step] != value:
@@ -2615,6 +2654,17 @@ def _ledger_data(captured):
                 conflicts.append((step, kind, first, value))
         else:
             store[step] = value
+
+    def record_position(key, value):
+        current = position_values[key]
+        if current is not None and current != value:
+            entry = (position_labels[key], current, value)
+            target = budget_conflicts \
+                if key.startswith("budget") else total_conflicts
+            if entry not in target:
+                target.append(entry)
+        else:
+            position_values[key] = value
 
     for piece in ledgers:
         if piece.text is None:
@@ -2651,26 +2701,30 @@ def _ledger_data(captured):
         for m in re.finditer(
                 r"Budget:\s*money (\d+)(?:\s*,\s*tokens (\d+))?",
                 text):
-            budget_money = int(m.group(1))
+            record_position("budget_money", int(m.group(1)))
             if m.group(2) is not None:
-                budget_tokens = int(m.group(2))
+                record_position("budget_tokens", int(m.group(2)))
         for m in re.finditer(
                 r"Budget:\s*tokens (\d+)(?:\s*,\s*money (\d+))?",
                 text):
-            budget_tokens = int(m.group(1))
+            record_position("budget_tokens", int(m.group(1)))
             if m.group(2) is not None:
-                budget_money = int(m.group(2))
+                record_position("budget_money", int(m.group(2)))
         for m in re.finditer(r"Build total stated:\s*money (\d+)",
                              text):
-            total_money = int(m.group(1))
+            record_position("total_money", int(m.group(1)))
         for m in re.finditer(r"Build total stated:\s*tokens (\d+)",
                              text):
-            total_tokens = int(m.group(1))
+            record_position("total_tokens", int(m.group(1)))
     return {"ledgers": ledgers, "pointer": pointer, "money": money,
-            "tokens": tokens, "budget_money": budget_money,
-            "budget_tokens": budget_tokens,
-            "total_money": total_money, "total_tokens": total_tokens,
-            "conflicts": conflicts}
+            "tokens": tokens,
+            "budget_money": position_values["budget_money"],
+            "budget_tokens": position_values["budget_tokens"],
+            "total_money": position_values["total_money"],
+            "total_tokens": position_values["total_tokens"],
+            "conflicts": conflicts,
+            "budget_conflicts": budget_conflicts,
+            "total_conflicts": total_conflicts}
 
 
 def _ledger_conflict_text(conflicts):
@@ -2747,6 +2801,76 @@ def _ledger_disagreement_entries(captured):
     return entries
 
 
+def _position_conflict_text(conflicts):
+    """The contradictory ledger position figures, both standing."""
+    return "; ".join(
+        "%s %d and %s %d" % (label, first, label, second)
+        for label, first, second in conflicts)
+
+
+def _ledger_position_conflict_refusal(code, denominator, pointer,
+                                      conflicts, position_name):
+    """The D4R-21 refusal for a row a ledger position
+    contradiction blocks, in the form the ledger cure states:
+    both figures standing, the conflict recorded, and neither
+    figure taken. A budget contradiction blocks B-2, the row
+    the budget figures feed; a stated build total contradiction
+    blocks E-4, the row the stated build totals feed.
+    """
+    figures = {"E-4": "no per step money figure",
+               "B-2": "no budget share figure"}[code]
+    text = _position_conflict_text(conflicts)
+    return _refusal(
+        code, "present but not derivable", figures, denominator,
+        pointer,
+        shows="the cost ledger states contradictory %s figures, "
+              "%s, with no governing correction and no feeder "
+              "priority standing between the lines, and no "
+              "resolution to either line stands"
+              % (position_name, text),
+        token="unreconciled-figure",
+        follows="the contradictory figures cannot both stand "
+                "and neither is taken, so no figure stands for "
+                "the row",
+        rule_name=code + " ledger contradiction rule",
+        broken="the reconciliation between the contradictory "
+               "ledger %s figures" % position_name,
+        required="a cost ledger stating one %s figure for the "
+                 "position, or a governing correction settling "
+                 "the contradictory figures" % position_name,
+        held="the ledger states %s, and no governing correction "
+             "and no feeder priority stands between the lines"
+             % text)
+
+
+def _ledger_position_disagreement_entries(captured):
+    """Disagreements block entries for ledger position
+    contradictions, in the D4R-21 form the ledger cure states:
+    one blocking entry per metric the contradiction blocks, a
+    budget contradiction touching B-2 and a stated build total
+    contradiction touching E-4, each with both figures standing
+    and the ungoverned wording.
+    """
+    data = _ledger_data(captured)
+    entries = []
+    for conflicts, code in ((data["budget_conflicts"], "B-2"),
+                            (data["total_conflicts"], "E-4")):
+        for label, first, second in conflicts:
+            figures = (
+                "the cost ledger states %s %d and %s %d for the "
+                "same position, with no governing correction and "
+                "no feeder priority between the lines"
+                % (label, first, label, second))
+            entries.append((
+                "Blocked metric: %s, the verdict was withheld "
+                "for this disagreement" % code,
+                "Records: %s | Figures: %s | Metric: %s | "
+                "Governing position: ungoverned with no verdict "
+                "depending on it"
+                % (data["pointer"], figures, code)))
+    return entries
+
+
 def _step_record_money(captured):
     """Per step money figures stated in step record positions.
 
@@ -2754,10 +2878,31 @@ def _step_record_money(captured):
     the figure for that step itself, in the form Money spent for
     this step itself or Money spent for Step N. A whole build
     statement in a step record states no per step figure and is
-    never taken here, as brief Section 5 line 193 states.
+    never taken here, as brief Section 5 line 193 states. A
+    second position stating a different figure for a step a
+    position already states, inside one piece or across
+    pieces, in either stated form, is a contradiction under
+    D4R-21, not a resolution: the first figure stands in the
+    returned figures, every differing later figure stands in
+    the returned conflicts list in statement order, as (step,
+    kind, first figure, later figure) in the ledger conflict
+    form, and a later position restating the identical figure
+    records nothing.
     """
     money = {}
     pointer = None
+    conflicts = []
+
+    def record(step, value):
+        if step in money and money[step] != value:
+            first = money[step]
+            if not any(entry[0] == step and entry[1] == "money"
+                       and entry[2] == first and entry[3] == value
+                       for entry in conflicts):
+                conflicts.append((step, "money", first, value))
+        else:
+            money[step] = value
+
     for piece in captured.pieces_of(CLS_STEP_RECORD):
         if piece.text is None:
             continue
@@ -2766,16 +2911,72 @@ def _step_record_money(captured):
                 r"Money spent for this step itself:\s*(\d+)",
                 piece.text):
             if piece.step is not None:
-                money[piece.step] = int(m.group(1))
+                record(piece.step, int(m.group(1)))
                 found = True
         for m in re.finditer(
                 r"Money spent for [Ss]tep (\d+):\s*(\d+)",
                 piece.text):
-            money[int(m.group(1))] = int(m.group(2))
+            record(int(m.group(1)), int(m.group(2)))
             found = True
         if found and pointer is None:
             pointer = piece.paths[0]
-    return money, pointer
+    return money, pointer, conflicts
+
+
+def _step_record_conflict_refusal(denominator, pointer, conflicts):
+    """The D4R-21 refusal for the E-4 row a step record money
+    contradiction blocks, in the form the ledger cure states:
+    both figures standing, the conflict recorded, and neither
+    figure taken.
+    """
+    text = _ledger_conflict_text(conflicts)
+    steps = _each_step({step for step, _kind, _first, _second
+                        in conflicts})
+    return _refusal(
+        "E-4", "present but not derivable",
+        "no per step money figure", denominator, pointer,
+        shows="the step records state contradictory money "
+              "figures for one step, %s, with no governing "
+              "correction and no feeder priority standing "
+              "between the positions, and no resolution to "
+              "either position stands" % text,
+        token="unreconciled-figure",
+        follows="the contradictory figures cannot both stand "
+                "and neither is taken, so no figure stands for "
+                "the row",
+        rule_name="E-4 step record contradiction rule",
+        broken="the reconciliation between the contradictory "
+               "step record money figures for %s" % steps,
+        required="a step record position stating one money "
+                 "figure for each step, or a governing "
+                 "correction settling the contradictory figures",
+        held="the step records state %s, and no governing "
+             "correction and no feeder priority stands between "
+             "the positions" % text)
+
+
+def _step_record_disagreement_entries(captured):
+    """Disagreements block entries for step record money
+    contradictions, in the D4R-21 form the ledger cure states:
+    one blocking entry per contradiction, touching E-4, the
+    row the step record positions feed, each with both figures
+    standing and the ungoverned wording.
+    """
+    _money, pointer, conflicts = _step_record_money(captured)
+    entries = []
+    for step, kind, first, second in conflicts:
+        figures = (
+            "the step records state Step %d %s %d and Step %d %s "
+            "%d for the same step, with no governing correction "
+            "and no feeder priority between the positions"
+            % (step, kind, first, step, kind, second))
+        entries.append((
+            "Blocked metric: E-4, the verdict was withheld "
+            "for this disagreement",
+            "Records: %s | Figures: %s | Metric: E-4 | "
+            "Governing position: ungoverned with no verdict "
+            "depending on it" % (pointer, figures)))
+    return entries
 
 
 def _derive_e3(captured, universe):
@@ -2920,7 +3121,20 @@ def _derive_e4(captured, universe):
             "E-4", denom,
             _pointer("E-4", ledger_data["pointer"], captured),
             money_conflicts)
-    step_money, step_money_pointer = _step_record_money(captured)
+    step_money, step_money_pointer, step_conflicts = \
+        _step_record_money(captured)
+    if step_conflicts:
+        return _step_record_conflict_refusal(
+            denom,
+            _pointer("E-4",
+                     step_money_pointer or ledger_data["pointer"],
+                     captured),
+            step_conflicts)
+    if ledger_data["total_conflicts"]:
+        return _ledger_position_conflict_refusal(
+            "E-4", denom,
+            _pointer("E-4", ledger_data["pointer"], captured),
+            ledger_data["total_conflicts"], "stated build total")
     merged_money = dict(step_money)
     merged_money.update(ledger_data["money"])
     if ledger_data["total_money"] is not None and \
@@ -3211,6 +3425,10 @@ def _derive_f2(captured, universe):
     plain = 0
     qualified = 0
     ruled = 0
+    closing_plain = 0
+    closing_qualified = 0
+    closing_ruled = 0
+    closing_alone = []
     problems = []
     counted_labels = []
     for key in sorted(counted, key=lambda k: (counted[k]["step"], k)):
@@ -3234,16 +3452,24 @@ def _derive_f2(captured, universe):
                 else:
                     plain += 1
         elif closure == _F2_CLOSURE_PLAIN:
-            plain += 1
-            ruled += 1
-            counted_labels.append(label)
+            # A closing state alone records no first ruling
+            # outcome, so no approval stands on it in any
+            # mixture, under D4R-13 and DG-01: the instance is
+            # tallied apart here and, where a rate stands over
+            # the outcome carrying instances, it is excluded
+            # from the numerator and from the denominator alike
+            # and named in the coverage, in the DG-08 mixed
+            # tree form.
+            closing_plain += 1
+            closing_ruled += 1
+            closing_alone.append(key)
         elif closure == _F2_CLOSURE_QUALIFIED:
-            qualified += 1
-            ruled += 1
-            counted_labels.append(label)
+            closing_qualified += 1
+            closing_ruled += 1
+            closing_alone.append(key)
         elif closure in _F2_CLOSURE_NOT_APPROVED:
-            ruled += 1
-            counted_labels.append(label)
+            closing_ruled += 1
+            closing_alone.append(key)
         else:
             problems.append(
                 "%s stands with recorded closure state %s, which "
@@ -3253,6 +3479,14 @@ def _derive_f2(captured, universe):
                    else "none stated"))
     approved = plain + qualified
     excluded_clauses = []
+    for key in sorted(closing_alone,
+                      key=lambda k: (counted[k]["step"], k)):
+        excluded_clauses.append(
+            "a ruling for %s stands in a gate record or gate "
+            "ruling with a closing state alone and no first "
+            "ruling outcome recorded for the step, and the step "
+            "is excluded from the numerator and from the "
+            "denominator alike" % _instance_label(key))
     for key in sorted(adjudication_only,
                       key=lambda k: (adjudication_only[k]["step"], k)):
         excluded_clauses.append(
@@ -3313,11 +3547,12 @@ def _derive_f2(captured, universe):
                             "states")
         held = _held_join(held_clauses)
         extras = []
-        if ruled:
+        if ruled or closing_ruled:
             extras.append(
                 "plain closures %d and qualified closures %d stand "
                 "counted on the steps whose first ruling stands in "
-                "a named form" % (plain, qualified))
+                "a named form" % (plain + closing_plain,
+                                   qualified + closing_qualified))
         extras.extend(problems)
         extras.extend(excluded_clauses)
         if extras:
@@ -3351,6 +3586,8 @@ def _derive_f2(captured, universe):
                          "denominator" % step)
     coverage += "".join("; " + clause for clause in excluded_clauses)
     for key in sorted(counted, key=lambda k: (counted[k]["step"], k)):
+        if key in closing_alone:
+            continue
         fact = counted[key]
         if fact["recycled"]:
             coverage += ("; %s recycled instance counted once, by "
@@ -3368,6 +3605,8 @@ def _derive_f2(captured, universe):
                        _instance_label(key)))
     first_path = pointer
     for key in sorted(counted, key=lambda k: (counted[k]["step"], k)):
+        if key in closing_alone:
+            continue
         if counted[key]["counted_sources"]:
             first_path = counted[key]["counted_sources"][0]["path"] \
                 or pointer
@@ -5512,6 +5751,10 @@ def _derive_b2(captured, universe):
         return _ledger_conflict_refusal(
             "B-2", denom, _pointer("B-2", data["pointer"], captured),
             data["conflicts"])
+    if data["budget_conflicts"]:
+        return _ledger_position_conflict_refusal(
+            "B-2", denom, _pointer("B-2", data["pointer"], captured),
+            data["budget_conflicts"], "budget")
     ledgers = data["ledgers"]
     pointer = data["pointer"]
     tokens = data["tokens"]
@@ -6088,6 +6331,8 @@ def _disagreement_lines(captured):
     restatements += r5
     blocking += [(None, entry) for entry in b5]
     blocking += _ledger_disagreement_entries(captured)
+    blocking += _ledger_position_disagreement_entries(captured)
+    blocking += _step_record_disagreement_entries(captured)
     blocking += _proxy_disagreement_entries(captured)
     feeders = _decision_feeders(captured)
     if feeders["queue_usable"] and feeders["table_items"]:
@@ -6588,7 +6833,7 @@ def derive_report(captured):
             from metrics_starter_collector.cross_check import \
                 cost_cross_check_statements
             cost_data = _ledger_data(captured)
-            cost_step_money, _cost_pointer = \
+            cost_step_money, _cost_pointer, _cost_conflicts = \
                 _step_record_money(captured)
             cost_money = dict(cost_step_money)
             cost_money.update(cost_data["money"])
@@ -6649,7 +6894,7 @@ def derive_report(captured):
         # on the money only variant, stays missing in the form
         # its own derivation gives it.
         cost_data = _ledger_data(captured)
-        cost_step_money, _cost_step_pointer = \
+        cost_step_money, _cost_step_pointer, _cost_conflicts = \
             _step_record_money(captured)
         if cost_data["ledgers"] or cost_step_money:
             current = results_by_code["E-4"]

@@ -63,11 +63,22 @@ class TestSlice3Staffing(FixtureTestCase):
         fixtures now state a first ruling outcome, so the
         present verdict rests on that outcome and not on
         closing states alone.
+
+        Further corrected at Step 15 confirmation fix pass,
+        item C1F-01: the Step 2 gate record now also states a
+        first ruling outcome of Go, because its plain subcount
+        otherwise rested on a closing state alone beside the
+        outcome carrying steps, the mixed shape C1F-01 files.
+        Its assertions stand unchanged.
         """
         case = staffing_case("f04-both-names")
         case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(
             1, extra="First ruling outcome: Go, closes the step, "
                      "no send back before closure.")
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(
+            2, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         del case["files"]["steps/step-03-gate-record.md"]
         case["files"]["steps/step-03-gate-ruling.md"] = gate_ruling(
             3, "CLOSED-QUALIFIED",
@@ -214,6 +225,94 @@ class TestSlice3Staffing(FixtureTestCase):
         assert_verdict(self, block, "present but not derivable", "F-2")
         self.assertNotRegex(block, r"3 of 3 approved")
         self.assertNotIn("first-time approval rate: 3", block)
+
+    def test_f2_mixed_go_outcome_closing_alone_steps_excluded(self):
+        """C1F-01, standing for R15-01. D4R-13, DG-01, DG-08.
+
+        Confirmation round 1 correctness exhibit, first probe
+        tree: Step 1 gate record states Closure state:
+        CLOSED-PASS with First ruling outcome: Go, Steps 2 and
+        3 gate records state Closure state: CLOSED-PASS alone.
+        A closing state alone records no first ruling outcome,
+        so no approval stands on it in any mixture: the rate is
+        taken over the steps whose first ruling outcome stands
+        stated alone, 1 of 1 approved, and Steps 2 and 3 stand
+        named in the coverage as excluded from the numerator
+        and from the denominator alike, in the DG-08 mixed
+        tree form.
+        """
+        case = staffing_case("f2-mixed-go", steps=(1, 2, 3))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(
+            1, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertIn("first-time approval rate: 1 of 1 approved",
+                      block)
+        self.assertNotRegex(block, r"3 of 3 approved")
+        self.assertRegex(block, r"plain[^\d]*1(?!\d)(?!\.\d)")
+        self.assertIn("Step 2", block)
+        self.assertIn("Step 3", block)
+        self.assertIn("closing state alone", block.lower())
+        self.assertIn("excluded from the numerator and from the "
+                      "denominator", block.lower())
+
+    def test_f2_mixed_hold_outcome_closing_alone_no_approvals(self):
+        """C1F-01, standing for R15-01. D4R-13, DG-01, DG-08.
+
+        Confirmation exhibit, second probe tree: Step 1 states
+        First ruling outcome: Hold beside its closing state,
+        Steps 2 and 3 state closing states alone. Hold does
+        not count as approved under DG-01, and the closing
+        states alone supply no approval, so the row stands
+        present at 0 of 1 approved, where the unfixed product
+        printed 2 of 3 approved from the closing states.
+        """
+        case = staffing_case("f2-mixed-hold", steps=(1, 2, 3))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(
+            1, "CLOSED-PASS",
+            extra="First ruling outcome: Hold, closes nothing, "
+                  "the step stands to be ruled again.")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertIn("first-time approval rate: 0 of 1 approved",
+                      block)
+        self.assertNotRegex(block, r"2 of 3 approved")
+        self.assertRegex(block, r"plain[^\d]*0(?!\d)(?!\.\d)")
+        self.assertIn("closing state alone", block.lower())
+
+    def test_f2_mixed_go_and_closing_alone_with_step_missing_gate(self):
+        """C1F-01, standing for R15-01. D4R-13, DG-01, DG-08.
+
+        Confirmation exhibit, third probe tree: Step 1 carries
+        a first ruling outcome of Go, Step 2 a closing state
+        alone, and Step 3 no gate file at all. The rate stands
+        over the outcome carrying step alone, 1 of 1 approved,
+        Step 2 stands named as excluded on its closing state
+        alone, and Step 3 stands named as not counted, where
+        the unfixed product printed 2 of 2 approved.
+        """
+        case = staffing_case("f2-mixed-missing", steps=(1, 2, 3))
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(
+            1, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
+        del case["files"]["steps/step-03-gate-record.md"]
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present", "F-2")
+        self.assertIn("first-time approval rate: 1 of 1 approved",
+                      block)
+        self.assertNotRegex(block, r"2 of 2 approved")
+        self.assertIn("Step 2", block)
+        self.assertIn("closing state alone", block.lower())
+        self.assertIn("Step 3", block)
 
     def test_g03_additions_over_base_with_ca9_three_figures(self):
         """G-03. WV22 E-2 F1, WV22 E-2 F2. Additions over base, three figures.

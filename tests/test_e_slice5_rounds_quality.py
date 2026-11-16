@@ -1166,6 +1166,68 @@ class TestSlice5RoundsQuality(FixtureTestCase):
                     "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
                 self.assertIsNone(core._signal_failure(text))
 
+    def test_signal_two_unplanned_or_targeted_header_line_does_not_except_in_core(self):
+        """C1B-03, core limb, standing for R15-07. Brief Section 5.
+
+        The header count statement line itself is tested: a
+        header line stating the count with the word unplanned
+        states the opposite of the exception condition, and a
+        header line carrying the word targeted in a clause
+        stating nothing about the count states no exception
+        either. Both lines therefore still fail signal two in
+        the core check on a miscounted table, where the brief
+        form, the count stated as a planned or target count,
+        excepts.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n| Low | 2 |\n")
+        for label, header in (
+                ("unplanned",
+                 "Rows stated in header: 5, unplanned."),
+                ("targeted",
+                 "Rows stated in header: 5, targeted for review.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertEqual(
+                    core._signal_failure(text), "signal-two")
+
+    def test_signal_two_shell_vocabulary_correction_honoured_in_core(self):
+        """C1B-05, core limb. Brief Section 5, signal two.
+
+        The governing correction vocabularies the shell
+        honours stand honoured in the core as well: a record
+        stating The corrected count is 2 rows, and a record
+        restating the count in the restates the count form,
+        are each judged on the corrected count of 2 against
+        their 2 data rows, so neither fails signal two, where
+        the core form alone, Corrected count: 2, was the only
+        correction vocabulary the core honoured before. A
+        shell vocabulary correction stating a count the table
+        does not hold still fails, because the corrected count
+        is the count tested.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table = (
+            "# Step 1 audit paper\n\nSeverity breakdown table. "
+            "Rows stated in header: 99.\n"
+            "| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, correction in (
+                ("count-in-rows",
+                 "The corrected count is 2 rows.\n"),
+                ("restates-the-count",
+                 "This record restates the count as 2.\n")):
+            with self.subTest(form=label):
+                self.assertIsNone(
+                    core._signal_failure(correction + table))
+        self.assertEqual(
+            core._signal_failure(
+                "The corrected count is 4 rows.\n" + table),
+            "signal-two")
+
     def test_rounds_family_reads_capture_only(self):
         """Plan Section 5 named reread test for Slice 5, Contract 1."""
         parent = tracked_tempdir("msc_slice5_reread_")

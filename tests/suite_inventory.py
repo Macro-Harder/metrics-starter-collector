@@ -109,7 +109,7 @@ INVENTORY = {
         ],
     },
     "test_c_slice3_staffing": {
-        "count": 52,
+        "count": 55,
         "cases": [
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_partial_coverage_without_defined_form_is_not_present",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_row_cross_check_marking_in_statement_line",
@@ -163,6 +163,9 @@ INVENTORY = {
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_wv4_disputed_count_header_and_denominators",
                     "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_gate_facts_failure_surfaced_no_silent_fallback",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_staffing_cross_check_failure_surfaced_on_rows",
+                    "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_mixed_go_and_closing_alone_with_step_missing_gate",
+                    "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_mixed_go_outcome_closing_alone_steps_excluded",
+                    "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_mixed_hold_outcome_closing_alone_no_approvals",
 ],
     },
     "test_d_slice4_time_decision": {
@@ -248,7 +251,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 63,
+        "count": 65,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -313,10 +316,12 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_cross_check_failure_surfaced_with_fallback_marking",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_brief_form_header_count_exception_fires_in_core",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_unrelated_planned_or_target_in_core_does_not_except",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_shell_vocabulary_correction_honoured_in_core",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_unplanned_or_targeted_header_line_does_not_except_in_core",
 ],
     },
     "test_f_slice6_cost": {
-        "count": 37,
+        "count": 45,
         "cases": [
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_feeder_mapping_d1_is_only_metrics_record_feeder",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_non_d1_figure_in_metrics_record_never_present",
@@ -355,6 +360,14 @@ INVENTORY = {
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_contradictory_step_figures_block_cost_rows",
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_identical_duplicate_figures_no_contradiction",
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_money_conflict_only_blocks_money_rows",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_build_total_conflict_first_total_agrees_blocks_e4",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_build_total_conflict_later_total_agrees_blocks_e4",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_contradictory_budget_lines_block_b2",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_identical_duplicate_budget_no_contradiction",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_identical_duplicate_money_no_contradiction",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_across_pieces_blocks_e4",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_inside_one_piece_blocks_e4",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_step_record_money_conflict_step_n_form_one_piece_blocks_e4",
 ],
     },
     "test_g_slice7_report": {
@@ -473,4 +486,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 400
+TOTAL = 413
