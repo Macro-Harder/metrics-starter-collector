@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 33,
+        "count": 37,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -100,6 +100,10 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_whole_walk_at_the_bound_has_not_crossed",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_whole_walk_bound_names_the_crossing",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_wv221_same_piece_state_in_both_shapes",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_audit_directory_itself_is_not_a_record_piece",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_latest_timestamp_invalid_calendar_stamp_never_printed",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_bound_before_any_piece_partial_not_floor",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_walk_level_by_level_bound_reaches_shallow_piece",
         ],
     },
     "test_c_slice3_staffing": {
@@ -455,4 +459,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 382
+TOTAL = 386

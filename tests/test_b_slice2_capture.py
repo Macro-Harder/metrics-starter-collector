@@ -718,6 +718,130 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertEqual(row_block(first_result.stdout, "Q-1"),
                          row_block(second_result.stdout, "Q-1"))
 
+    def test_walk_level_by_level_bound_reaches_shallow_piece(self):
+        """R15-10. The walk stands level by level, brief Section 5.
+
+        Breaker exhibit B15R1-B6 in its full form: one deep branch
+        holding 10050 filler files and one recognisable piece at
+        level two in a shallow branch. Under the brief walk order
+        the piece is visited within the first entries, the bound
+        crossing is named, and the partial report form issues with
+        the full rows. A depth first walk spends the bound inside
+        the deep branch and issues the no usable records form.
+        """
+        scratch = tracked_tempdir("msc_slice2_bfs_")
+        root = scratch / "bfs-bound"
+        deep = root / "a" / "deep"
+        deep.mkdir(parents=True)
+        for number in range(10050):
+            (deep / ("filler-%05d.txt" % number)).write_bytes(b"")
+        shallow = root / "c"
+        shallow.mkdir(parents=True)
+        (shallow / "step-01-record.md").write_text(
+            step_record(1), encoding="utf-8")
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("No usable records", result.stdout)
+        self.assertIn("step-01-record.md", result.stdout)
+        self.assertIn("partial report", result.stdout.lower())
+        cov = coverage_statement(result.stdout)
+        cleaned = cov.replace(",", "")
+        self.assertRegex(cleaned, r"(?<!\d)10000(?!\d)")
+        self.assertIn("not visited", cov.lower())
+        self.assertTrue(row_block(result.stdout, "E-1"))
+
+    def test_walk_bound_before_any_piece_partial_not_floor(self):
+        """R15-10. D4R-08 floor judged on the whole tree inventory.
+
+        Bounded form of the same crossing: the walk bound is set
+        to 5 in process, ten filler files stand at the root level
+        ahead of one recognisable piece at the same level, so the
+        bound is crossed before the piece is visited. The bound
+        used is 5 in place of 10000 only to keep the exhibit
+        small; the crossing is the same crossing, a bound reached
+        before any recognisable piece is visited on a tree whose
+        whole inventory holds one. The floor is judged on that
+        whole inventory, so the partial report form issues, the
+        crossing is named, the piece stands as not visited, and
+        no row resting on it is reported as missing.
+        """
+        from tests.fixture_builder import capture_derive_render
+        scratch = tracked_tempdir("msc_slice2_floor_")
+        root = scratch / "floor-bound"
+        root.mkdir(parents=True)
+        for number in range(10):
+            (root / ("filler-%02d.txt" % number)).write_bytes(b"")
+        (root / "step-01-record.md").write_text(
+            step_record(1), encoding="utf-8")
+        capture_fn, derive_fn, render_fn = capture_derive_render(
+            self, root)
+        import metrics_starter_collector.shell_reader as shell
+        standing = shell.WALK_BOUND
+        shell.WALK_BOUND = 5
+        try:
+            captured = capture_fn(root)
+            report = render_fn(derive_fn(captured))
+        finally:
+            shell.WALK_BOUND = standing
+        self.assertNotIn("No usable records", report)
+        self.assertIn("partial report", report.lower())
+        self.assertIn("not visited", report.lower())
+        self.assertIn("step-01-record.md", report)
+        block = row_block(report, "E-1")
+        self.assertTrue(block)
+        self.assertNotIn("| missing |", block)
+        self.assertIn("present but not derivable", block)
+
+    def test_latest_timestamp_invalid_calendar_stamp_never_printed(self):
+        """R15-11. The header latest stamp stands calendar validated.
+
+        Breaker exhibit B15R1-B7: one stray line stating an
+        impossible stamp, 9999-99-99 25:99, and one stating an
+        impossible date alone, 2027-02-30. Neither is a record
+        timestamp. The latest real stamp in the tree, the Step 3
+        closing stamp of the path ledger, stands in the header.
+        """
+        files = {
+            "steps/step-01-record.md": (
+                step_record(1)
+                + "Far review stamp 9999-99-99 25:99 noted in "
+                  "passing.\n"),
+            "steps/step-01-gate-record.md": (
+                "# Step 1 gate record\n\nClosure state: "
+                "CLOSED-PASS.\nReview date 2027-02-30 noted in "
+                "passing.\n"),
+        }
+        root = build(make_case("latest-stamp", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        latest_lines = [line for line in result.stdout.splitlines()
+                        if line.startswith("Latest record timestamp:")]
+        self.assertEqual(len(latest_lines), 1)
+        self.assertIn("2026-11-03 17:00", latest_lines[0])
+        self.assertNotIn("9999-99-99", latest_lines[0])
+        self.assertNotIn("2027-02-30", latest_lines[0])
+
+    def test_audit_directory_itself_is_not_a_record_piece(self):
+        """R15-18. A directory is not a record piece, P-19.
+
+        The audit directory must be descended into, and the audit
+        paper inside it stands as a piece. The directory itself
+        stands as no piece, is listed nowhere as an unreadable
+        piece, and counts in no coverage or data quality position.
+        """
+        files = {"audit/step1-round-record.md": (
+            "# Round record, step 1\n\nPost triage severity "
+            "breakdown, flow scale: Critical 0, High 1, Medium 2, "
+            "Low 3.\n")}
+        root = build(make_case("audit-dir", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("audit/step1-round-record.md", result.stdout)
+        self.assertNotIn("Piece audit |", result.stdout)
+        self.assertNotIn("Is a directory", result.stdout)
+        cov = coverage_statement(result.stdout)
+        self.assertNotIn("audit | audit paper", cov)
+
 
 if __name__ == "__main__":
     unittest.main()

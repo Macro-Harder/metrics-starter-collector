@@ -1,8 +1,8 @@
 """Module 1: shell reader, the thin shell.
 
 This is the only module that touches the filesystem. It validates
-the root the operator names, walks that tree once in sorted
-relative path order, reads each discovered piece once, applies
+the root the operator names, walks that tree once, level by level
+from the root down, reads each discovered piece once, applies
 the capture limits in the minimal form this slice needs, and
 builds the one CapturedRead every later part of the run reads.
 It also delivers the finished report, to standard output or to
@@ -12,6 +12,7 @@ import os
 import re
 import stat
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from metrics_starter_collector import inventory
@@ -52,19 +53,39 @@ def _latest_timestamp(texts):
 
     A timestamp with a time of day keys by its full value. A date
     standing alone keys at the start of its day. The winning stamp
-    is returned in the form the record states it.
+    is returned in the form the record states it. A stamp stands
+    as a record timestamp only where it is a real calendar stamp:
+    each candidate is validated by forming its datetime, in the
+    same form the Derivation core validates the same stamps, and
+    a candidate that forms no datetime, an impossible date or an
+    impossible time of day, is no timestamp and never wins.
     """
     winner = None
     winner_key = None
     for text in texts:
         for found in _FULL_STAMP.finditer(text):
-            key = (found.group(1), found.group(2), found.group(3),
-                   found.group(4) or "00")
+            year, month, day = (int(part) for part
+                                in found.group(1).split("-"))
+            try:
+                moment = datetime(year, month, day,
+                                  int(found.group(2)),
+                                  int(found.group(3)),
+                                  int(found.group(4) or "0"))
+            except ValueError:
+                continue
+            key = (moment.year, moment.month, moment.day,
+                   moment.hour, moment.minute, moment.second)
             if winner_key is None or key > winner_key:
                 winner_key = key
                 winner = found.group(0)
         for found in _DATE_ONLY.finditer(text):
-            key = (found.group(1), "00", "00", "00")
+            year, month, day = (int(part) for part
+                                in found.group(1).split("-"))
+            try:
+                moment = datetime(year, month, day)
+            except ValueError:
+                continue
+            key = (moment.year, moment.month, moment.day, 0, 0, 0)
             if winner_key is None or key > winner_key:
                 winner_key = key
                 winner = found.group(1)
@@ -462,93 +483,134 @@ def _rounds_evidenced(pieces, step):
 
 
 def _walk_entries(root_path, root_resolved):
-    """Walk the root once, in sorted relative path order.
+    """Walk the root once, level by level from the root down.
 
-    Returns (entries, damaged, walk_note). Entries are the relative
-    paths of files the capture may use, with link targets inside
-    the root followed at most once. Damaged maps a relative path to
-    its not read reason where the entry itself stands damaged: a
-    link out of the tree, a dangling link, a link loop, or a non
-    regular file standing at a recognised record name.
+    Entries are visited in the order of their names at each level
+    of the tree, level by level, in the brief Section 5 order, so
+    the same tree is always walked in the same order and the set
+    of pieces the bound leaves unvisited is the same on every
+    run. The walk first enumerates every entry name in that
+    order, reading no piece, so the inventory the floor at
+    D4R-08 is judged on is the inventory of the whole tree and
+    not the part of it the bound reaches. The whole walk bound
+    then cuts that order: entries past the bound are not visited
+    and not read, the crossing is named in the walk note, and a
+    recognisable piece past the bound still stands in the
+    capture as a not visited piece, so its rows take the partial
+    form and never the missing form and never the floor form.
+
+    Returns (entries, damaged, walk_note, unvisited). Entries are
+    the relative paths of files the capture may use, with link
+    targets inside the root followed at most once. Damaged maps
+    a relative path to its not read reason where the entry
+    itself stands damaged: a link out of the tree, a dangling
+    link, a link loop, or a non regular file standing at a
+    recognised record name. Unvisited maps a relative path past
+    the bound to its not visited reason. A directory is never
+    classified or counted as a record piece in its own right:
+    a container directory the walk descends into, such as the
+    audit directory, stands as no piece anywhere. The one
+    standing exception the capture keeps is a directory at a
+    file name path, where it blocks the file piece that name
+    carries: it stands as that damaged piece, unreadable, and
+    not as a piece of its own.
     """
+    ordered = []
+    level = [root_path]
+    while level:
+        next_level = []
+        for directory in level:
+            try:
+                names = sorted(os.listdir(str(directory)))
+            except OSError:
+                continue
+            for name in names:
+                full = directory / name
+                rel = str(full.relative_to(root_path))
+                ordered.append((rel, full))
+                if not full.is_symlink() and full.is_dir():
+                    next_level.append(full)
+        level = next_level
+    walk_note = None
+    if len(ordered) > WALK_BOUND:
+        walk_note = (
+            "the whole walk bound of %d entries was reached "
+            "and entries beyond it were not visited"
+            % WALK_BOUND)
     entries = []
     damaged = {}
+    unvisited = {}
     seen_targets = set()
-    visited = 0
-    walk_note = None
-    for dirpath, dirnames, filenames in os.walk(str(root_path)):
-        dirnames.sort()
-        stop = False
-        for name in sorted(dirnames) + sorted(filenames):
-            visited += 1
-            if visited > WALK_BOUND:
-                walk_note = (
-                    "the whole walk bound of %d entries was reached "
-                    "and entries beyond it were not visited"
-                    % WALK_BOUND)
-                stop = True
-                break
-            full = Path(dirpath) / name
-            rel = str(full.relative_to(root_path))
-            recognised = inventory.classify(rel) is not None
-            if full.is_symlink():
-                try:
-                    target = full.resolve()
-                except (OSError, RuntimeError) as exc:
-                    if recognised:
-                        entries.append(rel)
-                        damaged[rel] = (
-                            "unreadable-piece: the link target could "
-                            "not be resolved: %s" % exc)
-                    continue
-                if target != root_resolved and \
-                        root_resolved not in target.parents:
-                    if recognised:
-                        entries.append(rel)
-                        if target.exists():
-                            damaged[rel] = (
-                                "unreadable-piece: link target "
-                                "outside the tree, not followed")
-                        else:
-                            damaged[rel] = (
-                                "unreadable-piece: dangling link, "
-                                "the link target does not stand")
-                    elif not target.exists() and \
-                            inventory.near_match_note(rel) is not None:
-                        entries.append(rel)
-                    continue
-                target_key = str(target)
-                if target_key in seen_targets:
-                    continue
-                seen_targets.add(target_key)
-                if full.is_file():
+    for index, (rel, full) in enumerate(ordered):
+        recognised = inventory.classify(rel) is not None
+        if index >= WALK_BOUND:
+            if recognised:
+                entries.append(rel)
+                unvisited[rel] = (
+                    "over-limit-piece: not visited: the whole "
+                    "walk bound of %d entries was crossed before "
+                    "this piece was visited, and the piece was "
+                    "not read" % WALK_BOUND)
+            continue
+        if full.is_symlink():
+            try:
+                target = full.resolve()
+            except (OSError, RuntimeError) as exc:
+                if recognised:
                     entries.append(rel)
-                elif recognised:
+                    damaged[rel] = (
+                        "unreadable-piece: the link target could "
+                        "not be resolved: %s" % exc)
+                continue
+            if target != root_resolved and \
+                    root_resolved not in target.parents:
+                if recognised:
                     entries.append(rel)
                     if target.exists():
                         damaged[rel] = (
-                            "unreadable-piece: the link target is "
-                            "not a regular file")
+                            "unreadable-piece: link target "
+                            "outside the tree, not followed")
                     else:
                         damaged[rel] = (
-                            "unreadable-piece: dangling link, the "
-                            "link target does not stand")
+                            "unreadable-piece: dangling link, "
+                            "the link target does not stand")
                 elif not target.exists() and \
                         inventory.near_match_note(rel) is not None:
                     entries.append(rel)
                 continue
+            target_key = str(target)
+            if target_key in seen_targets:
+                continue
+            seen_targets.add(target_key)
             if full.is_file():
-                entries.append(rel)
-            elif full.is_dir() and recognised:
                 entries.append(rel)
             elif recognised:
                 entries.append(rel)
+                if target.exists():
+                    damaged[rel] = (
+                        "unreadable-piece: the link target is "
+                        "not a regular file")
+                else:
+                    damaged[rel] = (
+                        "unreadable-piece: dangling link, the "
+                        "link target does not stand")
+            elif not target.exists() and \
+                    inventory.near_match_note(rel) is not None:
+                entries.append(rel)
+            continue
+        if full.is_file():
+            entries.append(rel)
+        elif full.is_dir():
+            if recognised and rel.rsplit("/", 1)[-1].endswith(".md"):
+                entries.append(rel)
                 damaged[rel] = (
                     "unreadable-piece: not a regular file")
-        if stop:
-            break
+        elif recognised:
+            entries.append(rel)
+            damaged[rel] = (
+                "unreadable-piece: not a regular file")
     entries.sort()
-    return entries, damaged, walk_note
+    return entries, damaged, walk_note, unvisited
 
 
 def _canonical_paths(root_path, entries, damaged):
@@ -600,8 +662,9 @@ def capture_read(root):
             "capture the record tree: root %s: not a readable "
             "directory" % (root,))
     root_resolved = root_path.resolve()
-    entries, damaged, walk_note = _walk_entries(root_path,
-                                                root_resolved)
+    entries, damaged, walk_note, unvisited = _walk_entries(
+        root_path, root_resolved)
+    unvisited_set = set(unvisited)
     entries, aliases = _canonical_paths(root_path, entries, damaged)
     classified = []
     for rel in entries:
@@ -668,6 +731,11 @@ def capture_read(root):
             text = None
             quality = "unreadable"
             reason = damaged[rel]
+        elif rel in unvisited_set:
+            size = measured_size(rel)
+            text = None
+            quality = "over limit"
+            reason = unvisited[rel]
         elif rel in cut_set:
             size = measured_size(rel)
             text = None

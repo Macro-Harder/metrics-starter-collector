@@ -1066,6 +1066,17 @@ def _floor_lines(model):
                  "was found" % (root or "the root as given"))
     elif not floor.startswith("No usable records"):
         floor = "No usable records: " + floor
+    if "walk" not in floor.lower():
+        # Where the model carries a walk crossing in its coverage
+        # and the floor line names none, the crossing stands named
+        # in the floor form itself, where it was crossed.
+        held = _text(_get(model, "coverage"))
+        marker = "walk note: "
+        at = held.lower().find(marker)
+        if at >= 0:
+            note = held[at + len(marker):].split(";")[0].strip()
+            if note:
+                floor = floor + "; walk crossing: " + note
     lines.append(floor)
     return lines
 

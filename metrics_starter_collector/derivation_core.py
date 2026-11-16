@@ -525,6 +525,9 @@ def _walk_order_sample(captured, piece):
             captured.tree_cut_kind:
         limit_phrase = "the " + captured.tree_cut_kind
         last_visited = captured.tree_last_visited or "none stated"
+    elif "whole walk bound" in detail:
+        limit_phrase = "the whole walk bound of 10000 entries"
+        last_visited = None
     elif "line limit" in detail:
         limit_phrase = "the line limit of 65536 bytes"
         last_visited = None
@@ -6796,6 +6799,17 @@ def derive_report(captured):
                         results=results, data_quality=entries,
                         no_usable=not captured.pieces,
                         run_cost_line=run_cost_line)
+    if not captured.pieces and captured.walk_note:
+        # The floor form where the walk bound was crossed on a
+        # tree whose whole inventory holds no recognisable piece:
+        # the no usable records statement names the crossing where
+        # it was crossed, in the D4R-08 floor form, beside the
+        # root read and the pieces looked for.
+        model.no_usable_line = (
+            "No usable records: the root read, %s, was looked "
+            "through for the recognised record pieces, and none "
+            "was found; walk crossing: %s"
+            % (captured.root, captured.walk_note))
     disagreement_lines = _disagreement_lines(captured)
     if disagreement_lines:
         model.disagreements_lines = disagreement_lines
