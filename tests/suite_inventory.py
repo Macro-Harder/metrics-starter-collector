@@ -103,7 +103,7 @@ INVENTORY = {
         ],
     },
     "test_c_slice3_staffing": {
-        "count": 50,
+        "count": 52,
         "cases": [
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_partial_coverage_without_defined_form_is_not_present",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_row_cross_check_marking_in_statement_line",
@@ -155,10 +155,12 @@ INVENTORY = {
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_wv22_f2_f2_outcome_words",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_wv22_f2_f3_f4_subcounts_travel_with_rate",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_wv4_disputed_count_header_and_denominators",
-        ],
+                    "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_gate_facts_failure_surfaced_no_silent_fallback",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_staffing_cross_check_failure_surfaced_on_rows",
+],
     },
     "test_d_slice4_time_decision": {
-        "count": 74,
+        "count": 77,
         "cases": [
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_a7_9_b1_cross_piece_basis_mismatch_no_code_fits",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b1_both_derivation_outputs_stand_present",
@@ -234,10 +236,13 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_time_family_reads_capture_only",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_wv21_queue_habit_equivalent_content_same_d1_row",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_wv21_time_rows_equivalent_across_queue_habit",
-        ],
+                    "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_d1_cross_check_failure_surfaced_with_fallback_marking",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_cross_check_failure_surfaced_with_fallback_marking",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_time_decision_cross_check_failure_surfaced_on_rows",
+],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 54,
+        "count": 57,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -293,10 +298,13 @@ INVENTORY = {
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv22_t7_f4_unpaired_outcome_records_named_unpaired",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv6_conflicting_governing_adjudications",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_wv6_resolved_conflict_variant_not_blocked",
-        ],
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q1_cross_check_failure_surfaced_on_row",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q3_cross_check_failure_surfaced_on_row",
+            "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_q4_cross_check_failure_surfaced_with_fallback_marking",
+],
     },
     "test_f_slice6_cost": {
-        "count": 33,
+        "count": 34,
         "cases": [
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_feeder_mapping_d1_is_only_metrics_record_feeder",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_non_d1_figure_in_metrics_record_never_present",
@@ -331,7 +339,8 @@ INVENTORY = {
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv9_partial_metering_e3",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv9_zero_budget_money_side_percentage_undefined",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv9_zero_budget_token_side_percentage_undefined",
-        ],
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_cost_cross_check_failure_surfaced_on_rows",
+],
     },
     "test_g_slice7_report": {
         "count": 80,
@@ -446,4 +455,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 373
+TOTAL = 382

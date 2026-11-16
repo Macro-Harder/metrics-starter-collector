@@ -803,6 +803,22 @@ def _join_statements(*statements):
     return "; ".join(held)
 
 
+def _error_form(operation, piece, exc):
+    """The plan Section 4 error form for a failed seam call.
+
+    Every error carries the operation attempted, the piece or
+    path involved, and the underlying cause. A seam failure
+    surfaced in this form stands in the statement line of each
+    row the seam serves, so no error is swallowed and no
+    fallback that follows it stands in silence.
+    """
+    return ("error: operation %s on %s failed with %s: %s; "
+            "the error stands stated in this report and the "
+            "marking for the affected row does not stand from "
+            "that operation" % (operation, piece,
+                                type(exc).__name__, exc))
+
+
 # ------------------------------------------------------------- ledger
 
 def _ledger_piece(captured):
@@ -1294,6 +1310,7 @@ def _t4_marking(captured, durations):
     overrides the feeder result.
     """
     pairs = [(step, value) for step, value, _item in durations]
+    error = None
     try:
         from metrics_starter_collector.cross_check import \
             t4_cross_check_statement
@@ -1302,24 +1319,27 @@ def _t4_marking(captured, durations):
             _metrics_record_name(captured))
         if marking:
             return marking
-    except Exception:
-        pass
+    except Exception as exc:
+        error = _error_form("t4_cross_check_statement",
+                            _metrics_record_name(captured), exc)
     if len(pairs) != 1:
-        return None
+        return error
     found = re.search(r"T-4\s+wait\s+as\s+(\d+(?:\.\d+)?)\s*hours",
                       captured.assembled_metrics or "")
     if not found:
-        return None
+        return error
     stated = float(found.group(1))
     feeder = pairs[0][1]
     if stated == feeder:
-        return None
-    return ("record disagrees: %s states T-4 wait as %s hours, "
-            "while the path ledger BANKED entries state %s hours; "
-            "the feeder figure stands and the record figure is "
-            "not followed"
-            % (_metrics_record_name(captured), _fmt_num(stated),
-               _fmt_num(feeder)))
+        return error
+    return _join_statements(
+        error,
+        "record disagrees: %s states T-4 wait as %s hours, "
+        "while the path ledger BANKED entries state %s hours; "
+        "the feeder figure stands and the record figure is "
+        "not followed"
+        % (_metrics_record_name(captured), _fmt_num(stated),
+           _fmt_num(feeder)))
 
 
 def _derive_t4(captured, universe):
@@ -2981,105 +3001,6 @@ _HISTORY_PATTERNS = (r"gate history", r"outcome word stands scattered",
                      r"stands scattered in this record")
 
 
-def _gate_facts_fallback(captured):
-    """A local gate facts reading in the inventory fact shape.
-
-    Used only where the Inventory gate outcome reading cannot be
-    imported: the same alias classes, the same exact Closure state
-    token and First ruling outcome word, by instance key.
-    """
-    grouped = {}
-    order = []
-    for piece in captured.pieces:
-        if piece.step is None:
-            continue
-        is_gate = piece.record_class in GATE_CLASSES
-        is_near = False
-        if not is_gate and piece.record_class == CLS_STEP_COMPANION:
-            base = piece.paths[0].split("/")[-1] if piece.paths else ""
-            found = _INSTANCE_NAME_FORM.match(base)
-            if found and found.group(3).startswith("gate-"):
-                is_near = True
-        if not is_gate and not is_near:
-            continue
-        key = _piece_instance_key(piece)
-        if key not in grouped:
-            grouped[key] = {"sources": [], "near": []}
-            order.append(key)
-        text = piece.text or ""
-        closure = re.search(r"Closure state:\s*([A-Za-z0-9][A-Za-z0-9-]*)",
-                            text)
-        outcome = re.search(
-            r"First ruling outcome:\s*(Go|Hold|Recycle|Kill)\b", text)
-        source = {"record_class": piece.record_class,
-                  "path": piece.paths[0] if piece.paths else "",
-                  "closure_state": closure.group(1) if closure else None,
-                  "first_ruling_outcome": outcome.group(1)
-                  if outcome else None}
-        if is_gate:
-            grouped[key]["sources"].append(source)
-        else:
-            grouped[key]["near"].append(source)
-    facts = {}
-    for key in order:
-        sources = tuple(sorted(grouped[key]["sources"],
-                               key=lambda s: s["path"]))
-        counted = tuple(s for s in sources
-                        if s["record_class"] != CLS_GATE_ADJUDICATION)
-        adjudication = tuple(s for s in sources
-                             if s["record_class"] == CLS_GATE_ADJUDICATION)
-        closures = []
-        for source in counted:
-            if source["closure_state"] is not None and \
-                    source["closure_state"] not in closures:
-                closures.append(source["closure_state"])
-        outcomes = []
-        for source in counted:
-            if source["first_ruling_outcome"] is not None and \
-                    source["first_ruling_outcome"] not in outcomes:
-                outcomes.append(source["first_ruling_outcome"])
-        named = [s for s in counted if s["record_class"] in
-                 (CLS_GATE_RECORD, CLS_GATE_RULING)]
-        named_closures = {s["closure_state"] for s in named
-                          if s["closure_state"] is not None}
-        named_outcomes = {s["first_ruling_outcome"] for s in named
-                          if s["first_ruling_outcome"] is not None}
-        disagreement = len(named_closures) > 1 or len(named_outcomes) > 1
-        forms = []
-        if disagreement:
-            for source in named:
-                for value in (source["closure_state"],
-                              source["first_ruling_outcome"]):
-                    if value is not None and value not in forms:
-                        forms.append(value)
-        step_found = re.match(r"step-(\d+)", key)
-        facts[key] = {
-            "step": int(step_found.group(1)) if step_found else None,
-            "instance": key.rsplit("-", 1)[-1]
-            if re.match(r"step-\d+-[a-z]$", key) else "",
-            "instance_key": key,
-            "sources": sources,
-            "counted_sources": counted,
-            "adjudication_sources": adjudication,
-            "adjudication_only": bool(adjudication) and not counted,
-            "closure_states": tuple(closures),
-            "first_closure_state": counted[0]["closure_state"]
-            if counted else None,
-            "first_ruling_outcomes": tuple(outcomes),
-            "first_ruling_outcome": outcomes[0] if outcomes else None,
-            "both_names": any(s["record_class"] == CLS_GATE_RECORD
-                              for s in counted) and any(
-                s["record_class"] == CLS_GATE_RULING for s in counted),
-            "disagreement": disagreement,
-            "disagreement_forms": tuple(forms),
-            "recycled": any(s["record_class"] == CLS_REGATE_RECORD
-                            for s in counted),
-            "near_match_sources": tuple(grouped[key]["near"]),
-            "missing_gate": not sources,
-        }
-    return facts
-
-
 def _gate_facts(captured):
     """The gate outcome facts for this capture, from the Inventory
     gate outcome reading the slice delivers, in its landed form:
@@ -3088,12 +3009,9 @@ def _gate_facts(captured):
     sources stand as evidence only, and whose first closure state
     and first ruling outcome stand in source order.
     """
-    try:
-        from metrics_starter_collector.inventory import \
-            gate_outcome_facts
-        return gate_outcome_facts(captured.pieces)
-    except Exception:
-        return _gate_facts_fallback(captured)
+    from metrics_starter_collector.inventory import \
+        gate_outcome_facts
+    return gate_outcome_facts(captured.pieces)
 
 
 def _f2_history_steps(captured, counted_steps):
@@ -3118,7 +3036,29 @@ def _derive_f2(captured, universe):
     gates = captured.pieces_of(*GATE_CLASSES)
     pointer = gates[0].paths[0] if gates else \
         "steps/step-01-gate-record.md"
-    facts = _gate_facts(captured)
+    try:
+        facts = _gate_facts(captured)
+    except Exception as exc:
+        gate_paths = ", ".join(piece.paths[0] for piece in gates) \
+            if gates else "the gate pieces in the capture"
+        error = _error_form("gate_outcome_facts", gate_paths, exc)
+        return _refusal(
+            "F-2", "present but not derivable",
+            "no first ruling figure", denom,
+            _pointer("F-2", pointer, captured),
+            shows="the Inventory gate outcome reading failed and "
+                  "no gate facts stand for this row: " + error,
+            token="missing-field",
+            follows="the gate outcome facts the row requires do "
+                    "not stand, so no rate figure stands and no "
+                    "fallback reading is substituted",
+            rule_name="F-2 gate outcome reading rule",
+            statement=error,
+            broken="the gate outcome facts from the Inventory "
+                   "gate outcome reading",
+            required="the gate outcome facts standing from the "
+                     "Inventory gate outcome reading",
+            held=error)
     counted = {key: fact for key, fact in facts.items()
                if fact["counted_sources"]}
     adjudication_only = {key: fact for key, fact in facts.items()
@@ -3630,8 +3570,10 @@ def _q1_statement(captured, counted):
                        for candidate in counted})
         if marking:
             statements.append(marking)
-    except Exception:
-        pass
+    except Exception as exc:
+        statements.append(_error_form(
+            "q1_cross_check_statement",
+            _metrics_record_name(captured), exc))
     for rnd, feeder_path, feeder_counts, other_path, other_counts \
             in _q1_disagreements(captured, counted):
         statements.append(
@@ -4138,13 +4080,16 @@ def _derive_q3(captured, universe):
             rule_name="Q-3 origin step rule", bound=bound)
         result.coverage = coverage
         statement = None
+        error = None
         try:
             from metrics_starter_collector.cross_check import \
                 q3_contested_statement
             statement = q3_contested_statement(
                 captured, universe,
                 {entry["origin"] for entry in valid})
-        except Exception:
+        except Exception as exc:
+            error = _error_form("q3_contested_statement",
+                                _metrics_record_name(captured), exc)
             statement = None
         if statement is None:
             contested = _q3_contested_steps(universe)
@@ -4153,7 +4098,7 @@ def _derive_q3(captured, universe):
             if hit:
                 statement = _universe_claim_statement(
                     captured, universe)
-        result.statement = statement
+        result.statement = _join_statements(error, statement)
         return result
     if entries and all(entry["copied"] for entry in entries):
         return _refusal(
@@ -4607,18 +4552,21 @@ def _derive_q4(captured, universe):
     result.coverage = coverage
     result.bound = bound
     statement = None
+    error = None
     try:
         from metrics_starter_collector.cross_check import \
             q4_cross_check_statement
         covered = {step: (traces[step][0], traces[step][3])
                    for step in reconciled}
         statement = q4_cross_check_statement(captured, covered)
-    except Exception:
+    except Exception as exc:
+        error = _error_form("q4_cross_check_statement",
+                            _metrics_record_name(captured), exc)
         statement = None
     if statement is None:
         statement = _q4_record_marking(captured, traces, sources,
                                        set(reconciled))
-    result.statement = statement
+    result.statement = _join_statements(error, statement)
     return result
 
 
@@ -4848,6 +4796,7 @@ def _d1_marking(captured, feeder_items, table_items):
     of the D-1 row under D-18 and CA-1, with the queue figure
     standing. Where the table itself governs, no marking stands.
     """
+    error = None
     try:
         from metrics_starter_collector.cross_check import \
             d1_cross_check_statement
@@ -4856,23 +4805,26 @@ def _d1_marking(captured, feeder_items, table_items):
             metrics_name=_metrics_record_name(captured))
         if marking:
             return marking
-    except Exception:
-        pass
+    except Exception as exc:
+        error = _error_form("d1_cross_check_statement",
+                            _metrics_record_name(captured), exc)
     feeder = {item["item"]: item["ruled"] for item in feeder_items}
     table = {item["item"]: item["ruled"] for item in table_items}
     if not feeder or not table or feeder == table:
-        return None
+        return error
     for name in table:
         if name in feeder and feeder[name] and table[name] and \
                 feeder[name] != table[name]:
-            return ("record disagrees: the decision table in %s "
-                    "states %s ruled at %s, while the governing "
-                    "feeder states %s ruled at %s; the feeder "
-                    "figure stands and the record figure is not "
-                    "followed"
-                    % (_metrics_record_name(captured), name,
-                       table[name], name, feeder[name]))
-    return None
+            return _join_statements(
+                error,
+                "record disagrees: the decision table in %s "
+                "states %s ruled at %s, while the governing "
+                "feeder states %s ruled at %s; the feeder "
+                "figure stands and the record figure is not "
+                "followed"
+                % (_metrics_record_name(captured), name,
+                   table[name], name, feeder[name]))
+    return error
 
 
 def _d1_statement(foundation, marking):
@@ -6315,6 +6267,12 @@ def derive_report(captured):
         "B-3": _derive_b_ranking(captured, universe, t1, "B-3", t2),
         "B-4": _derive_b_ranking(captured, universe, t1, "B-4", t2),
     }
+    # Seam failures surfaced under the plan Section 4 error
+    # form: each failed seam call in derive_report records its
+    # error here, with the rows it serves, and the error stands
+    # in the statement line of each of those rows and in the
+    # data quality section below, never dropped in silence.
+    seam_errors = []
     # The cross check marking for the staffing rows, as part of the
     # core in this slice: the derivations above carry the marking
     # in their statement lines, and any marking the Cross check
@@ -6332,8 +6290,10 @@ def derive_report(captured):
                 if result is not None and statement and \
                         not getattr(result, "statement", None):
                     result.statement = statement
-    except Exception:
-        pass
+    except Exception as exc:
+        seam_errors.append((("E-1", "E-2", "F-2"), _error_form(
+            "staffing_cross_check_statements",
+            _metrics_record_name(captured), exc)))
     # The cross check marking for the cost rows, consumed through
     # the Module 4 role in the same form: the seam wiring of the
     # Builder C function cost_cross_check_statements, called with
@@ -6377,8 +6337,10 @@ def derive_report(captured):
                     if result is not None and statement and \
                             not getattr(result, "statement", None):
                         result.statement = statement
-        except Exception:
-            pass
+        except Exception as exc:
+            seam_errors.append((("E-3", "E-4", "B-2"), _error_form(
+                "cost_cross_check_statements",
+                _metrics_record_name(captured), exc)))
     # The unknown definitions version position for the Slice 4
     # rows: where the metrics record states a version the settled
     # definitions do not recognise, the rows whose feeder records
@@ -6495,8 +6457,11 @@ def derive_report(captured):
                     if result is not None and statement and \
                             not getattr(result, "statement", None):
                         result.statement = statement
-        except Exception:
-            pass
+        except Exception as exc:
+            seam_errors.append(
+                (("T-1", "T-2", "B-1", "B-3", "B-4"), _error_form(
+                    "time_decision_cross_check_statements",
+                    _metrics_record_name(captured), exc)))
     # The build open state naming on the B family rows: the open
     # state on an in progress tree, the halt naming on a halted
     # tree, in the statement line of each B row.
@@ -6513,6 +6478,11 @@ def derive_report(captured):
         result = results_by_code[code]
         result.build_state_statement = state_naming
     results = [results_by_code[code] for code in STARTER_ORDER]
+    for seam_codes, seam_error in seam_errors:
+        for seam_code in seam_codes:
+            seam_result = results_by_code[seam_code]
+            seam_result.statement = _join_statements(
+                getattr(seam_result, "statement", None), seam_error)
     # Slice 7 model assembly, on the final results: the D-1
     # Statement part content, standing on the D-1 row only; the
     # reconciliation part on present rows that carry none yet;
@@ -6756,6 +6726,8 @@ def derive_report(captured):
             % (cls, totals.get("expected", 0), totals.get("found", 0),
                totals.get("not_found", 0)))
     entries = _data_quality_entries(captured)
+    entries.extend(seam_error for _seam_codes, seam_error
+                   in seam_errors)
     t7_result = results_by_code.get("T-7")
     if t7_result is not None and \
             getattr(t7_result, "code_token", None) == "no code fits":

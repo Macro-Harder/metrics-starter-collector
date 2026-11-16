@@ -10,9 +10,11 @@ first.
 """
 import re
 import unittest
+from unittest import mock
 
 from tests.fixture_builder import (
     FixtureTestCase, STARTER_ORDER, assert_reads_capture_only,
+    capture_derive_render,
     d1_case, d1_files, make_case,
     assert_verdict, build_case, build_cases, coverage_statement,
     data_quality_entry_for, decision_table, gate_record, metrics_record,
@@ -1321,5 +1323,81 @@ class TestSlice4TimeDecision(FixtureTestCase):
         assert_reads_capture_only(self, built, count_reads=True)
 
 
+
+    def test_t4_cross_check_failure_surfaced_with_fallback_marking(self):
+        """R15-14. T-4 cross check failure surfaced, fallback not silent.
+
+        The T-4 cross check seam is forced to fail. The statement
+        line must carry the error in the plan Section 4 form,
+        operation, piece and cause named, beside the inline
+        marking the core then forms, so neither the failure nor
+        the fallback stands in silence.
+        """
+        files = base_files()
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = metrics_record(
+            body="Metrics record states T-4 wait as 99 hours.",
+            decision_table=decision_table([RULED_ROW]))
+        files["PATH-LEDGER.md"] = path_ledger(
+            "Step 1 BANKED duration 2 hours on Q-1.")
+        root = tracked_tempdir("msc_slice4_")
+        built = build_case(make_case(
+            "t4-cross-check-failure", files,
+            ["banked-entries-with-duration", "decision-table-inside-root"]), root)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, built)
+        captured = capture_fn(built)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "t4_cross_check_statement",
+                side_effect=RuntimeError("t4 seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "T-4"))
+        self.assertIn("error: operation t4_cross_check_statement", segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("t4 seam boom", segment)
+        self.assertIn("record disagrees", segment)
+
+    def test_d1_cross_check_failure_surfaced_with_fallback_marking(self):
+        """R15-14. D-1 cross check failure surfaced, fallback not silent."""
+        root = tracked_tempdir("msc_slice4_")
+        built = build_case(d1_case(
+            "d1-cross-check-failure", queue_rows=[RULED_ROW],
+            table_rows=[RULED_ROW_LATE]), root)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, built)
+        captured = capture_fn(built)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "d1_cross_check_statement",
+                side_effect=RuntimeError("d1 seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "D-1"))
+        self.assertIn("error: operation d1_cross_check_statement", segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("d1 seam boom", segment)
+        self.assertIn("record disagrees", segment)
+
+    def test_time_decision_cross_check_failure_surfaced_on_rows(self):
+        """R15-14. Time and decision cross check failure stands surfaced."""
+        root = tracked_tempdir("msc_slice4_")
+        built = build_case(make_case(
+            "time-decision-cross-check-failure", base_files(),
+            ["full-clock-timestamps"]), root)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, built)
+        captured = capture_fn(built)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "time_decision_cross_check_statements",
+                side_effect=RuntimeError("time seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "T-1"))
+        self.assertIn(
+            "error: operation time_decision_cross_check_statements",
+            segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("time seam boom", segment)
+
 if __name__ == "__main__":
     unittest.main()
+

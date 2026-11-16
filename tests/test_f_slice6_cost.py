@@ -12,9 +12,11 @@ combination asserted only at F7.
 """
 import re
 import unittest
+from unittest import mock
 
 from tests.fixture_builder import (
     FixtureTestCase, assert_reads_capture_only, assert_verdict,
+    capture_derive_render,
     build_case, build_cases, decision_table, metrics_record, queue_file,
     row_block, row_verdict, run_tool, statement_segment, step_record,
     tracked_tempdir)
@@ -654,5 +656,32 @@ class TestSlice6Cost(FixtureTestCase):
         assert_reads_capture_only(self, built, count_reads=True)
 
 
+
+    def test_cost_cross_check_failure_surfaced_on_rows(self):
+        """R15-14. Cost cross check failure stands surfaced on the rows."""
+        files = base_files()
+        files[LEDGER_PATH] = LEDGER_FULL
+        files[METRICS_PATH] = metrics_record(
+            body="Metrics record states B-2 money spent as 999.")
+        root = tracked_tempdir("msc_slice6_")
+        built = build_case(make_case(
+            "cost-cross-check-failure", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")), root)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, built)
+        captured = capture_fn(built)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "cost_cross_check_statements",
+                side_effect=RuntimeError("cost seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "B-2"))
+        self.assertIn("error: operation cost_cross_check_statements",
+                      segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("cost seam boom", segment)
+
 if __name__ == "__main__":
     unittest.main()
+

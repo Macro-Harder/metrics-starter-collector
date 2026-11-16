@@ -11,10 +11,12 @@ from the public repo root, as the run_tool harness performs it.
 """
 import re
 import unittest
+from unittest import mock
 
 from tests.fixture_builder import (FixtureTestCase, assert_two_part_form,
                                      assert_verdict,
                                      assert_reads_capture_only, build_case,
+                                     capture_derive_render,
                                      build_cases, data_quality_section,
                                      decision_table,
                                      f10_cases, gate_record,
@@ -1072,5 +1074,77 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         assert_reads_capture_only(self, tree, count_reads=True)
 
 
+
+    def test_q1_cross_check_failure_surfaced_on_row(self):
+        """R15-14. Q-1 cross check failure stands surfaced on the row."""
+        case = make_case("q1-cross-check-failure", {
+            "audit/step-01-red.md": (
+                "# Round 1\n\nPost triage breakdown: Critical 2, "
+                "High 1, Medium 0, Low 0.\n"),
+            "audit/step-02-red.md": (
+                "# Round 2\n\nPre triage counts only: Critical 7.\n")})
+        parent = tracked_tempdir("msc_slice5_")
+        tree = build_case(case, parent)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, tree)
+        captured = capture_fn(tree)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "q1_cross_check_statement",
+                side_effect=RuntimeError("q1 seam boom"), create=True):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "Q-1"))
+        self.assertIn("error: operation q1_cross_check_statement", segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("q1 seam boom", segment)
+
+    def test_q3_cross_check_failure_surfaced_on_row(self):
+        """R15-14. Q-3 contested cross check failure stands surfaced."""
+        extra = {
+            "registers/defect-register.md": (
+                "# Defect register\n\nEntry D-9: defect disposition, "
+                "origin step Step 2.\n")}
+        extra.update(single_page_metrics_record_files(metrics_record(
+            body="Metrics record states the step universe as 1 step.")))
+        parent = tracked_tempdir("msc_slice5_")
+        tree = build_case(make_case("q3-cross-check-failure", extra), parent)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, tree)
+        captured = capture_fn(tree)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "q3_contested_statement",
+                side_effect=RuntimeError("q3 seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "Q-3"))
+        self.assertIn("error: operation q3_contested_statement", segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("q3 seam boom", segment)
+
+    def test_q4_cross_check_failure_surfaced_with_fallback_marking(self):
+        """R15-14. Q-4 cross check failure surfaced, fallback not silent."""
+        extra = {
+            "steps/step-01-trace.md": (
+                "# Trace\n\nParts: 8 LANDED, 2 PARTIAL, "
+                "0 CONTRADICTED. Stated total: 10 items checked.\n")}
+        extra.update(single_page_metrics_record_files(metrics_record(
+            body="Metrics record states Q-4 for Step 1 as 10 of 10.")))
+        parent = tracked_tempdir("msc_slice5_")
+        tree = build_case(make_case("q4-cross-check-failure", extra), parent)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, tree)
+        captured = capture_fn(tree)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "q4_cross_check_statement",
+                side_effect=RuntimeError("q4 seam boom")):
+            report = render_fn(derive_fn(captured))
+        segment = statement_segment(row_block(report, "Q-4"))
+        self.assertIn("error: operation q4_cross_check_statement", segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("q4 seam boom", segment)
+        self.assertIn("record disagrees", segment)
+
 if __name__ == "__main__":
     unittest.main()
+

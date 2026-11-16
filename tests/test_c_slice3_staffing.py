@@ -10,11 +10,13 @@ run_tool harness in the fixture builder.
 """
 import re
 import unittest
+from unittest import mock
 
 from tests.fixture_builder import (FixtureTestCase, assert_verdict,
                                      audit_paper_failed_signal,
                                      assert_reads_capture_only, build_case,
                                      build_cases, coverage_statement,
+                                     capture_derive_render,
                                      gate_record, gate_ruling, metrics_record,
                                      path_ledger, row_block, run_tool,
                                      statement_segment, step_record,
@@ -939,6 +941,61 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertIn("Step 2", q4)
 
 
+
+    def test_f2_gate_facts_failure_surfaced_no_silent_fallback(self):
+        """R15-14. Gate facts reading failure stands surfaced, no fallback.
+
+        The Inventory gate outcome reading is forced to fail. The
+        F-2 row must not take its facts from the local fallback
+        reading in silence: the row stands present but not
+        derivable and its text carries the error in the plan
+        Section 4 form, operation, piece and cause named.
+        """
+        case = staffing_case("f2-gate-facts-failure")
+        for n in (1, 2, 3):
+            case["files"]["steps/step-%02d-gate-record.md" % n] = \
+                gate_record(n, extra="First ruling outcome: Go, "
+                            "closes the step, no send back before "
+                            "closure.")
+        root = build_one(case)
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, root)
+        captured = capture_fn(root)
+        with mock.patch(
+                "metrics_starter_collector.inventory.gate_outcome_facts",
+                side_effect=RuntimeError("gate facts boom")):
+            report = render_fn(derive_fn(captured))
+        block = row_block(report, "F-2")
+        assert_verdict(self, block, "present but not derivable", "F-2")
+        self.assertIn("error: operation gate_outcome_facts", block)
+        self.assertIn("steps/step-01-gate-record.md", block)
+        self.assertIn("RuntimeError", block)
+        self.assertIn("gate facts boom", block)
+        self.assertNotIn("first-time approval rate: 3 of 3", block)
+
+    def test_staffing_cross_check_failure_surfaced_on_rows(self):
+        """R15-14. Staffing cross check failure stands surfaced.
+
+        The staffing cross check seam is forced to fail. The error
+        must stand in the statement line of a staffing row in the
+        plan Section 4 form, not dropped in silence while the row
+        prints unchanged.
+        """
+        root = build_one(staffing_case("staffing-cross-check-failure"))
+        capture_fn, derive_fn, render_fn = capture_derive_render(self, root)
+        captured = capture_fn(root)
+        with mock.patch(
+                "metrics_starter_collector.cross_check."
+                "staffing_cross_check_statements",
+                side_effect=RuntimeError("staffing seam boom")):
+            report = render_fn(derive_fn(captured))
+        block = row_block(report, "E-1")
+        segment = statement_segment(block)
+        self.assertIn("error: operation staffing_cross_check_statements",
+                      segment)
+        self.assertIn("build-metrics-record.md", segment)
+        self.assertIn("RuntimeError", segment)
+        self.assertIn("staffing seam boom", segment)
+
 def row_block_verdict(block):
     from tests.fixture_builder import row_verdict
     return row_verdict(block)
@@ -990,3 +1047,4 @@ def _row_substance(block):
 
 if __name__ == "__main__":
     unittest.main()
+
