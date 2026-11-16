@@ -81,6 +81,31 @@ def ledger_case(name, ledger, features=("token-figures-in-ledger",
     return make_case(name, files, features)
 
 
+LEDGER_CONTRADICTORY = (
+    "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+    "Step 2: money 20, tokens 200.\n"
+    "Step 3: money 30, tokens 300.\n"
+    "Step 1: money 99, tokens 999.\n"
+    "Step 2: money 99, tokens 999.\n"
+    "Step 3: money 99, tokens 999.\n"
+    "Budget: money 100, tokens 10000.\n")
+
+
+def disagreements_block(report):
+    """Return the disagreements block text, or empty."""
+    lines = report.splitlines()
+    heads = ("Disagreements", "Data quality", "Record cost", "Terms")
+    for idx, line in enumerate(lines):
+        if line.strip() == "Disagreements":
+            end = len(lines)
+            for later in range(idx + 1, len(lines)):
+                if lines[later].strip() in heads:
+                    end = later
+                    break
+            return "\n".join(lines[idx:end])
+    return ""
+
+
 def has_number(block, number):
     return re.search(r"(?<!\d)(?<!\d\.)%s(?!\d)(?!\.\d)" % number,
                      block) is not None
@@ -656,6 +681,115 @@ class TestSlice6Cost(FixtureTestCase):
         assert_reads_capture_only(self, built, count_reads=True)
 
 
+
+    def test_ledger_contradictory_step_figures_block_cost_rows(self):
+        """R15-08; D4R-21. Breaker B15R1-B5 exhibit in its own form."""
+        result, _ = run_case(ledger_case(
+            "ledger-contradictory", LEDGER_CONTRADICTORY))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        e3 = row_block(result.stdout, "E-3")
+        assert_verdict(self, e3, "present but not derivable", "E-3")
+        self.assertIn("unreconciled-figure", e3)
+        self.assertIn("Step 1 tokens 100", e3)
+        self.assertIn("Step 1 tokens 999", e3)
+        self.assertIn("Step 3 tokens 300", e3)
+        self.assertIn("Step 3 tokens 999", e3)
+        e4 = row_block(result.stdout, "E-4")
+        assert_verdict(self, e4, "present but not derivable", "E-4")
+        self.assertIn("unreconciled-figure", e4)
+        self.assertIn("Step 1 money 10", e4)
+        self.assertIn("Step 1 money 99", e4)
+        self.assertIn("Step 2 money 20", e4)
+        self.assertIn("Step 2 money 99", e4)
+        b2 = row_block(result.stdout, "B-2")
+        assert_verdict(self, b2, "present but not derivable", "B-2")
+        self.assertIn("unreconciled-figure", b2)
+        self.assertIn("Step 1 money 10", b2)
+        self.assertIn("Step 1 tokens 100", b2)
+        self.assertNotIn("money spent 297", result.stdout)
+        self.assertNotIn("token spent 2997", result.stdout)
+        self.assertNotIn("297 percent", result.stdout)
+        block = disagreements_block(result.stdout)
+        self.assertTrue(block, "no disagreements block stands")
+        self.assertLess(
+            block.index("Group: contradictions that block or weaken "
+                        "a metric"),
+            block.index("Metric: E-3"))
+        for code in ("E-3", "E-4", "B-2"):
+            self.assertIn(
+                "Blocked metric: %s, the verdict was withheld for "
+                "this disagreement" % code, block)
+            entries = [line for line in block.splitlines()
+                       if "cost ledger" in line
+                       and "Metric: %s" % code in line]
+            self.assertTrue(
+                entries, "no ledger entry stands for " + code)
+            for entry in entries:
+                self.assertIn(
+                    "Governing position: ungoverned with no verdict "
+                    "depending on it", entry)
+        self.assertIn("Step 1 money 10", block)
+        self.assertIn("Step 1 money 99", block)
+        self.assertIn("Step 1 tokens 100", block)
+        self.assertIn("Step 1 tokens 999", block)
+
+    def test_ledger_money_conflict_only_blocks_money_rows(self):
+        """R15-08; D4R-21. One money conflict leaves E-3 standing."""
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Step 1: money 99.\n"
+            "Budget: money 100, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-money-conflict-only", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        e3 = row_block(result.stdout, "E-3")
+        assert_verdict(self, e3, "present", "E-3")
+        self.assertTrue(has_number(e3, "100"))
+        e4 = row_block(result.stdout, "E-4")
+        assert_verdict(self, e4, "present but not derivable", "E-4")
+        self.assertIn("Step 1 money 10", e4)
+        self.assertIn("Step 1 money 99", e4)
+        b2 = row_block(result.stdout, "B-2")
+        assert_verdict(self, b2, "present but not derivable", "B-2")
+        block = disagreements_block(result.stdout)
+        ledger_entries = [line for line in block.splitlines()
+                          if "cost ledger" in line]
+        self.assertTrue(ledger_entries)
+        self.assertFalse(any("Metric: E-3" in line
+                             for line in ledger_entries))
+        self.assertTrue(any("Metric: E-4" in line
+                            for line in ledger_entries))
+        self.assertTrue(any("Metric: B-2" in line
+                            for line in ledger_entries))
+
+    def test_ledger_identical_duplicate_figures_no_contradiction(self):
+        """R15-08; D4R-21. A repeated identical figure is no conflict."""
+        files = base_files()
+        files[LEDGER_PATH] = (
+            "# Cost ledger\n\nStep 1: money 10, tokens 100.\n"
+            "Step 2: money 20, tokens 200.\n"
+            "Step 3: money 30, tokens 300.\n"
+            "Step 1: money 10, tokens 100.\n"
+            "Budget: money 100, tokens 10000.\n")
+        result, _ = run_case(make_case(
+            "ledger-identical-duplicate", files,
+            ("token-figures-in-ledger", "cost-ledger-inside-root",
+             "per-step-money-figures")))
+        self.assertEqual(result.returncode, 0, result.stderr[:300])
+        assert_verdict(self, row_block(result.stdout, "E-3"),
+                       "present", "E-3")
+        assert_verdict(self, row_block(result.stdout, "E-4"),
+                       "present", "E-4")
+        assert_verdict(self, row_block(result.stdout, "B-2"),
+                       "present", "B-2")
+        block = disagreements_block(result.stdout)
+        self.assertFalse(any("cost ledger" in line
+                             for line in block.splitlines()))
 
     def test_cost_cross_check_failure_surfaced_on_rows(self):
         """R15-14. Cost cross check failure stands surfaced on the rows."""

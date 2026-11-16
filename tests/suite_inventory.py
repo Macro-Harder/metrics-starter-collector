@@ -312,7 +312,7 @@ INVENTORY = {
 ],
     },
     "test_f_slice6_cost": {
-        "count": 34,
+        "count": 37,
         "cases": [
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_feeder_mapping_d1_is_only_metrics_record_feeder",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_ac12_non_d1_figure_in_metrics_record_never_present",
@@ -348,6 +348,9 @@ INVENTORY = {
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv9_zero_budget_money_side_percentage_undefined",
             "tests.test_f_slice6_cost.TestSlice6Cost.test_wv9_zero_budget_token_side_percentage_undefined",
                     "tests.test_f_slice6_cost.TestSlice6Cost.test_cost_cross_check_failure_surfaced_on_rows",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_contradictory_step_figures_block_cost_rows",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_identical_duplicate_figures_no_contradiction",
+                    "tests.test_f_slice6_cost.TestSlice6Cost.test_ledger_money_conflict_only_blocks_money_rows",
 ],
     },
     "test_g_slice7_report": {
@@ -463,4 +466,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 390
+TOTAL = 393

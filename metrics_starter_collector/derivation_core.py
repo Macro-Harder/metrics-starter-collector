@@ -2589,16 +2589,33 @@ def _ledger_data(captured):
     step line to the step it describes counts for the step it
     describes, because the describing step form states that step
     in the same Step N position. No other record kind is read
-    here, under D4R-24.
+    here, under D4R-24. A second line stating a different figure
+    for a step a line already states is a contradiction under
+    D4R-21, not a resolution: the first figure stands in the
+    returned figures, every differing later figure stands in the
+    returned conflicts list in statement order, and no figure
+    for a contradicted step is taken by any derivation.
     """
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
     money = {}
     tokens = {}
+    conflicts = []
     budget_money = None
     budget_tokens = None
     total_money = None
     total_tokens = None
+
+    def record(store, kind, step, value):
+        if step in store and store[step] != value:
+            first = store[step]
+            if not any(entry[0] == step and entry[1] == kind
+                       and entry[2] == first and entry[3] == value
+                       for entry in conflicts):
+                conflicts.append((step, kind, first, value))
+        else:
+            store[step] = value
+
     for piece in ledgers:
         if piece.text is None:
             continue
@@ -2606,26 +2623,31 @@ def _ledger_data(captured):
         for m in re.finditer(
                 r"[Ss]tep (\d+):\s*money (\d+)"
                 r"(?:\s*,\s*tokens (\d+))?", text):
-            money[int(m.group(1))] = int(m.group(2))
+            record(money, "money", int(m.group(1)), int(m.group(2)))
             if m.group(3) is not None:
-                tokens[int(m.group(1))] = int(m.group(3))
+                record(tokens, "tokens", int(m.group(1)),
+                       int(m.group(3)))
         for m in re.finditer(
                 r"[Ss]tep (\d+):\s*tokens (\d+)"
                 r"(?:\s*,\s*money (\d+))?", text):
-            tokens[int(m.group(1))] = int(m.group(2))
+            record(tokens, "tokens", int(m.group(1)),
+                   int(m.group(2)))
             if m.group(3) is not None:
-                money[int(m.group(1))] = int(m.group(3))
+                record(money, "money", int(m.group(1)),
+                       int(m.group(3)))
         for m in re.finditer(r"[Ss]tep (\d+) tokens:\s*(\d+)", text):
-            tokens[int(m.group(1))] = int(m.group(2))
+            record(tokens, "tokens", int(m.group(1)),
+                   int(m.group(2)))
         for m in re.finditer(
                 r"[Ss]tep (\d+) money(?: spent)?:\s*(\d+)", text):
-            money[int(m.group(1))] = int(m.group(2))
+            record(money, "money", int(m.group(1)), int(m.group(2)))
         for m in re.finditer(r"Tokens for [Ss]tep (\d+):\s*(\d+)",
                              text):
-            tokens[int(m.group(1))] = int(m.group(2))
+            record(tokens, "tokens", int(m.group(1)),
+                   int(m.group(2)))
         for m in re.finditer(r"Money for [Ss]tep (\d+):\s*(\d+)",
                              text):
-            money[int(m.group(1))] = int(m.group(2))
+            record(money, "money", int(m.group(1)), int(m.group(2)))
         for m in re.finditer(
                 r"Budget:\s*money (\d+)(?:\s*,\s*tokens (\d+))?",
                 text):
@@ -2647,7 +2669,82 @@ def _ledger_data(captured):
     return {"ledgers": ledgers, "pointer": pointer, "money": money,
             "tokens": tokens, "budget_money": budget_money,
             "budget_tokens": budget_tokens,
-            "total_money": total_money, "total_tokens": total_tokens}
+            "total_money": total_money, "total_tokens": total_tokens,
+            "conflicts": conflicts}
+
+
+def _ledger_conflict_text(conflicts):
+    """The contradictory ledger figures, both standing, in order."""
+    return "; ".join(
+        "Step %d %s %d and Step %d %s %d"
+        % (step, kind, first, step, kind, second)
+        for step, kind, first, second in conflicts)
+
+
+def _ledger_conflict_refusal(code, denominator, pointer, conflicts):
+    """The D4R-21 refusal for a row a ledger contradiction blocks.
+
+    The row stands present but not derivable, its reason names
+    both figures for every contradicted step, and neither figure
+    is taken: a figure with no governing correction and no feeder
+    priority to settle it is unreconciled and blocks its metric.
+    """
+    figures = {"E-3": "no token figure",
+               "E-4": "no per step money figure",
+               "B-2": "no budget share figure"}[code]
+    text = _ledger_conflict_text(conflicts)
+    steps = _each_step({step for step, _kind, _first, _second
+                        in conflicts})
+    return _refusal(
+        code, "present but not derivable", figures, denominator,
+        pointer,
+        shows="the cost ledger states contradictory figures for "
+              "one step, %s, with no governing correction and no "
+              "feeder priority standing between the lines, and no "
+              "resolution to either line stands" % text,
+        token="unreconciled-figure",
+        follows="the contradictory figures cannot both stand "
+                "and neither is taken, so no figure stands for "
+                "the row",
+        rule_name=code + " ledger contradiction rule",
+        broken="the reconciliation between the contradictory "
+               "ledger figures for %s" % steps,
+        required="a cost ledger stating one figure for each "
+                 "step, or a governing correction settling the "
+                 "contradictory figures",
+        held="the ledger states %s, and no governing correction "
+             "and no feeder priority stands between the lines"
+             % text)
+
+
+def _ledger_disagreement_entries(captured):
+    """Disagreements block entries for ledger contradictions.
+
+    One blocking entry per metric each contradiction touches, in
+    the D4R-21 form: both figures stand in the entry, the entry
+    carries the ungoverned wording, and its first line states
+    the metric blocked and that the verdict was withheld for
+    this disagreement. A token contradiction touches E-3 and
+    B-2; a money contradiction touches E-4 and B-2.
+    """
+    data = _ledger_data(captured)
+    entries = []
+    for step, kind, first, second in data["conflicts"]:
+        codes = ("E-3", "B-2") if kind == "tokens" else ("E-4", "B-2")
+        figures = (
+            "the cost ledger states Step %d %s %d and Step %d %s "
+            "%d for the same step, with no governing correction "
+            "and no feeder priority between the lines"
+            % (step, kind, first, step, kind, second))
+        for code in codes:
+            entries.append((
+                "Blocked metric: %s, the verdict was withheld "
+                "for this disagreement" % code,
+                "Records: %s | Figures: %s | Metric: %s | "
+                "Governing position: ungoverned with no verdict "
+                "depending on it"
+                % (data["pointer"], figures, code)))
+    return entries
 
 
 def _step_record_money(captured):
@@ -2683,7 +2780,15 @@ def _step_record_money(captured):
 
 def _derive_e3(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
-    ledger_tokens = _ledger_data(captured)["tokens"]
+    ledger_data = _ledger_data(captured)
+    token_conflicts = [entry for entry in ledger_data["conflicts"]
+                       if entry[1] == "tokens"]
+    if token_conflicts:
+        return _ledger_conflict_refusal(
+            "E-3", denom,
+            _pointer("E-3", ledger_data["pointer"], captured),
+            token_conflicts)
+    ledger_tokens = ledger_data["tokens"]
     if ledger_tokens and all(step in ledger_tokens
                              for step in universe.evidenced):
         figures = "; ".join(
@@ -2808,6 +2913,13 @@ def _money_mentions(captured):
 def _derive_e4(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     ledger_data = _ledger_data(captured)
+    money_conflicts = [entry for entry in ledger_data["conflicts"]
+                       if entry[1] == "money"]
+    if money_conflicts:
+        return _ledger_conflict_refusal(
+            "E-4", denom,
+            _pointer("E-4", ledger_data["pointer"], captured),
+            money_conflicts)
     step_money, step_money_pointer = _step_record_money(captured)
     merged_money = dict(step_money)
     merged_money.update(ledger_data["money"])
@@ -5388,6 +5500,10 @@ def _b2_side_state(spent, budget, per_step, universe):
 def _derive_b2(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     data = _ledger_data(captured)
+    if data["conflicts"]:
+        return _ledger_conflict_refusal(
+            "B-2", denom, _pointer("B-2", data["pointer"], captured),
+            data["conflicts"])
     ledgers = data["ledgers"]
     pointer = data["pointer"]
     tokens = data["tokens"]
@@ -5963,6 +6079,7 @@ def _disagreement_lines(captured):
     r5, b5 = _slice5_disagreement_entries(captured)
     restatements += r5
     blocking += [(None, entry) for entry in b5]
+    blocking += _ledger_disagreement_entries(captured)
     feeders = _decision_feeders(captured)
     if feeders["queue_usable"] and feeders["table_items"]:
         table = {item["item"]: item
@@ -6123,7 +6240,14 @@ def _record_cost_lines(captured, universe):
             "records and rosters, %s"
             % ", ".join("Step %d: %d" % (step, totals[step])
                         for step in sorted(totals)))
-    if data["tokens"]:
+    token_conflicts = [entry for entry in data["conflicts"]
+                       if entry[1] == "tokens"]
+    if token_conflicts:
+        lines.append(
+            "Token position: the cost ledger states contradictory "
+            "token figures, %s, and no token total is taken from "
+            "them" % _ledger_conflict_text(token_conflicts))
+    elif data["tokens"]:
         lines.append(
             "Token position: token figures as recorded in the "
             "cost ledger, %d in all across %d steps"
