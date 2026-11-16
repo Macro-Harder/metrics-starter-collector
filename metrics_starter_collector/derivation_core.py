@@ -1489,12 +1489,23 @@ def _derive_t4(captured, universe):
                   ", and no BANKED interval duration stands "
                   "anywhere in the ledger, " + held_tail))
     return _refusal(
-        "T-4", "missing", "no banked duration figure", denom, pointer,
-        shows="the path ledger holds no banked entry for any step",
-        token="no-feeder-record",
-        follows="no feeder record for the metric exists in the "
-                "tree, so the row is missing",
-        rule_name="T-4 feeder standing rule")
+        "T-4", "present but not derivable", "no banked duration figure",
+        denom, _pointer("T-4", pointer, captured),
+        shows="a path ledger stands in form and holds no BANKED "
+              "entry at all, and no banked item stands in any "
+              "other named feeder",
+        token="missing-field",
+        follows="no BANKED entry stands in the path ledger from "
+                "which a duration can be formed, so no wait "
+                "figure stands, and a count of zero banked items "
+                "is never printed as a duration",
+        rule_name="T-4 zero banked entry rule",
+        broken="a BANKED entry in the path ledger",
+        required="a BANKED entry in the path ledger, carrying "
+                 "an interval duration, from which a wait can "
+                 "be formed",
+        held="the path ledger stands in form, stating its steps "
+             "and their transitions, and holds no BANKED entry")
 
 
 def _t7_round_example(captured):
@@ -3196,26 +3207,29 @@ def _derive_f2(captured, universe):
             "name outside the gate alias set, and that name is "
             "not read as a gate file" % _instance_label(key))
     if counted and not problems:
-        # The miniature position the plan states for the target
-        # shape copy: first ruling outcomes recorded per step in
-        # one named place stand at 0, the gate outcomes standing
-        # scattered across gate records and gate rulings under
-        # both names, with counted gate files standing for only
-        # part of the evidenced universe, so no rate is derived
-        # from final closing states on that position.
+        # No rate is derived from final closing states alone,
+        # on any tree shape: a final closing state does not
+        # record whether the first ruling approved the step,
+        # so where no counted gate instance carries a first
+        # ruling outcome at all, the row stands present but
+        # not derivable in the D4R-13 form, whether the counted
+        # gate files stand for the whole evidenced universe or
+        # for part of it, and under one gate name or both.
         outcomes_stand = any(
             fact["first_ruling_outcome"] is not None
             for fact in counted.values())
         gate_classes = {piece.record_class for piece in gates}
-        if not outcomes_stand and \
-                counted_steps != set(universe.evidenced) and \
-                CLS_GATE_RECORD in gate_classes and \
-                CLS_GATE_RULING in gate_classes:
-            problems.append(
+        if not outcomes_stand:
+            clause = (
                 "no first ruling outcome is recorded per step "
-                "in one named place for the steps the row spans, "
-                "the gate outcomes standing scattered across "
-                "gate records and gate rulings under both names")
+                "in one named place for the steps the row spans")
+            if CLS_GATE_RECORD in gate_classes and \
+                    CLS_GATE_RULING in gate_classes:
+                clause += (
+                    ", the gate outcomes standing scattered "
+                    "across gate records and gate rulings under "
+                    "both names")
+            problems.append(clause)
     if problems or not counted:
         held_clauses = []
         classes = {piece.record_class for piece in gates}

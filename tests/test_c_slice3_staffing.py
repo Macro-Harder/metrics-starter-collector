@@ -56,12 +56,21 @@ class TestSlice3Staffing(FixtureTestCase):
         asserted subcount: Step 3 carries no gate record, only a
         gate ruling in the qualified form, so the qualified
         subcount of 1 can stand only if the ruling name is read.
+
+        Corrected at Step 15 round 1, item R15-01: the ruling
+        fixtures now state a first ruling outcome, so the
+        present verdict rests on that outcome and not on
+        closing states alone.
         """
         case = staffing_case("f04-both-names")
-        case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(1)
+        case["files"]["steps/step-01-gate-ruling.md"] = gate_ruling(
+            1, extra="First ruling outcome: Go, closes the step, "
+                     "no send back before closure.")
         del case["files"]["steps/step-03-gate-record.md"]
         case["files"]["steps/step-03-gate-ruling.md"] = gate_ruling(
-            3, "CLOSED-QUALIFIED")
+            3, "CLOSED-QUALIFIED",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -70,9 +79,21 @@ class TestSlice3Staffing(FixtureTestCase):
         self.assertRegex(block, r"plain[^\d]*2(?!\d)(?!\.\d)")
 
     def test_f04_step_with_neither_gate_name(self):
-        """F-04. EC-09, EC-23. A step with neither gate name stands missing."""
+        """F-04. EC-09, EC-23. A step with neither gate name stands missing.
+
+        Corrected at Step 15 round 1, item R15-01: the gate
+        records of the counted steps now state a first ruling
+        outcome, so the present verdict rests on that outcome
+        and not on closing states alone.
+        """
         case = staffing_case("f04-neither-name")
         del case["files"]["steps/step-03-gate-record.md"]
+        for n in (1, 2):
+            case["files"]["steps/step-%02d-gate-record.md" % n] = (
+                gate_record(n, "CLOSED-PASS",
+                            extra="First ruling outcome: Go, closes "
+                                  "the step, no send back before "
+                                  "closure."))
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -144,6 +165,54 @@ class TestSlice3Staffing(FixtureTestCase):
         assert_verdict(self, row_block(result.stdout, "F-2"),
                        "present but not derivable", "F-2")
 
+    def test_f2_closure_states_alone_no_rate_from_closing_states(self):
+        """R15-01, breaker B15R1-B1. D4R-13, DG-01.
+
+        Breaker paper probe form: a three step tree whose gate
+        records state one line each, Closure state: CLOSED-PASS,
+        with step records and a path ledger in the fixture forms.
+        No Auditor approval row stands anywhere in the tree and
+        no first ruling outcome field stands anywhere in the
+        tree. A final closing state does not record whether the
+        first ruling approved the step, so no rate may be built
+        from closing states alone: the row stands present but
+        not derivable, with the reason naming that no first
+        ruling outcome is recorded per step in one named place,
+        and no figure of 3 of 3 approved stands on the row.
+        """
+        case = staffing_case("f2-closure-alone", steps=(1, 2, 3))
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present but not derivable", "F-2")
+        self.assertNotRegex(block, r"3 of 3 approved")
+        self.assertNotIn("first-time approval rate: 3", block)
+        lowered = block.lower()
+        self.assertIn("no first ruling outcome is recorded per step "
+                      "in one named place", lowered)
+
+    def test_f2_gate_history_lines_do_not_supply_a_first_ruling(self):
+        """R15-01, breaker B15R1-B1 variant. D4R-13, DG-08.
+
+        The closure alone tree of the companion test, with step
+        record gate history lines added stating a first ruling.
+        A step record gate history is not a record kind the
+        chain may count as a first ruling feeder, so the variant
+        changes nothing: the row stands present but not
+        derivable and no rate of 3 of 3 approved stands.
+        """
+        case = staffing_case("f2-history-variant", steps=(1, 2, 3))
+        for n in (1, 2, 3):
+            case["files"]["steps/step-%02d-record.md" % n] = step_record(
+                n, extra="Gate history: first ruling Go, the step "
+                         "stands approved at its first ruling.")
+        root = build_one(case)
+        result = run_tool(root)
+        block = row_block(result.stdout, "F-2")
+        assert_verdict(self, block, "present but not derivable", "F-2")
+        self.assertNotRegex(block, r"3 of 3 approved")
+        self.assertNotIn("first-time approval rate: 3", block)
+
     def test_g03_additions_over_base_with_ca9_three_figures(self):
         """G-03. WV22 E-2 F1, WV22 E-2 F2. Additions over base, three figures.
 
@@ -199,11 +268,19 @@ class TestSlice3Staffing(FixtureTestCase):
         assert_verdict(self, row_block(result.stdout, "T-7"), "missing", "T-7")
 
     def test_g04_recycled_step_counted_once(self):
-        """G-04. Spin 772 key: a recycled instance yields one key, counted once."""
+        """G-04. Spin 772 key: a recycled instance yields one key, counted once.
+
+        Corrected at Step 15 round 1, item R15-01: the regate
+        fixture now states a first ruling outcome, so the
+        present verdict rests on that outcome and not on
+        closing states alone.
+        """
         case = staffing_case("g04-recycled", steps=(2,))
         case["files"]["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-FAIL")
         case["files"]["steps/step-02-regate-record.md"] = gate_record(
-            2, "CLOSED-QUALIFIED", extra="Recycled instance ruling.")
+            2, "CLOSED-QUALIFIED",
+            extra="Recycled instance ruling. First ruling outcome: "
+                  "Go, closes the step, no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -340,7 +417,10 @@ class TestSlice3Staffing(FixtureTestCase):
         case["files"]["steps/step-03-record.md"] = step_record(
             3, extra="Replaced instance figures stand named as replaced "
                      "under the replaced instance key.")
-        case["files"]["steps/step-03r-gate-record.md"] = gate_record(3, "CLOSED-PASS")
+        case["files"]["steps/step-03r-gate-record.md"] = gate_record(
+            3, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -351,7 +431,10 @@ class TestSlice3Staffing(FixtureTestCase):
         """Gate alias set, Margin M4 List 2. EC-09. The regate form stands in the set."""
         case = staffing_case("alias-regate", steps=(5,))
         del case["files"]["steps/step-05-gate-record.md"]
-        case["files"]["steps/step-05-regate-record.md"] = gate_record(5, "CLOSED-PASS")
+        case["files"]["steps/step-05-regate-record.md"] = gate_record(
+            5, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
@@ -360,8 +443,12 @@ class TestSlice3Staffing(FixtureTestCase):
         """Gate alias set, Margin M4 List 2. EC-09. Ruling variants stand in the set."""
         case = staffing_case("alias-variants", steps=(6,))
         del case["files"]["steps/step-06-gate-record.md"]
-        case["files"]["steps/step-06-gate-ruling-round-2.md"] = gate_ruling(6)
-        case["files"]["steps/step-06-gate-ruling-reaudit.md"] = gate_ruling(6)
+        case["files"]["steps/step-06-gate-ruling-round-2.md"] = gate_ruling(
+            6, extra="First ruling outcome: Go, closes the step, "
+                     "no send back before closure.")
+        case["files"]["steps/step-06-gate-ruling-reaudit.md"] = gate_ruling(
+            6, extra="First ruling outcome: Go, closes the step, "
+                     "no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         assert_verdict(self, row_block(result.stdout, "F-2"), "present", "F-2")
@@ -473,6 +560,13 @@ class TestSlice3Staffing(FixtureTestCase):
         """
         first = staffing_case("wv21-shape-first", features=("gate-record-name",))
         second = staffing_case("wv21-shape-second", features=("gate-ruling-name",))
+        for shape in (first, second):
+            for n in (1, 2, 3):
+                shape["files"]["steps/step-%02d-gate-record.md" % n] = (
+                    gate_record(n, "CLOSED-PASS",
+                                extra="First ruling outcome: Go, closes "
+                                      "the step, no send back before "
+                                      "closure."))
         for n in (1, 2, 3):
             second["files"]["steps/step-%02d-gate-ruling.md" % n] = (
                 second["files"].pop("steps/step-%02d-gate-record.md" % n))
@@ -694,8 +788,14 @@ class TestSlice3Staffing(FixtureTestCase):
     def test_wv22_f2_f3_f4_subcounts_travel_with_rate(self):
         """WV22 F-2 F3, WV22 F-2 F4. EC-32. Subcounts under one denominator."""
         case = staffing_case("wv22-f2-f34", steps=(1, 2))
-        case["files"]["steps/step-01-gate-record.md"] = gate_record(1, "CLOSED-PASS")
-        case["files"]["steps/step-02-gate-record.md"] = gate_record(2, "CLOSED-QUALIFIED")
+        case["files"]["steps/step-01-gate-record.md"] = gate_record(
+            1, "CLOSED-PASS",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
+        case["files"]["steps/step-02-gate-record.md"] = gate_record(
+            2, "CLOSED-QUALIFIED",
+            extra="First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -712,6 +812,12 @@ class TestSlice3Staffing(FixtureTestCase):
         forms belong to T-4 and T-7 alone, and F-2 carries none.
         """
         case = staffing_case("f22-f2-negative")
+        for n in (1, 2, 3):
+            case["files"]["steps/step-%02d-gate-record.md" % n] = (
+                gate_record(n, "CLOSED-PASS",
+                            extra="First ruling outcome: Go, closes "
+                                  "the step, no send back before "
+                                  "closure."))
         root = build_one(case)
         result = run_tool(root)
         block = row_block(result.stdout, "F-2")
@@ -811,7 +917,9 @@ class TestSlice3Staffing(FixtureTestCase):
         case["files"]["steps/step-02-gate-record.md"] = gate_record(
             2, "CLOSED-PASS",
             extra="First trace for step 2: 2 LANDED of 2 items "
-                  "checked, 0 PARTIAL, 0 CONTRADICTED.")
+                  "checked, 0 PARTIAL, 0 CONTRADICTED. "
+                  "First ruling outcome: Go, closes the step, "
+                  "no send back before closure.")
         case["files"]["steps/step-02-trace-record.md"] = (
             "# Step 2 first trace record\n\nParts: 2 LANDED, "
             "1 PARTIAL, 0 CONTRADICTED. Stated total: 3 items "

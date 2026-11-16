@@ -103,7 +103,7 @@ INVENTORY = {
         ],
     },
     "test_c_slice3_staffing": {
-        "count": 48,
+        "count": 50,
         "cases": [
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_partial_coverage_without_defined_form_is_not_present",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_e1_row_cross_check_marking_in_statement_line",
@@ -120,6 +120,8 @@ INVENTORY = {
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_one",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_three",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f06_unmarked_signal_two",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_closure_states_alone_no_rate_from_closing_states",
+            "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f2_gate_history_lines_do_not_supply_a_first_ruling",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f18_recycle_inside_one_record_f2_q4_visible",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f18_unknown_version_slice3_rows",
             "tests.test_c_slice3_staffing.TestSlice3Staffing.test_f22_no_degraded_marking_on_f2_row",
@@ -156,7 +158,7 @@ INVENTORY = {
         ],
     },
     "test_d_slice4_time_decision": {
-        "count": 73,
+        "count": 74,
         "cases": [
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_a7_9_b1_cross_piece_basis_mismatch_no_code_fits",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_b1_both_derivation_outputs_stand_present",
@@ -228,6 +230,7 @@ INVENTORY = {
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_present_row_cross_check_marking_in_statement_line",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_queue_combination_item_in_queue_counts",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_queue_combination_table_only_item_fails",
+            "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_t4_zero_banked_entry_present_but_not_derivable",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_time_family_reads_capture_only",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_wv21_queue_habit_equivalent_content_same_d1_row",
             "tests.test_d_slice4_time_decision.TestSlice4TimeDecision.test_wv21_time_rows_equivalent_across_queue_habit",
@@ -443,4 +446,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 370
+TOTAL = 373

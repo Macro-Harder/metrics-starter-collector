@@ -495,6 +495,31 @@ class TestSlice4TimeDecision(FixtureTestCase):
         assert_verdict(self, row_block(result.stdout, "T-4"),
                        "present but not derivable", "T-4")
 
+    def test_t4_zero_banked_entry_present_but_not_derivable(self):
+        """R15-04, correctness F3. Brief Section 1, T-4 zero count case.
+
+        Probe form of the correctness paper: a path ledger
+        standing in form, steps stated with full clock
+        transitions, holding no BANKED entry at all, and a
+        decision table standing in the metrics record, with no
+        banked item standing in any other named feeder. The
+        ledger is the metric feeder and it stands, so the row
+        is present but not derivable, with the reason naming
+        that no BANKED entry stands from which a duration can
+        be formed, and never missing with the no feeder record
+        code, which stands only where no path ledger stands.
+        """
+        files = base_files()
+        files["wiki/wiki/synthesis/build-metrics-record.md"] = (
+            metrics_record(body="Step table stands complete for "
+                                "the fixture steps.",
+                           decision_table=decision_table([RULED_ROW])))
+        result, _ = run_case(make_case("t4-zero-banked", files, []))
+        block = row_block(result.stdout, "T-4")
+        assert_verdict(self, block, "present but not derivable", "T-4")
+        self.assertIn("no BANKED entry stands", block)
+        self.assertNotIn("no-feeder-record", block)
+
     def test_t4_queue_combination_item_in_queue_counts(self):
         """EC-26, EC-08; WV22 T-4 F2, F3. Queue governs, item in queue counts."""
         files = base_files()

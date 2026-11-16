@@ -355,6 +355,17 @@ class TestSlice7Report(FixtureTestCase):
         not recompute from the feeder figures the two trees share.
         """
         files = base_files()
+        # Corrected at Step 15 round 1, item R15-01: the gate
+        # records of both trees now state a first ruling
+        # outcome, so the F-2 present verdict on the pair rests
+        # on that outcome and not on closing states alone. The
+        # same text stands in both trees, so the unseparable
+        # feeder sharing this docstring states stands unchanged.
+        for n in (1, 2, 3):
+            files["steps/step-%02d-gate-record.md" % n] = gate_record(
+                n, "CLOSED-PASS",
+                extra="First ruling outcome: Go, closes the step, "
+                      "no send back before closure.")
         transitions = []
         for n in (1, 2, 3):
             extra = ""
@@ -1899,7 +1910,19 @@ class TestSlice7Report(FixtureTestCase):
         self._assert_ledger_limbs(first, second)
 
     def test_wv21_cross_shape_report_level_points(self):
-        """EC-41 to EC-49. Header, sections and closed content agree."""
+        """EC-41 to EC-49. Header, sections and closed content agree.
+
+        Corrected at Step 15 round 1, items R15-01 and R15-04:
+        the missing field counts move by two in each shape.
+        The F-2 row of each shape, whose gate files state no
+        first ruling outcome, now stands present but not
+        derivable on the missing field form instead of present
+        on closing states alone, and the T-4 row of each shape,
+        whose ledger holds no BANKED entry, now stands present
+        but not derivable on the missing field form instead of
+        missing on the no feeder record form. Each change adds
+        one missing field entry to its shape count.
+        """
         first, second = self._run_shapes()
         for report in (first, second):
             lines = report.splitlines()
@@ -1924,9 +1947,9 @@ class TestSlice7Report(FixtureTestCase):
                 .splitlines()
                 if not ln.strip().lower().startswith("missing field:")),
             "data quality section differed between shapes")
-        self.assertIn("missing field: 2",
+        self.assertIn("missing field: 4",
                       section_text(first, "Data quality"))
-        self.assertIn("missing field: 3",
+        self.assertIn("missing field: 5",
                       section_text(second, "Data quality"))
         self.assertEqual(
             disagreements_block(first), disagreements_block(second),
