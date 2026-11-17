@@ -1300,14 +1300,38 @@ def deliver_report(text, root, report_path):
             "does not stand as a regular file and cannot be "
             "delivered to as named" % (report_path,))
     data = text.encode("utf-8")
-    try:
-        handle = os.open(
-            str(destination),
-            os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NONBLOCK,
-            0o666)
-    except OSError as exc:
-        raise UsageError("deliver the report: destination %s: %s"
-                         % (report_path, exc))
+    # The write is staged in a sibling file, opened with O_EXCL
+    # under a name no standing file or link occupies, and renamed
+    # over the destination only once the staged write stands
+    # complete. A failure at any point after the staging open
+    # therefore leaves a prior file at the destination as it
+    # stood and leaves no partial file at the destination, and
+    # the staging file is removed on every failure path.
+    staging = None
+    handle = None
+    for attempt in range(100):
+        candidate = destination.parent / (
+            "%s.tmp-msc-%d-%d" % (destination.name, os.getpid(),
+                                  attempt))
+        try:
+            handle = os.open(
+                str(candidate),
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                | os.O_NONBLOCK,
+                0o666)
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            raise UsageError(
+                "deliver the report: destination %s: %s"
+                % (report_path, exc))
+        staging = candidate
+        break
+    if staging is None:
+        raise UsageError(
+            "deliver the report: destination %s: no staging file "
+            "could be opened beside the destination"
+            % (report_path,))
     try:
         if not stat.S_ISREG(os.fstat(handle).st_mode):
             raise UsageError(
@@ -1319,10 +1343,20 @@ def deliver_report(text, root, report_path):
         if written != len(data):
             raise OSError("short write: %d of %d bytes written"
                           % (written, len(data)))
+        os.close(handle)
+        handle = None
+        os.replace(str(staging), str(destination))
+        staging = None
     except UsageError:
         raise
     except OSError as exc:
         raise UsageError("deliver the report: destination %s: %s"
                          % (report_path, exc))
     finally:
-        os.close(handle)
+        if handle is not None:
+            os.close(handle)
+        if staging is not None:
+            try:
+                os.unlink(str(staging))
+            except OSError:
+                pass

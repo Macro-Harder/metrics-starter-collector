@@ -529,6 +529,28 @@ INVENTORY = {
             "tests.test_h_step16_unit4.TestStep16Unit4.test_r16_09_six_reason_code_definitions_unchanged",
         ],
     },
+    "test_h_step16_unit5": {
+        "count": 17,
+        "cases": [
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_07_short_write_after_open_prior_intact",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_07_write_failure_after_open_no_prior_no_partial",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_07_write_failure_after_open_prior_intact",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_control_successful_delivery_matches_stdout",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_destination_inside_tree_plain",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_destination_is_a_feeder_file",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_destination_is_the_root_itself",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_destination_under_proc",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_destination_under_sys_kernel",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_link_inside_pointing_outside",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_link_outside_pointing_inside",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_named_pipe_destination",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_parent_link_to_the_tree",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_attack6_parent_segments_resolving_inside",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_case_a_destination_in_read_only_directory",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_case_b_prior_read_only_file_left_as_it_stood",
+            "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_case_c_parent_directory_does_not_stand",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -557,4 +579,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 464
+TOTAL = 481
