@@ -1248,6 +1248,322 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertTrue(block)
         self.assertIn("present but not derivable", block)
 
+    def test_signal_two_structural_negation_header_lines_do_not_except_at_capture(self):
+        """C4B-01, shell limb, standing for R15-07.
+
+        The structural negation header lines in the shell
+        form, by direct call, and a sample of them through
+        the module entry route. Governance is judged by
+        grammatical position, not by membership in a closed
+        list of subjects, auxiliaries or participle words,
+        in the same form sets the core test pins: lone
+        negation clauses with other subjects and other
+        auxiliaries, adverb closings and an inserted
+        article, the further negation words neither, none
+        and the spaced contraction, post statement
+        negations, trailing rejection clauses with relative,
+        modal, adverb and semicolon openings, and participle
+        predicates beyond the widened rejection set. Every
+        such line states no exception and still fails signal
+        two at capture. The boundary controls keep their
+        standing: not audited, not counted and never audited
+        except, a rejection in a later clause after a comma
+        that carries a subject of its own excepts, hardly
+        and without still except, and the brief form lines
+        keep excepting. Through the entry route, a sample of
+        the governing lines stand truncated on signal two
+        with D-1 missing, and the not audited and comma
+        subject controls stand read in full with D-1 present
+        but not derivable.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        negated = (
+            ("lone-figure",
+             "Rows stated in header: 99, the figure is not, "
+             "strictly speaking, a planned count."),
+            ("lone-number",
+             "Rows stated in header: 99, the number is not, "
+             "strictly speaking, a planned count."),
+            ("lone-total",
+             "Rows stated in header: 99, the total is not, "
+             "strictly speaking, a planned count."),
+            ("lone-value",
+             "Rows stated in header: 99, the value is not, "
+             "in fact, a planned count."),
+            ("lone-count-itself",
+             "Rows stated in header: 99, the count itself "
+             "is not, strictly speaking, a planned count."),
+            ("lone-does-not",
+             "Rows stated in header: 99, does not, strictly "
+             "speaking, state a planned count."),
+            ("lone-did-not",
+             "Rows stated in header: 99, did not, in fact, "
+             "state a planned count."),
+            ("lone-can-not",
+             "Rows stated in header: 99, can not, in fact, "
+             "be a planned count."),
+            ("lone-could-not",
+             "Rows stated in header: 99, could not, in "
+             "fact, be a planned count."),
+            ("lone-would-not",
+             "Rows stated in header: 99, would not, in "
+             "fact, be a planned count."),
+            ("lone-must-not",
+             "Rows stated in header: 99, must not, in fact, "
+             "be a planned count."),
+            ("lone-has-not",
+             "Rows stated in header: 99, has not, in fact, "
+             "been a planned count."),
+            ("closing-not-really",
+             "Rows stated in header: 99, not really, a "
+             "planned count."),
+            ("closing-not-actually",
+             "Rows stated in header: 99, not actually, a "
+             "planned count."),
+            ("closing-never-really",
+             "Rows stated in header: 99, never really, a "
+             "target count."),
+            ("closing-not-strictly",
+             "Rows stated in header: 99, not strictly, a "
+             "planned count."),
+            ("inserted-article",
+             "Rows stated in header: 99, not a, strictly "
+             "speaking, planned count."),
+            ("neither-nor",
+             "Rows stated in header: 99, neither a planned "
+             "count nor a target count."),
+            ("none-of-it",
+             "Rows stated in header: 99, none of it a "
+             "planned count."),
+            ("spaced-contraction",
+             "Rows stated in header: 99, is n't a planned "
+             "count."),
+            ("post-not-accepted",
+             "Rows stated in header: 99, the planned count "
+             "was not accepted."),
+            ("post-not-honoured",
+             "Rows stated in header: 99, the planned count "
+             "was not honoured."),
+            ("post-not-used",
+             "Rows stated in header: 99, the planned count "
+             "was not used."),
+            ("trailing-not-accepted",
+             "Rows stated in header: 99, a planned count, "
+             "not accepted."),
+            ("trailing-which-board-rejected",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which the board rejected."),
+            ("trailing-which-board-withdrew",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which the board withdrew."),
+            ("trailing-which-will",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which will be rejected."),
+            ("trailing-which-would",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which would be rejected."),
+            ("trailing-which-may",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which may be rejected."),
+            ("trailing-which-can",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which can be rejected."),
+            ("trailing-finally",
+             "Rows stated in header: 99, stated as a "
+             "planned count, finally rejected."),
+            ("trailing-ultimately",
+             "Rows stated in header: 99, stated as a "
+             "planned count, ultimately rejected."),
+            ("trailing-formally",
+             "Rows stated in header: 99, stated as a "
+             "planned count, formally rejected."),
+            ("trailing-semicolon-board",
+             "Rows stated in header: 99, stated as a "
+             "planned count; the board rejected it."),
+            ("rejected-retracted",
+             "Rows stated in header: 99, the planned count "
+             "was retracted."),
+            ("rejected-revoked",
+             "Rows stated in header: 99, the planned count "
+             "was revoked."),
+            ("rejected-rescinded",
+             "Rows stated in header: 99, the planned count "
+             "was rescinded."),
+            ("rejected-annulled",
+             "Rows stated in header: 99, the planned count "
+             "was annulled."),
+            ("rejected-voided",
+             "Rows stated in header: 99, the planned count "
+             "was voided."),
+            ("rejected-invalidated",
+             "Rows stated in header: 99, the planned count "
+             "was invalidated."),
+            ("rejected-disallowed",
+             "Rows stated in header: 99, the planned count "
+             "was disallowed."),
+            ("rejected-overruled",
+             "Rows stated in header: 99, the planned count "
+             "was overruled."),
+            ("rejected-reversed",
+             "Rows stated in header: 99, the planned count "
+             "was reversed."),
+            ("rejected-struck",
+             "Rows stated in header: 99, the planned count "
+             "was struck."),
+            ("rejected-abandoned",
+             "Rows stated in header: 99, the planned count "
+             "was abandoned."),
+            ("rejected-repudiated",
+             "Rows stated in header: 99, the planned count "
+             "was repudiated."),
+            ("rejected-removed",
+             "Rows stated in header: 99, the planned count "
+             "was removed."),
+            ("rejected-set-aside",
+             "Rows stated in header: 99, the planned count "
+             "was set aside."),
+            ("twin-which-was",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which was rejected."),
+            ("twin-which-has-been",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which has been rejected."),
+            ("twin-which-is-being",
+             "Rows stated in header: 99, stated as a "
+             "planned count, which is being rejected."),
+            ("twin-later-withdrawn",
+             "Rows stated in header: 99, stated as a "
+             "planned count, later withdrawn."),
+            ("twin-lone-is-not",
+             "Rows stated in header: 99, is not, strictly "
+             "speaking, a planned count."),
+            ("twin-lone-it-is-not",
+             "Rows stated in header: 99, it is not, in "
+             "fact, a planned count."),
+            ("twin-lone-count-is-not",
+             "Rows stated in header: 99, the count is not, "
+             "strictly speaking, a planned count."))
+        for label, header in negated:
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNotNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("not-audited",
+                 "Rows stated in header: 99, not audited, stated "
+                 "as a planned count."),
+                ("not-counted",
+                 "Rows stated in header: 99, not counted, stated "
+                 "as a planned count."),
+                ("never-audited",
+                 "Rows stated in header: 99, never audited, "
+                 "stated as a planned count."),
+                ("comma-board-rejected-it",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, the board rejected it."),
+                ("comma-count-was-withdrawn",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, the count was withdrawn."),
+                ("hardly",
+                 "Rows stated in header: 99, hardly a planned "
+                 "count."),
+                ("without",
+                 "Rows stated in header: 99, without a planned "
+                 "count."),
+                ("brief-planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("brief-target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count."),
+                ("brief-a-planned",
+                 "Rows stated in header: 99, a planned count."),
+                ("brief-a-target",
+                 "Rows stated in header: 99, a target count.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("lone-figure",
+                 "Rows stated in header: 99, the figure is not, "
+                 "strictly speaking, a planned count."),
+                ("lone-could-not",
+                 "Rows stated in header: 99, could not, in "
+                 "fact, be a planned count."),
+                ("closing-not-really",
+                 "Rows stated in header: 99, not really, a "
+                 "planned count."),
+                ("inserted-article",
+                 "Rows stated in header: 99, not a, strictly "
+                 "speaking, planned count."),
+                ("neither-nor",
+                 "Rows stated in header: 99, neither a planned "
+                 "count nor a target count."),
+                ("post-not-accepted",
+                 "Rows stated in header: 99, the planned count "
+                 "was not accepted."),
+                ("trailing-which-board-rejected",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which the board rejected."),
+                ("trailing-which-will",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which will be rejected."),
+                ("trailing-finally",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, finally rejected."),
+                ("trailing-semicolon-board",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count; the board rejected it."),
+                ("rejected-retracted",
+                 "Rows stated in header: 99, the planned count "
+                 "was retracted."),
+                ("rejected-revoked",
+                 "Rows stated in header: 99, the planned count "
+                 "was revoked.")):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files(
+                    "", header + "\n")
+                root = build(make_case(
+                    "structural-negated-capture-" + label,
+                    files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("Verdict: missing", block)
+        for label, header in (
+                ("not-audited",
+                 "Rows stated in header: 99, not audited, stated "
+                 "as a planned count."),
+                ("comma-board-rejected-it",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, the board rejected it.")):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files(
+                    "", header + "\n")
+                root = build(make_case(
+                    "structural-negated-capture-" + label,
+                    files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertNotIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("present but not derivable", block)
+
     def test_signal_two_third_form_prose_line_does_not_fail_at_capture(self):
         """C3B-02, shell limb. Brief Section 5, in general terms.
 
@@ -1338,6 +1654,177 @@ class TestSlice2Capture(FixtureTestCase):
                 ("entry-excepted-planned",
                  "Header count: 99 rows, stated as a planned "
                  "count.\n", True)):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files("", header)
+                root = build(make_case(label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                if clean:
+                    self.assertNotIn("signal-two", result.stdout)
+                    self.assertNotIn("truncated", entry.lower())
+                    self.assertIn("present but not derivable", block)
+                else:
+                    self.assertIn("signal-two", result.stdout)
+                    self.assertIn("truncated", entry.lower())
+                    self.assertIn("Verdict: missing", block)
+
+    def test_signal_two_third_form_label_and_continuation_forms_at_capture(self):
+        """C4B-02, C4B-03 and C4C-01, shell limb. Brief Section 5.
+
+        The third header count form in the shell form, by direct
+        call and through the module entry route. The label of the
+        form stands at a statement opening, at the start of a line
+        or at the start of a sentence inside a line, and the words
+        between that opening and the colon are exactly one of the
+        labels header, header count, header row count and header
+        counts. A line whose opening words stand inside that label
+        segment, as Notes on the header, Section header, Draft
+        header count, A header count and Old header count, states
+        no count, in the embedded form and standing alone. A comma
+        or semicolon after the count phrase opens a trailing
+        clause only where that clause speaks of the count
+        statement itself, as an exception clause carrying a
+        planned or target count or a rejection of it, or a clause
+        of qualifier words alone: the prose line Header: 99 rows,
+        all removed from the draft, and its shape family, where
+        the clause after the comma speaks of the rows and not of
+        the statement, state no count and read in full. Matter
+        that belongs to the statement itself leaves it standing:
+        a qualifier tail (total, in total, in the table, stated,
+        exactly, only, overall), a full stop or an exclamation
+        ending, and a parenthetical following the count phrase,
+        under each genuine label, in mismatching, matching,
+        excepted and negated forms, and under a governing
+        correction the corrected count is the count tested. The
+        C3B-02 prose exhibit keeps its standing, and the genuine
+        Unit 18 forms keep theirs.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        no_count = (
+            ("substring-notes-on-the",
+             "Notes on the header: 99 rows."),
+            ("substring-section",
+             "Section header: 99 rows"),
+            ("substring-draft-count",
+             "Draft header count: 99 rows"),
+            ("substring-article",
+             "A header count: 99 rows"),
+            ("substring-old-count",
+             "Old header count: 99 rows."),
+            ("substring-table",
+             "Table header: 99 rows."),
+            ("substring-stated-count",
+             "Stated header count: 99 rows."),
+            ("prose-comma-removed",
+             "Header: 99 rows, all removed from the draft"),
+            ("prose-comma-removed-count-label",
+             "Header count: 99 rows, all removed from the draft."),
+            ("prose-comma-were-removed",
+             "Header: 99 rows, were removed from the draft"),
+            ("prose-comma-removed-from",
+             "Header count: 99 rows, removed from the draft"),
+            ("prose-summary-removed",
+             "Header summary: 99 rows were removed from "
+             "the draft."))
+        for label, header in no_count:
+            with self.subTest(form=label, route="direct-embedded"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+            with self.subTest(form=label, route="direct-alone"):
+                text = "# Step 1 audit paper\n\n" + header \
+                    + table_tail
+                self.assertIsNone(shell._signal_two_failure(text))
+        mismatch = (
+            ("qualifier-total",
+             "Header count: 99 rows total"),
+            ("qualifier-in-total",
+             "Header count: 99 rows in total"),
+            ("qualifier-in-the-table",
+             "Header count: 99 rows in the table"),
+            ("qualifier-stated",
+             "Header count: 99 rows stated"),
+            ("qualifier-exactly",
+             "Header count: 99 rows exactly"),
+            ("qualifier-only",
+             "Header: 99 rows only"),
+            ("qualifier-overall",
+             "Header count: 99 rows overall"),
+            ("ending-exclamation",
+             "Header count: 99 rows!"),
+            ("parenthetical-following",
+             "Header count: 99 rows (stated in the header)"),
+            ("label-row-count",
+             "Header row count: 99 rows"),
+            ("label-counts",
+             "Header counts: 99 rows"),
+            ("case-lower-total",
+             "header count: 99 rows total"),
+            ("case-upper-total",
+             "HEADER COUNT: 99 ROWS TOTAL"),
+            ("case-title-total",
+             "Header Count: 99 Rows Total"),
+            ("qualifier-negated",
+             "Header count: 99 rows total, not a planned count."),
+            ("excepted-rejected",
+             "Header count: 99 rows, stated as a planned "
+             "count, was rejected"))
+        for label, header in mismatch:
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNotNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("qualifier-match",
+                 "Header count: 2 rows total"),
+                ("label-row-count-match",
+                 "Header row count: 2 rows"),
+                ("label-counts-match",
+                 "Header counts: 2 rows"),
+                ("qualifier-excepted",
+                 "Header count: 99 rows total, stated as a "
+                 "planned count."),
+                ("parenthetical-match",
+                 "Header count: 2 rows (stated in the header)")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        with self.subTest(form="correction-mismatch", route="direct"):
+            text = ("# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. Header count: 99 rows total\n"
+                    "Corrected count: 5\n" + table_tail)
+            self.assertIsNotNone(shell._signal_two_failure(text))
+        with self.subTest(form="correction-match", route="direct"):
+            text = ("# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. Header count: 99 rows total\n"
+                    "Corrected count: 2\n" + table_tail)
+            self.assertIsNone(shell._signal_two_failure(text))
+        for label, header, clean in (
+                ("entry-prose-comma",
+                 "Header: 99 rows, all removed from the draft\n",
+                 True),
+                ("entry-substring-section",
+                 "Section header: 99 rows.\n", True),
+                ("entry-substring-notes",
+                 "Notes on the header: 99 rows.\n", True),
+                ("entry-qualifier-mismatch",
+                 "Header count: 99 rows total\n", False),
+                ("entry-row-count-mismatch",
+                 "Header row count: 99 rows\n", False),
+                ("entry-qualifier-match",
+                 "Header count: 2 rows total\n", True),
+                ("entry-qualifier-excepted",
+                 "Header count: 99 rows total, stated as a "
+                 "planned count.\n", True)):
             with self.subTest(form=label, route="entry"):
                 files = self._signal_two_metrics_files("", header)
                 root = build(make_case(label, files=files))

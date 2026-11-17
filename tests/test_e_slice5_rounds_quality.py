@@ -1412,6 +1412,249 @@ class TestSlice5RoundsQuality(FixtureTestCase):
                         "breakdown table. " + header + table_tail)
                 self.assertIsNone(core._signal_failure(text))
 
+    def test_signal_two_structural_negation_header_lines_do_not_except_in_core(self):
+        """C4B-01, core limb, standing for R15-07. Brief Section 5.
+
+        Direct calls on the core check over a table of 2 data
+        rows under a header count of 99. Governance is judged
+        by grammatical position, not by membership in a closed
+        list of subjects, auxiliaries or participle words.
+        A lone negation clause governs where the negation has
+        no complement of its own after it, whatever subject or
+        auxiliary stands before it and whatever adverb or
+        article stands after it: other subjects, other
+        auxiliaries standing alone, adverb closings and an
+        inserted article. Negation words of the closed
+        negation class govern in the same clause: neither,
+        none and the spaced contraction. A participle
+        predicate standing on the count statement after the
+        phrase governs, with or without a negation, whatever
+        participle word it is. A trailing clause governs
+        where it carries no subject of its own, where it
+        opens with a relative pronoun, or where it stands
+        after a semicolon. Every such line states no
+        exception and still fails signal two. The boundary
+        controls keep their standing: a negation carrying a
+        complement of its own in an earlier clause, not
+        audited, not counted and never audited, does not
+        defeat the exception, a rejection in a later clause
+        after a comma that carries a subject of its own does
+        not defeat it, hardly and without still except as
+        the findings left them, and the brief form lines
+        keep excepting.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, header in (
+                ("lone-figure",
+                 "Rows stated in header: 99, the figure is not, "
+                 "strictly speaking, a planned count."),
+                ("lone-number",
+                 "Rows stated in header: 99, the number is not, "
+                 "strictly speaking, a planned count."),
+                ("lone-total",
+                 "Rows stated in header: 99, the total is not, "
+                 "strictly speaking, a planned count."),
+                ("lone-value",
+                 "Rows stated in header: 99, the value is not, "
+                 "in fact, a planned count."),
+                ("lone-count-itself",
+                 "Rows stated in header: 99, the count itself "
+                 "is not, strictly speaking, a planned count."),
+                ("lone-does-not",
+                 "Rows stated in header: 99, does not, strictly "
+                 "speaking, state a planned count."),
+                ("lone-did-not",
+                 "Rows stated in header: 99, did not, in fact, "
+                 "state a planned count."),
+                ("lone-can-not",
+                 "Rows stated in header: 99, can not, in fact, "
+                 "be a planned count."),
+                ("lone-could-not",
+                 "Rows stated in header: 99, could not, in "
+                 "fact, be a planned count."),
+                ("lone-would-not",
+                 "Rows stated in header: 99, would not, in "
+                 "fact, be a planned count."),
+                ("lone-must-not",
+                 "Rows stated in header: 99, must not, in fact, "
+                 "be a planned count."),
+                ("lone-has-not",
+                 "Rows stated in header: 99, has not, in fact, "
+                 "been a planned count."),
+                ("closing-not-really",
+                 "Rows stated in header: 99, not really, a "
+                 "planned count."),
+                ("closing-not-actually",
+                 "Rows stated in header: 99, not actually, a "
+                 "planned count."),
+                ("closing-never-really",
+                 "Rows stated in header: 99, never really, a "
+                 "target count."),
+                ("closing-not-strictly",
+                 "Rows stated in header: 99, not strictly, a "
+                 "planned count."),
+                ("inserted-article",
+                 "Rows stated in header: 99, not a, strictly "
+                 "speaking, planned count."),
+                ("neither-nor",
+                 "Rows stated in header: 99, neither a planned "
+                 "count nor a target count."),
+                ("none-of-it",
+                 "Rows stated in header: 99, none of it a "
+                 "planned count."),
+                ("spaced-contraction",
+                 "Rows stated in header: 99, is n't a planned "
+                 "count."),
+                ("post-not-accepted",
+                 "Rows stated in header: 99, the planned count "
+                 "was not accepted."),
+                ("post-not-honoured",
+                 "Rows stated in header: 99, the planned count "
+                 "was not honoured."),
+                ("post-not-used",
+                 "Rows stated in header: 99, the planned count "
+                 "was not used."),
+                ("trailing-not-accepted",
+                 "Rows stated in header: 99, a planned count, "
+                 "not accepted."),
+                ("trailing-which-board-rejected",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which the board rejected."),
+                ("trailing-which-board-withdrew",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which the board withdrew."),
+                ("trailing-which-will",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which will be rejected."),
+                ("trailing-which-would",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which would be rejected."),
+                ("trailing-which-may",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which may be rejected."),
+                ("trailing-which-can",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which can be rejected."),
+                ("trailing-finally",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, finally rejected."),
+                ("trailing-ultimately",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, ultimately rejected."),
+                ("trailing-formally",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, formally rejected."),
+                ("trailing-semicolon-board",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count; the board rejected it."),
+                ("rejected-retracted",
+                 "Rows stated in header: 99, the planned count "
+                 "was retracted."),
+                ("rejected-revoked",
+                 "Rows stated in header: 99, the planned count "
+                 "was revoked."),
+                ("rejected-rescinded",
+                 "Rows stated in header: 99, the planned count "
+                 "was rescinded."),
+                ("rejected-annulled",
+                 "Rows stated in header: 99, the planned count "
+                 "was annulled."),
+                ("rejected-voided",
+                 "Rows stated in header: 99, the planned count "
+                 "was voided."),
+                ("rejected-invalidated",
+                 "Rows stated in header: 99, the planned count "
+                 "was invalidated."),
+                ("rejected-disallowed",
+                 "Rows stated in header: 99, the planned count "
+                 "was disallowed."),
+                ("rejected-overruled",
+                 "Rows stated in header: 99, the planned count "
+                 "was overruled."),
+                ("rejected-reversed",
+                 "Rows stated in header: 99, the planned count "
+                 "was reversed."),
+                ("rejected-struck",
+                 "Rows stated in header: 99, the planned count "
+                 "was struck."),
+                ("rejected-abandoned",
+                 "Rows stated in header: 99, the planned count "
+                 "was abandoned."),
+                ("rejected-repudiated",
+                 "Rows stated in header: 99, the planned count "
+                 "was repudiated."),
+                ("rejected-removed",
+                 "Rows stated in header: 99, the planned count "
+                 "was removed."),
+                ("rejected-set-aside",
+                 "Rows stated in header: 99, the planned count "
+                 "was set aside."),
+                ("twin-which-was",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which was rejected."),
+                ("twin-which-has-been",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which has been rejected."),
+                ("twin-which-is-being",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, which is being rejected."),
+                ("twin-later-withdrawn",
+                 "Rows stated in header: 99, stated as a "
+                 "planned count, later withdrawn."),
+                ("twin-lone-is-not",
+                 "Rows stated in header: 99, is not, strictly "
+                 "speaking, a planned count."),
+                ("twin-lone-it-is-not",
+                 "Rows stated in header: 99, it is not, in "
+                 "fact, a planned count."),
+                ("twin-lone-count-is-not",
+                 "Rows stated in header: 99, the count is not, "
+                 "strictly speaking, a planned count.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertEqual(
+                    core._signal_failure(text), "signal-two")
+        for label, header in (
+                ("not-audited",
+                 "Rows stated in header: 99, not audited, stated "
+                 "as a planned count."),
+                ("not-counted",
+                 "Rows stated in header: 99, not counted, stated "
+                 "as a planned count."),
+                ("never-audited",
+                 "Rows stated in header: 99, never audited, "
+                 "stated as a planned count."),
+                ("comma-board-rejected-it",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, the board rejected it."),
+                ("comma-count-was-withdrawn",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, the count was withdrawn."),
+                ("hardly",
+                 "Rows stated in header: 99, hardly a planned "
+                 "count."),
+                ("without",
+                 "Rows stated in header: 99, without a planned "
+                 "count."),
+                ("brief-planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("brief-target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count."),
+                ("brief-a-planned",
+                 "Rows stated in header: 99, a planned count."),
+                ("brief-a-target",
+                 "Rows stated in header: 99, a target count.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(core._signal_failure(text))
+
     def test_signal_two_two_correction_statements_last_governs_in_core(self):
         """C2B-02, core limb, standing for C1B-05. Brief Section 5.
 

@@ -1583,39 +1583,123 @@ def _header_count_excepted(header_line):
 
     The exception fires only where the header count stands
     stated as a planned count or as a target count and no
-    negation governs that statement. A negation form is one of
-    the words not, no or never, the modal form cannot, or a
-    contraction ending in n't, as isn't. A rejection form is
-    one of the words rejected, refused, denied, negated,
-    withdrawn, superseded, cancelled, canceled or dropped.
+    negation governs that statement. Governance is judged by
+    grammatical position, not by membership in a closed list
+    of subjects, auxiliaries or participle words. The closed
+    classes of English grammar are completed, not sampled:
+    a negation form is one of the negation words not, no,
+    never, neither, nor, none, nothing, nobody or nowhere,
+    the modal form cannot, or a contraction ending in n't,
+    spaced or unspaced. A function word is a determiner, a
+    pronoun, an auxiliary, copula or modal verb, a connective
+    or preposition, or an adverb, adverbs standing in their
+    ly form beside the listed forms. A verb form is a word
+    in a participle or past form, ending in ed, en or wn, or
+    one of the irregular verb forms, beside the phrase form
+    set aside; a verb of statement, as stated, said or
+    recorded, is no rejection predicate.
 
     A negation form standing in the same clause before the
     planned or target statement governs it, as not a planned
-    count, no planned count, never a target count, or isn't a
-    planned count, and so does a negation form standing alone
-    in its own clause before the statement, with no complement
-    of its own in that clause, as not, strictly speaking, a
-    planned count, because such a negation can only attach to
-    the statement that follows it, across any parenthetical
-    clause between them. A negation form standing in an
-    earlier clause with a complement of its own in that
-    clause, as not audited, stated as a planned count, governs
-    that complement and does not govern the statement. A
-    rejection form standing in the same clause after the
-    statement governs it, as the planned count was rejected
-    or the planned count was withdrawn, and so does a
-    rejection form standing in a later clause that carries no
-    subject of its own beyond a relative or auxiliary word,
-    as a planned count, rejected, or stated as a planned
-    count, which was rejected, because such a clause is the
-    trailing part of the one statement. The brief form lines,
-    the count stated as a planned count and the count stated
-    as a target count with no negation standing, except.
+    count, neither a planned count, none of it a planned
+    count, or isn't a planned count. A negation form standing
+    in an earlier clause governs it where that clause is the
+    negation standing alone: every word after the negation
+    in that clause is a function word, so the negation has
+    no complement of its own and can only attach to the
+    statement that follows it, across any parenthetical
+    clause between them, whatever subject or auxiliary
+    stands before the negation, as the figure is not,
+    strictly speaking, a planned count, does not, strictly
+    speaking, state a planned count, not really, a planned
+    count, or not a, strictly speaking, planned count. Where
+    the nearest earlier clause carrying a negation form has
+    a complement after the negation, as not audited, not
+    counted or never audited, that negation governs its own
+    complement, the search stops there, and the exception
+    stands. A verb form standing as the predicate of the
+    count statement in the same clause after the statement
+    governs it, with or without a negation, as the planned
+    count was rejected, the planned count was retracted, or
+    the planned count was not accepted, whatever participle
+    word stands in that position. A verb form standing in a
+    later clause governs it where the clause carries no
+    subject of its own before the verb form beyond function
+    words, as a planned count, rejected, a planned count,
+    not accepted, stated as a planned count, which will be
+    rejected, or stated as a planned count, finally
+    rejected, where the clause opens with a relative
+    pronoun, as stated as a planned count, which the board
+    rejected, the relative pronoun linking the clause to the
+    count whatever subject stands inside it, or where the
+    clause stands after a semicolon, as stated as a planned
+    count; the board rejected it. A rejection in a later
+    clause after a comma that carries a subject of its own
+    and no relative opening, as stated as a planned count,
+    the board rejected it, does not govern, and the search
+    stops at the nearest later clause carrying a verb form.
+    A later clause that restates the planned or target
+    wording is the exception wording itself and is passed
+    over. The weaker forms hardly and without are no
+    negation form under this rule and keep excepting, as
+    the findings left them. The brief form lines, the count
+    stated as a planned count and the count stated as a
+    target count with no negation standing, except.
     """
-    negation = r"(?:\b(?:not|no|never|cannot)\b|\b\w+n't\b)"
-    rejection = (
-        r"\b(?:rejected|refused|denied|negated|withdrawn"
-        r"|superseded|cancelled|canceled|dropped)\b")
+    negation_words = ("not", "no", "never", "neither", "nor",
+                      "none", "nothing", "nobody", "nowhere",
+                      "cannot")
+    function_words = {
+        "a", "an", "the", "it", "this", "that", "these",
+        "those", "itself", "there", "which", "who", "whom",
+        "whose", "he", "she", "they", "we", "you", "i", "him",
+        "her", "us", "them", "his", "hers", "its", "their",
+        "theirs", "our", "ours", "your", "yours", "my", "mine",
+        "any", "some", "each", "every", "all", "own",
+        "is", "was", "were", "are", "be", "been", "being",
+        "am", "has", "have", "had", "does", "do", "did",
+        "can", "could", "will", "would", "shall", "should",
+        "may", "might", "must", "cannot", "get", "gets",
+        "got", "and", "but", "or", "nor", "since", "as",
+        "in", "on", "by", "for", "of", "to", "at", "from",
+        "with", "after", "before", "then", "now", "later",
+        "also", "still", "just", "even", "only", "again",
+        "yet", "ever", "already", "longer", "aside"}
+    irregular_verbs = {"struck", "withdrew", "kept", "held",
+                       "sent", "left", "dealt", "meant",
+                       "built"}
+    statement_verbs = {"stated", "said", "described",
+                       "called", "named", "listed", "noted",
+                       "recorded", "presented", "written",
+                       "marked", "shown"}
+
+    def tokens(text):
+        spaced = re.sub(r"\sn't\b", " n't", text)
+        return re.findall(r"n't|[a-z]+(?:'[a-z]+)?", spaced)
+
+    def is_negation(word):
+        return word in negation_words or word.endswith("n't")
+
+    def is_function(word):
+        return word in function_words or word in negation_words \
+            or word.endswith("n't") or word.endswith("ly")
+
+    def is_verb_form(word):
+        return word.endswith("ed") or word.endswith("en") \
+            or word.endswith("wn") or word in irregular_verbs
+
+    def predicate_index(words):
+        for index, word in enumerate(words):
+            if word == "set":
+                if index + 1 < len(words) and \
+                        words[index + 1] == "aside":
+                    return index
+                continue
+            if is_verb_form(word) and \
+                    word not in statement_verbs:
+                return index
+        return None
+
     found = re.search(
         r"\bplanned count\b|\btarget count\b"
         r"|\bstated as (?:a |an )?(?:planned|target)"
@@ -1625,38 +1709,46 @@ def _header_count_excepted(header_line):
         return False
     clauses_before = re.split(
         r"[,;]", header_line[:found.start()])
-    if re.search(negation, clauses_before[-1]):
+    if any(is_negation(word)
+           for word in tokens(clauses_before[-1])):
         return False
     for clause in reversed(clauses_before[:-1]):
-        if not re.search(negation, clause):
+        words = tokens(clause)
+        negated = [index for index, word in enumerate(words)
+                   if is_negation(word)]
+        if not negated:
             continue
-        if re.fullmatch(
-                r"(?:(?:the|a|an|it|this|that|there) )?"
-                r"(?:(?:count|record|statement|header) )?"
-                r"(?:(?:is|was|were|are|be|been) )?"
-                r"(?:not|no|never|cannot|\w+n't)"
-                r"(?: (?:at all|any longer|longer))?",
-                clause.strip().rstrip(".")):
+        if all(is_function(word)
+               for word in words[negated[0] + 1:]):
             return False
         break
-    clauses_after = re.split(
-        r"[,;]", header_line[found.end():])
-    if re.search(rejection, clauses_after[0]):
-        return False
-    for clause in clauses_after[1:]:
-        rejected = re.search(rejection, clause)
-        if not rejected:
+    parts = re.split(r"([,;])", header_line[found.end():])
+    segments = [(None, parts[0])]
+    for index in range(1, len(parts), 2):
+        segments.append((parts[index], parts[index + 1]))
+    for position, (delimiter, segment) in enumerate(segments):
+        if re.search(r"planned count|target count"
+                     r"|stated as (?:a |an )?(?:planned|target)",
+                     segment):
             continue
-        head_words = clause[:rejected.start()].split()
-        if all(word in (
-                "which", "that", "it", "this", "was", "were",
-                "is", "are", "has", "have", "had", "been",
-                "being", "since", "and", "but", "now", "then",
-                "later", "subsequently")
-               for word in head_words):
+        words = tokens(segment)
+        predicate = predicate_index(words)
+        if predicate is None:
+            continue
+        head = words[:predicate]
+        if position == 0:
+            if all(is_function(word) for word in head):
+                return False
+            continue
+        if delimiter == ";":
+            return False
+        if head and head[0] in ("which", "that"):
+            return False
+        if all(is_function(word) for word in head):
             return False
         break
     return True
+
 
 
 def _last_corrected_count(lowered):
