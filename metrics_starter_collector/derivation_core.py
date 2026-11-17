@@ -659,6 +659,37 @@ def _unread_staffing_naming(captured, steps):
     return pairs, naming
 
 
+def _damaged_staffing_pieces(captured, step):
+    """The staffing feeder pieces of one step standing not read
+    in full in a state other than over limit: truncated,
+    malformed, unreadable or not visited, each with no text in
+    the capture. The over limit pieces stand in their own list
+    above, behind their cured branches, and stand apart here.
+    """
+    return [piece for piece in
+            captured.step_pieces(step, *_STAFFING_CLASSES)
+            if piece.text is None
+            and _piece_not_read_in_full(piece)
+            and not _piece_over_limit_not_read(piece)]
+
+
+def _damaged_staffing_naming(captured, steps):
+    """The damaged staffing pieces of the given steps, with naming.
+
+    Returns (pairs, naming) in the form _unread_staffing_naming
+    returns for over limit pieces, with each piece named by
+    _piece_state_naming, which states the piece and the state
+    that stopped its reading.
+    """
+    pairs = []
+    for step in steps:
+        for piece in _damaged_staffing_pieces(captured, step):
+            pairs.append((step, piece))
+    naming = "; ".join(
+        _piece_state_naming(piece) for _step, piece in pairs)
+    return pairs, naming
+
+
 def _staffing_steps_with_pieces(captured):
     """Every step a staffing feeder piece stands for, in order."""
     return sorted({piece.step for piece in
@@ -2571,6 +2602,38 @@ def _derive_e1_marked(captured, universe, pointer):
                              "instance",
                     held="the staffing pieces stand in the tree "
                          "at " + naming)
+            damaged, damaged_naming = _damaged_staffing_naming(
+                captured, instance_steps)
+            if damaged:
+                return _refusal(
+                    "E-1", "present but not derivable",
+                    "no staffed and base pair stands", denom,
+                    _pointer("E-1", pointer, captured),
+                    shows="step records and roster artifacts stand, "
+                          "and the staffing pieces the row rests "
+                          "on stand not read in full: "
+                          + damaged_naming + ", so no byte of "
+                          "those pieces was read and no staffed "
+                          "or base figure is taken from them",
+                    token=_quality_code(damaged[0][1]),
+                    follows="the row rests on pieces that were not "
+                            "read in full, so the row is present "
+                            "but not derivable; no instance is "
+                            "claimed to carry no pair, and no pair "
+                            "figure is claimed absent from a piece "
+                            "that was not read",
+                    rule_name="E-1 not read in full rule",
+                    broken="the staffed and base pair field for "
+                           + _steps_phrase(sorted(
+                               {step for step, _piece in damaged}))
+                           + ", which stands in a piece not read "
+                             "in full as its capture reason states",
+                    required="a step record or roster artifact "
+                             "read in full, stating a staffed "
+                             "count and a base count for the same "
+                             "instance",
+                    held="the staffing pieces stand in the tree "
+                         "at " + damaged_naming)
             return _refusal(
                 "E-1", "present but not derivable",
                 "no staffed and base pair stands", denom,
@@ -2694,6 +2757,38 @@ def _derive_e1(captured, universe):
                              "step",
                     held="the staffing pieces stand in the tree "
                          "at " + naming)
+            damaged, damaged_naming = _damaged_staffing_naming(
+                captured, unread_steps)
+            if damaged:
+                return _refusal(
+                    "E-1", "present but not derivable",
+                    "no staffed and base pair stands", denom,
+                    _pointer("E-1", pointer, captured),
+                    shows="step records and roster artifacts stand, "
+                          "and the staffing pieces the row rests "
+                          "on stand not read in full: "
+                          + damaged_naming + ", so no byte of "
+                          "those pieces was read and no staffed "
+                          "or base figure is taken from them",
+                    token=_quality_code(damaged[0][1]),
+                    follows="the row rests on pieces that were not "
+                            "read in full, so the row is present "
+                            "but not derivable; no step is claimed "
+                            "to carry no pair, and no pair figure "
+                            "is claimed absent from a piece that "
+                            "was not read",
+                    rule_name="E-1 not read in full rule",
+                    broken="the staffed and base pair field for "
+                           + _steps_phrase(sorted(
+                               {step for step, _piece in damaged}))
+                           + ", which stands in a piece not read "
+                             "in full as its capture reason states",
+                    required="a step record or roster artifact "
+                             "read in full, stating a staffed "
+                             "count and a base count for the same "
+                             "step",
+                    held="the staffing pieces stand in the tree "
+                         "at " + damaged_naming)
             return _refusal(
                 "E-1", "present but not derivable",
                 "no staffed and base pair stands", denom,
@@ -3197,6 +3292,29 @@ def _derive_e2(captured, universe):
                         "no additions figure is claimed absent "
                         "from a piece that was not read",
                 rule_name="E-2 total alone rule")
+        damaged, damaged_naming = _damaged_staffing_naming(
+            captured, sorted(universe.evidenced))
+        if damaged:
+            shows = shows.replace(
+                " and no roster additions over base figure stands "
+                "for any step",
+                "; the additions over base position for the steps "
+                "whose staffing pieces stand not read in full "
+                "rests on " + damaged_naming + ", so no additions "
+                "over base figure is claimed absent from a piece "
+                "that was not read", 1)
+            return _refusal(
+                "E-2", "present but not derivable",
+                "no additions over base figure", denom,
+                _pointer("E-2", pointer, captured),
+                shows=shows,
+                token="missing-field",
+                follows="a total alone never counts as additions, "
+                        "so the additions figure the row requires "
+                        "does not stand in the read feeders, and "
+                        "no additions figure is claimed absent "
+                        "from a piece that was not read",
+                rule_name="E-2 total alone rule")
         return _refusal(
             "E-2", "present but not derivable",
             "no additions over base figure", denom,
@@ -3241,6 +3359,37 @@ def _derive_e2(captured, universe):
                          "base figure or a total spins figure",
                 held="the staffing pieces stand in the tree at "
                      + naming)
+        damaged, damaged_naming = _damaged_staffing_naming(
+            captured, unread_steps)
+        if damaged:
+            return _refusal(
+                "E-2", "present but not derivable",
+                "no additions over base figure", denom,
+                _pointer("E-2", pointer, captured),
+                shows="step records and roster artifacts stand, "
+                      "and the staffing pieces the row rests on "
+                      "stand not read in full: "
+                      + damaged_naming + ", so no byte of those "
+                      "pieces was read and neither labelled "
+                      "quantity is taken from them",
+                token=_quality_code(damaged[0][1]),
+                follows="the row rests on pieces that were not "
+                        "read in full, so the row is present but "
+                        "not derivable; neither labelled quantity "
+                        "is claimed absent from a piece that was "
+                        "not read",
+                rule_name="E-2 not read in full rule",
+                broken="the additions over base and total spins "
+                       "fields for "
+                       + _steps_phrase(sorted(
+                           {step for step, _piece in damaged}))
+                       + ", which stand in a piece not read in "
+                         "full as its capture reason states",
+                required="a step record or roster artifact read "
+                         "in full, stating an additions over "
+                         "base figure or a total spins figure",
+                held="the staffing pieces stand in the tree at "
+                     + damaged_naming)
         return _refusal(
             "E-2", "present but not derivable",
             "no additions over base figure", denom,
@@ -4753,6 +4902,31 @@ def _q1_statement(captured, counted):
     return "; ".join(statements) if statements else None
 
 
+def _q1_unread_round_pieces(captured, counted):
+    """Round feeder pieces standing not read in full, uncounted.
+
+    A round record or red paper of the audit class, standing
+    with no text in the capture, feeds a round the counted
+    branch cannot count: no counted candidate stands on a
+    piece with no text, so a piece standing in this list is
+    omitted by construction, and a piece whose path carries
+    a counted candidate stands outside this list.
+    """
+    counted_paths = {candidate["path"] for candidate in counted}
+    pieces = []
+    for piece in captured.pieces:
+        if piece.text is not None or \
+                piece.record_class != CLS_AUDIT_PAPER:
+            continue
+        path = piece.paths[0] if piece.paths else ""
+        if "round" not in path and "-red" not in path:
+            continue
+        if path in counted_paths:
+            continue
+        pieces.append(piece)
+    return pieces
+
+
 def _derive_q1(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     papers = captured.pieces_of(CLS_AUDIT_PAPER, CLS_FIX_REGISTER)
@@ -4907,7 +5081,8 @@ def _derive_q1(captured, universe):
             held=_held_join(held))
     if counted:
         return _q1_present_result(
-            captured, counted, excluded, denom, pointer)
+            captured, counted, excluded, denom, pointer,
+            _q1_unread_round_pieces(captured, counted))
     if silent:
         candidate = silent[0]
         return _refusal(
@@ -5031,7 +5206,8 @@ def _derive_q1(captured, universe):
         held=_held_join(held_clauses))
 
 
-def _q1_present_result(captured, counted, excluded, denom, pointer):
+def _q1_present_result(captured, counted, excluded, denom, pointer,
+                       unread_omitted=()):
     """The bounded Q-1 row: qualifying round counts only.
 
     The population and the exclusion list stand before the counts,
@@ -5058,6 +5234,13 @@ def _q1_present_result(captured, counted, excluded, denom, pointer):
                candidate["form"]))
     figures = ("bounded form: " + population + "; " + exclusion
                + "; qualifying round counts: " + "; ".join(parts))
+    if unread_omitted:
+        naming = "; ".join(
+            _piece_state_naming(piece) for piece in unread_omitted)
+        figures += ("; population bound: the population stands "
+                    "bounded by " + naming + ", and the round "
+                    "that record feeds is not counted in this "
+                    "population")
     for candidate in counted:
         if candidate.get("repaired"):
             figures += ("; the piece %s stands repaired, its "

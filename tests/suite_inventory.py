@@ -730,6 +730,21 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_step_no_gate_record_byte_for_byte",
         ],
     },
+    "test_h_step16_fix4_unit6": {
+        "count": 10,
+        "cases": [
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_10_q1_population_names_truncated_round_record",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_10_q1_population_names_unread_round_record",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_10_q1_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_12_e1_shows_over_truncated_staffing",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_12_e2_shows_over_truncated_staffing",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_12_staffing_read_controls_byte_for_byte",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_held_q1_empty_population_byte_for_byte",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_held_q1_single_unread_byte_for_byte",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_held_staffing_over_limit_e1_byte_for_byte",
+            "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_held_staffing_over_limit_e2_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -758,4 +773,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 605
+TOTAL = 615
