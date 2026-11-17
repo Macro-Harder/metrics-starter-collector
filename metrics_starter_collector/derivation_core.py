@@ -553,6 +553,71 @@ def _piece_over_limit_not_read(piece):
         _quality_code(piece) == "over-limit-piece"
 
 
+_TRACE_FEEDER_CLASSES = (CLS_TRACE, CLS_STEP_COMPANION,
+                         CLS_GATE_RECORD, CLS_GATE_RULING,
+                         CLS_AUDIT_PAPER)
+
+
+def _piece_state_naming(piece):
+    """Name one not read piece with the state that stopped it.
+
+    An over limit piece is named by _limit_naming, with the
+    bound that stopped the reading. A piece standing in any
+    other not read state, truncated, malformed, unreadable or
+    not visited, is named with its capture reason detail, so
+    the row names the piece and the state, whatever the state.
+    """
+    if _piece_over_limit_not_read(piece):
+        return _limit_naming(piece)
+    path = piece.paths[0] if piece.paths else piece.identity
+    detail = _reason_detail(piece)
+    if detail:
+        return "%s, which stands not read in full: %s" \
+            % (path, detail)
+    return "%s, which stands not read in full" % path
+
+
+def _trace_feeders_not_read(captured):
+    """The Q-4 feeder pieces standing not read in full.
+
+    The feeder set is the set _trace_candidates sources the
+    row from: trace records, step companions, gate records,
+    gate rulings and Purple audit papers. Gate adjudications
+    and regate records stand outside it, because no reading
+    of the row takes a first trace from them. A feeder piece
+    not read in full, for whatever reason, over limit, not
+    visited, truncated or malformed, stands in this list.
+    """
+    return [piece for piece in captured.pieces
+            if piece.record_class in _TRACE_FEEDER_CLASSES
+            and _piece_not_read_in_full(piece)]
+
+
+def _malformed_trace_statements(captured):
+    """First trace statements standing in read feeders unparsed.
+
+    Returns (step, piece) pairs, one per step, for every line
+    in a read feeder piece that states a first trace for a
+    step in a form _parse_trace_segment cannot count. Such a
+    statement stands in the tree, read in full; its step is a
+    missing field position, never a missing feeder position.
+    """
+    found = []
+    seen = set()
+    for piece in captured.pieces:
+        if piece.text is None or \
+                piece.record_class not in _TRACE_FEEDER_CLASSES:
+            continue
+        for line in piece.text.splitlines():
+            m = re.search(r"first trace for step (\d+)", line, re.I)
+            if m and _parse_trace_segment(line) is None:
+                step = int(m.group(1))
+                if step not in seen:
+                    seen.add(step)
+                    found.append((step, piece))
+    return found
+
+
 def _limit_naming(piece):
     """Name one over limit piece with the bound that stopped it.
 
@@ -5459,39 +5524,71 @@ def _derive_q4(captured, universe):
         return _unknown_version_result(
             captured, "Q-4", denom, _pointer("Q-4", pointer, captured))
     if not traces:
-        gate_unread = [piece for piece in
-                       captured.pieces_of(*GATE_CLASSES)
-                       if _piece_over_limit_not_read(piece)]
-        if gate_unread:
+        feeder_unread = _trace_feeders_not_read(captured)
+        named_unread = [piece for piece in feeder_unread
+                        if "trace" not in piece.paths[0]]
+        if named_unread:
             naming = "; ".join(
-                _limit_naming(piece) for piece in gate_unread)
-            first = gate_unread[0]
+                _piece_state_naming(piece) for piece in feeder_unread)
+            first = named_unread[0]
             return _refusal(
                 "Q-4", "present but not derivable",
                 "no first trace figure", denom,
                 _pointer("Q-4", first.paths[0], captured),
-                shows="gate records stand, and the gate pieces "
-                      "the row rests on stand not read past a "
-                      "limit: " + naming + ", so no byte of "
-                      "those pieces was read and no first trace "
-                      "figure is taken from them",
+                shows="first trace feeder records stand, and "
+                      "the feeder pieces the row rests on stand "
+                      "not read in full: " + naming + ", so no "
+                      "byte of those pieces was read and no "
+                      "first trace figure is taken from them",
                 token=_quality_code(first),
                 follows="the row rests on pieces that were not "
-                        "read past the bound named, so the row "
-                        "is present but not derivable; missing "
-                        "stands reserved for the case where no "
-                        "feeder record stands in the tree, and "
-                        "no first trace figure is claimed absent "
+                        "read in full, so the row is present "
+                        "but not derivable; missing stands "
+                        "reserved for the case where no feeder "
+                        "record stands in the tree, and no "
+                        "first trace figure is claimed absent "
                         "from a piece that was not read",
-                rule_name="Q-4 not read past a limit rule",
+                rule_name="Q-4 not read in full rule",
                 broken="the first trace figure field in "
                        + first.paths[0] + ", which stands not "
-                         "read past the limit named in its "
-                         "capture reason",
-                required="a gate record read in full, carrying "
-                         "its first trace figures",
-                held="the gate records stand in the tree at "
-                     + naming)
+                         "read in full as its capture reason "
+                         "states",
+                required="a first trace feeder record read in "
+                         "full, carrying its first trace figures",
+                held="the first trace feeder records stand in "
+                     "the tree at " + naming)
+        malformed = _malformed_trace_statements(captured)
+        if malformed:
+            named = _each_step(sorted(
+                step for step, _piece in malformed))
+            first_step, first_piece = malformed[0]
+            return _refusal(
+                "Q-4", "present but not derivable",
+                "no first trace figure", denom,
+                _pointer("Q-4", first_piece.paths[0], captured),
+                shows="a first trace statement stands in a "
+                      "feeder record read in full, for " + named
+                      + ", in a form the row cannot count, and "
+                      "no countable first trace figure stands",
+                token="missing-field",
+                follows="a first trace record stands in the "
+                        "tree and its statement stands in a "
+                        "form the row cannot parse, so the row "
+                        "is present but not derivable; missing "
+                        "stands reserved for the case where no "
+                        "feeder record stands in the tree",
+                rule_name="Q-4 malformed trace statement rule",
+                broken="the first trace figure field in "
+                       + first_piece.paths[0] + ", whose first "
+                         "trace statement for Step %d stands "
+                         "in a form the row cannot count"
+                       % first_step,
+                required="a first trace statement in counted "
+                         "form, stating its LANDED, PARTIAL and "
+                         "CONTRADICTED figures and its total",
+                held="a first trace statement stands in "
+                     + first_piece.paths[0] + " for " + named
+                     + ", in a form the row cannot count")
         trace_pieces = [piece for piece in captured.pieces
                         if "trace" in piece.paths[0]
                         and piece.paths[0].endswith(".md")]
@@ -5560,6 +5657,14 @@ def _derive_q4(captured, universe):
                 % (sum_landed, sum_partial, sum_contra, sum_total))
     coverage = ("steps with a first trace in the named evidence "
                 "set, " + _steps_phrase(sorted(reconciled)))
+    malformed_extra = [(step, piece) for step, piece in
+                       _malformed_trace_statements(captured)
+                       if step not in traces]
+    if malformed_extra:
+        coverage += ("; " + _steps_phrase(sorted(
+            step for step, _piece in malformed_extra))
+            + " carrying a first trace statement the row "
+              "cannot count, uncounted")
     bound = None
     if excepted:
         coverage += ", with " + _steps_phrase(sorted(excepted)) + \
@@ -5588,6 +5693,28 @@ def _derive_q4(captured, universe):
                 "the sum test links for the excepted steps",
                 "a correcting record stating the excepted trace "
                 "parts and totals in reconciled form")
+    unread_omitted = [piece for piece in
+                      _trace_feeders_not_read(captured)
+                      if piece.step not in traces]
+    if unread_omitted:
+        omit_steps = sorted({piece.step for piece in unread_omitted
+                             if piece.step is not None})
+        omit_naming = "; ".join(
+            _piece_state_naming(piece) for piece in unread_omitted)
+        omit_bound = (
+            "the " + _steps_phrase(omit_steps) + " contribution"
+            if omit_steps else "a first trace contribution",
+            "the first trace figure field in " + omit_naming
+            + ", which stands not read in full, so the totals "
+              "omit the contribution of the step named",
+            "a first trace feeder record for the step named, "
+            "read in full")
+        if bound is None:
+            bound = omit_bound
+        else:
+            bound = (bound[0] + "; " + omit_bound[0],
+                     bound[1] + "; " + omit_bound[1],
+                     bound[2])
     # The coverage remainder forms: an analogue only step, a zero
     # total step, and a step stating no trace applies, named on
     # the row as the charge states them.

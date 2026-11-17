@@ -638,6 +638,31 @@ INVENTORY = {
             "tests.test_h_step16_fix3_unit1.TestStep16Fix3Unit1.test_r16_3_held_read_control_byte_for_byte",
         ],
     },
+    "test_h_step16_fix4_unit1": {
+        "count": 20,
+        "cases": [
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_01_companion_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_01_purple_paper_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_02_gates_malformed_bytes",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_02_gates_truncated_carry_trace",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_06_mixed_step2_gate_unread",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_06_mixed_step3_gate_unread",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_07_malformed_statement_alone",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_07_malformed_statement_beside_counted",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_11_adjudication_unread_alone",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_companion_read_control",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_damaged_non_feeder_standing_form",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_gate_ruling_unread",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_mixed_limits_each_named",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_neighbouring_trace_piece_byte_for_byte",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_one_gate_unread_one_gate_absent",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_purple_paper_read_control",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_purple_trace_word_path_variant",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_step_record_trace_gates_unread",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -666,4 +691,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 538
+TOTAL = 558
