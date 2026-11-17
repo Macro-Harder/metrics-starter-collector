@@ -520,6 +520,15 @@ INVENTORY = {
             "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_no_steps_evidenced_two_stated_steps",
         ],
     },
+    "test_h_step16_unit4": {
+        "count": 4,
+        "cases": [
+            "tests.test_h_step16_unit4.TestStep16Unit4.test_r16_09_control_terms_not_used_gain_no_definitions",
+            "tests.test_h_step16_unit4.TestStep16Unit4.test_r16_09_control_terms_used_stand_defined",
+            "tests.test_h_step16_unit4.TestStep16Unit4.test_r16_09_foldin_shape_terms_defines_every_required_term",
+            "tests.test_h_step16_unit4.TestStep16Unit4.test_r16_09_six_reason_code_definitions_unchanged",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -548,4 +557,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 460
+TOTAL = 464

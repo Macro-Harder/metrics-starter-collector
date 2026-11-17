@@ -7239,9 +7239,176 @@ _TERM_TEXTS = {
 }
 
 
-def _terms_lines(results):
-    """One terms line for each term the report uses in a reason
-    line, in the order that term first stands used."""
+# The report terms the reason lines and the row texts rely on, in
+# the order the Step 16 round 1 register lists them at R16-09.
+# Each entry stands as the printed label, a pattern that matches
+# the term as the report text uses it, and the definition the
+# Terms section carries for it. The definitions of broken link,
+# form required and form held stand in the report_renderer.py
+# fallback glossary and are carried here in its wording exactly.
+# Every other term has no glossary entry anywhere in the product;
+# its wording is taken from the brief passages that govern its
+# row, as the register entry for R16-09 cites them. A term stands
+# defined in a report only where that report uses it, under guard
+# LG-11 surface fact 3: no term appears in a reason line that the
+# report itself does not explain in its terms section.
+_REPORT_TERMS = (
+    ("broken link", r"broken link",
+     "the link that broke, naming the missing record, the "
+     "missing field, or the wrong form where the break stands "
+     "in one of those forms"),
+    ("feeder", r"feeder",
+     "a record inside the root that a row rests on and takes "
+     "its figures or its position from"),
+    ("feeder record", r"feeder record",
+     "the record that stands as the feeder for a row; a row "
+     "whose feeder record does not stand in the tree is missing"),
+    ("derivation", r"derivation",
+     "the working out of a row figure from its feeder records "
+     "under the settled definitions"),
+    ("derivable", r"derivable",
+     "a row is derivable where its figure can be worked out "
+     "from its feeder records in the forms its derivation "
+     "requires; present but not derivable means feeder material "
+     "stands but no figure can be worked out from it"),
+    ("BANKED", r"\bBANKED\b",
+     "the named state of an item that stands banked, waiting "
+     "on a decision, and of an interval recorded under that "
+     "state in the path ledger"),
+    ("base", r"\bbase\b",
+     "the starting staffing count stated for a step, against "
+     "which the staffed count and the additions over base are "
+     "read"),
+    ("spin-ups", r"spin-ups",
+     "agents added for a step above its base, counted from "
+     "roster addition entries for that step and never from a "
+     "total alone"),
+    ("total spins", r"total spins",
+     "the total spins figure stated for a step in its feeder "
+     "records, standing apart from its base figure and from "
+     "its roster additions"),
+    ("roster additions", r"roster additions?",
+     "the entries in a roster or closing record that name the "
+     "agents added over the base for a step"),
+    ("form required", r"form required",
+     "the form the derivation required"),
+    ("form held", r"form held",
+     "the form or the absence the record actually held"),
+    ("flow scale", r"flow scale",
+     "the settled severity scale a post triage breakdown is "
+     "stated under, whose levels are Critical, High, Medium "
+     "and Low"),
+    ("triage", r"triage",
+     "the judging of a finding or an entry that settles its "
+     "severity and the step it is charged to before it is "
+     "counted"),
+    ("post triage", r"post[ -]triage",
+     "the position after triage; a post triage breakdown "
+     "states the counts of a round as judged at triage, under "
+     "the flow scale"),
+    ("hardened closure state vocabulary",
+     r"hardened closure state vocabulary",
+     "the settled set of named closure states a gate record "
+     "or gate ruling can state; a recorded closure state "
+     "matching no name in that set counts as no named closure "
+     "form"),
+    ("LANDED", r"\bLANDED\b",
+     "the first trace outcome where the item checked stands "
+     "landed at the first trace"),
+    ("PARTIAL", r"\bPARTIAL\b",
+     "the first trace outcome where the item checked stands "
+     "only partly landed at the first trace"),
+    ("CONTRADICTED", r"\bCONTRADICTED\b",
+     "the first trace outcome where the item checked stands "
+     "contradicted at the first trace"),
+    ("first trace", r"first trace",
+     "the first fold in trace over a set of items, at which "
+     "the outcome of each item checked is counted as LANDED, "
+     "PARTIAL or CONTRADICTED"),
+    ("sum test", r"sum test",
+     "the check that the parts of a trace contribution add "
+     "to the total its record states; a contribution whose "
+     "parts do not sum to its stated total stands excepted"),
+    ("proxy", r"\bproxy\b",
+     "a labelled figure that stands in place of a position "
+     "it does not measure; a proxy figure is reported as a "
+     "proxy only and never as a token or money figure"),
+    ("documented units", r"documented units",
+     "the units of the labelled proxy basis stated in the "
+     "records, in which a proxy figure is counted"),
+    ("foundation statement", r"foundation statement",
+     "the statement on the D-1 row naming the feeder that "
+     "row rests on and the exception or rule that lets it "
+     "rest there"),
+    ("degraded form", r"degraded form",
+     "the weaker form of a row that relaxes one named check "
+     "only; the T-4 degraded form relaxes the queue cross "
+     "check only and still requires the same durations as "
+     "the full form"),
+    ("queue cross check", r"queue cross check",
+     "the check of a row position against the decision queue "
+     "file inside the root, where that file stands"),
+    ("outcome record", r"outcome record\b",
+     "a record that states the outcome of a round or of a "
+     "step in a form the derivation names, by which records "
+     "are mapped to rounds"),
+    ("List 3", r"\bList 3\b",
+     "the code list the data quality section refers to; "
+     "where List 3 holds no code naming a case, that case "
+     "stands recorded as no code fits"),
+)
+
+# The trace outcome terms stand in their settled capital form in
+# the row texts; a lower case match would take in ordinary words
+# the rows also use, so those three patterns stand case sensitive
+# where the rest stand case insensitive.
+_CASE_SENSITIVE_TERM_LABELS = ("LANDED", "PARTIAL", "CONTRADICTED",
+                               "List 3")
+
+
+def _result_terms_text(result):
+    """The printed text of one row, for the terms usage scan.
+
+    The scan reads the text the row prints: its verdict, its
+    reason, its figures, its coverage and denominator, its
+    statement and statement part, its bound and its reconciled
+    against part. The pointer stands apart from the scan: the
+    terms duty at LG-11 surface fact 3 runs on the reason lines
+    and the row texts, not on the pointer prose.
+    """
+    parts = [result.verdict or "", result.figures or "",
+             result.denominator or "", result.coverage or "",
+             result.statement or "", result.derived_from or ""]
+    reason = result.reason_text()
+    if reason:
+        parts.append(reason)
+    for attr in ("statement_part", "reconciled_against",
+                 "build_state_statement"):
+        value = getattr(result, attr, None)
+        if value:
+            parts.append(str(value))
+    bound = getattr(result, "bound", None)
+    if bound:
+        if isinstance(bound, (tuple, list)):
+            parts.extend(str(item) for item in bound if item)
+        else:
+            parts.append(str(bound))
+    return "\n".join(parts)
+
+
+def _terms_lines(results, extra_texts=()):
+    """The terms lines of one report, in their standing order.
+
+    First, one line for each reason code token the report uses,
+    in the order that token first stands used, in the wording
+    standing today. Then, one line for each report term the
+    report text uses, in the register order at R16-09, the
+    usage standing read from the row texts and from the extra
+    texts the caller passes, which carry the data quality
+    entries, where the List 3 naming stands. The spin-ups term
+    stands used on every report: it stands in the name of the
+    E-2 row itself, which every report prints.
+    """
     lines = []
     seen = set()
     for result in results:
@@ -7253,6 +7420,18 @@ def _terms_lines(results):
             token, _TERM_TEXTS.get(
                 token, "a reason term the report uses, naming "
                        "the broken link form for its row")))
+    haystack = "\n".join(
+        [_result_terms_text(result) for result in results]
+        + [str(text) for text in extra_texts])
+    codes = {result.code for result in results}
+    for label, pattern, definition in _REPORT_TERMS:
+        flags = 0 if label in _CASE_SENSITIVE_TERM_LABELS \
+            else re.IGNORECASE
+        used = re.search(pattern, haystack, flags) is not None
+        if label == "spin-ups" and "E-2" in codes:
+            used = True
+        if used:
+            lines.append("%s: %s" % (label, definition))
     return lines
 
 
@@ -7880,7 +8059,7 @@ def derive_report(captured):
     if disagreement_lines:
         model.disagreements_lines = disagreement_lines
     model.record_cost_lines = _record_cost_lines(captured, universe)
-    model.terms_lines = _terms_lines(results)
+    model.terms_lines = _terms_lines(results, entries)
     return model
 
 
