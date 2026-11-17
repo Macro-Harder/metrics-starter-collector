@@ -551,6 +551,18 @@ INVENTORY = {
             "tests.test_h_step16_unit5.TestStep16Unit5.test_r16_held_case_c_parent_directory_does_not_stand",
         ],
     },
+    "test_h_step16_unit6": {
+        "count": 7,
+        "cases": [
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_alias_path_to_counted_file_not_counted_stated",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_control_no_excluded_files_line_unchanged",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_git_subtree_files_not_counted_stated",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_link_outside_tree_recognised_piece_counted",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_non_regular_entry_and_directory_no_file_count",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_plain_unrecognised_files_not_counted_stated",
+            "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_walk_bound_unrecognised_files_not_counted_stated",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -579,4 +591,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 481
+TOTAL = 488

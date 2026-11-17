@@ -733,7 +733,7 @@ def _rounds_evidenced(pieces, step):
     return max(candidates) if candidates else 0
 
 
-def _walk_entries(root_path, root_resolved):
+def _walk_entries(root_path, root_resolved, stats=None):
     """Walk the root once, level by level from the root down.
 
     Entries are visited in the order of their names at each level
@@ -772,6 +772,15 @@ def _walk_entries(root_path, root_resolved):
     file name path, where it blocks the file piece that name
     carries: it stands as that damaged piece, unreadable, and
     not as a piece of its own.
+
+    Where stats stands as a dict, the walk fills it with the
+    enumeration counts of the whole ordered walk, counted
+    before the bound cuts it: walk_entries_total, every entry
+    the enumeration named, files and directories together, and
+    walk_files_total, the enumerated entries that stand as
+    files. The capture carries those counts on the one
+    CapturedRead, so the run cost line can state how many
+    enumerated files its visited counts do not cover.
     """
     ordered = []
     listing_failures = []
@@ -798,6 +807,10 @@ def _walk_entries(root_path, root_resolved):
                 if not full.is_symlink() and full.is_dir():
                     next_level.append(full)
         level = next_level
+    if stats is not None:
+        stats["walk_entries_total"] = len(ordered)
+        stats["walk_files_total"] = len(
+            [full for _rel, full in ordered if full.is_file()])
     walk_notes = []
     if len(ordered) > WALK_BOUND:
         walk_notes.append(
@@ -931,8 +944,9 @@ def capture_read(root):
             "capture the record tree: root %s: not a readable "
             "directory" % (root,))
     root_resolved = root_path.resolve()
+    walk_stats = {}
     entries, damaged, walk_note, unvisited = _walk_entries(
-        root_path, root_resolved)
+        root_path, root_resolved, walk_stats)
     unvisited_set = set(unvisited)
     entries, aliases = _canonical_paths(root_path, entries, damaged)
     classified = []
@@ -1055,7 +1069,9 @@ def capture_read(root):
         tree_byte_limit=TREE_BYTE_LIMIT,
         tree_file_limit=TREE_FILE_LIMIT,
         record_change_force=force,
-        size_unknown_paths=tuple(sorted(size_unknown)))
+        size_unknown_paths=tuple(sorted(size_unknown)),
+        walk_files_total=walk_stats.get("walk_files_total", 0),
+        walk_entries_total=walk_stats.get("walk_entries_total", 0))
 
 
 def _merge_identity_groups(raw):

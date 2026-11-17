@@ -131,6 +131,8 @@ class CapturedRead:
     tree_file_limit: int = 2000
     record_change_force: dict = field(default_factory=dict)
     size_unknown_paths: tuple = ()
+    walk_files_total: int = 0
+    walk_entries_total: int = 0
 
     def pieces_of(self, *classes):
         return [p for p in self.pieces if p.record_class in classes]
@@ -8019,12 +8021,26 @@ def derive_report(captured):
             "whole walk bound" in captured.walk_note and \
             "was reached" in captured.walk_note:
         crossed.append("whole walk bound 10000 entries")
+    # The visited counts cover the counted pieces only: where
+    # the walk enumerated files those counts do not cover, the
+    # line states the enumeration count and the count not
+    # covered beside the visited counts, so its figures
+    # reconcile with the tree as a user counts it. Where no
+    # enumerated file stands uncounted, the line stands in its
+    # standing form, byte for byte.
+    files_not_counted = captured.walk_files_total - captured.tree_files
     run_cost_line = (
         "Run cost: Files visited: %d | Files opened: %d | Bytes "
-        "read: %d | Entries visited: %d | Limit: %s | Reading: %s"
+        "read: %d | Entries visited: %d"
         % (captured.tree_files, files_opened, bytes_read,
-           captured.tree_files + len(captured.near_matches),
-           "; ".join(crossed) if crossed else "no limit crossed",
+           captured.tree_files + len(captured.near_matches)))
+    if files_not_counted > 0:
+        run_cost_line += (
+            " | Walk enumerated files: %d | Files not counted: %d"
+            % (captured.walk_files_total, files_not_counted))
+    run_cost_line += (
+        " | Limit: %s | Reading: %s"
+        % ("; ".join(crossed) if crossed else "no limit crossed",
            "partial" if is_partial else "full"))
     model = ReportModel(header_lines=header_lines, coverage=coverage,
                         inventory_lines=inventory_lines,
