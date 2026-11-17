@@ -694,6 +694,26 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t7_all_gates_unread_byte_for_byte",
         ],
     },
+    "test_h_step16_fix4_unit4": {
+        "count": 15,
+        "cases": [
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_09_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_09_unread_queue_beside_empty_table",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_09_unread_queue_beside_table_figure",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_date_only_table_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_fallback_no_queue_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_notice_origin_cell_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_notice_raised_cell_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_notice_skip_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_queue_beside_date_table_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_real_fields_notice_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_real_item_notice_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_truly_empty_table_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_two_tables_count_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_two_tables_named_byte_for_byte",
+            "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_unusable_queue_table_governs",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -722,4 +742,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 579
+TOTAL = 594

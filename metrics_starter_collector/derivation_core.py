@@ -6073,6 +6073,13 @@ _D1_FOUNDATION_UNUSABLE = (
     "that stood and supplied no row, and no complete decision "
     "table stands in the capture")
 
+_D1_FOUNDATION_QUEUE_NOT_READ = (
+    "Foundation statement: the feeder this row rests on is "
+    "DECISION-QUEUE.md, the queue file inside the root in the "
+    "named form, governing over the metrics record decision "
+    "table under WV-12, and that queue file stands not read "
+    "in full in the capture")
+
 
 def _d1_marking(captured, feeder_items, table_items):
     """The D-1 cross check marking, consumed through Module 4.
@@ -6156,6 +6163,39 @@ def _derive_d1(captured, universe):
                 rule_name="D-1 latency field rule",
                 statement=_d1_statement(foundation, marking))
     elif feeders["table_stands"]:
+        if queue_piece is not None and \
+                _piece_over_limit_not_read(queue_piece):
+            naming = _piece_state_naming(queue_piece)
+            return _refusal(
+                "D-1", "present but not derivable",
+                "no decision latency figure", denom,
+                _pointer("D-1", queue_piece.paths[0], captured),
+                shows="a decision queue file in the named form "
+                      "stands in the capture and stands not read "
+                      "in full: " + naming + ", so no byte of "
+                      "that piece was read and no latency is "
+                      "taken from it, and the decision table "
+                      "inside the root does not govern where a "
+                      "queue file in the named form stands",
+                token="missing-field",
+                follows="the row rests on a governing piece "
+                        "that was not read in full, so the row "
+                        "is present but not derivable, and no "
+                        "median figure is claimed over a piece "
+                        "that was not read",
+                rule_name="D-1 not read in full rule",
+                statement=_d1_statement(
+                    _D1_FOUNDATION_QUEUE_NOT_READ, table_note),
+                broken="the decision item fields in "
+                       + queue_piece.paths[0] + ", which stands "
+                         "not read in full as its capture reason "
+                         "states",
+                required="a decision queue file in the named "
+                         "form read in full, carrying decision "
+                         "items with raised and ruled timestamps "
+                         "that can form a duration",
+                held="the decision queue file stands in the "
+                     "tree at " + naming)
         items = feeders["table_items"]
         feeder_name = "metrics record decision table"
         pointer = METRICS_CANONICAL_PATH
