@@ -127,7 +127,8 @@ _SIGNAL_ONE_EXCEPTION = (
 _HEADER_COUNT = (
     re.compile(r"rows stated in header:\s*(\d+)"),
     re.compile(r"(\d+)\s+rows stated in (the )?header"),
-    re.compile(r"header[^\n:]*:\s*(\d+)\s+rows"))
+    re.compile(r"header(?: count)?:\s*(\d+)\s+rows"
+               r"(?=\s*(?:[.,;]|$))"))
 # The correction vocabularies stand in the order the Derivation
 # core collects them, so where two matches share one starting
 # place in the record the last correction figure taken here is

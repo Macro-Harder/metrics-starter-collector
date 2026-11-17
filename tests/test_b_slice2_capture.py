@@ -1248,6 +1248,115 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertTrue(block)
         self.assertIn("present but not derivable", block)
 
+    def test_signal_two_third_form_prose_line_does_not_fail_at_capture(self):
+        """C3B-02, shell limb. Brief Section 5, in general terms.
+
+        The third header count form in the shell form, by direct
+        call and through the module entry route. The exhibit
+        prose line, Header summary: 99 rows were removed from
+        the draft, states no count for the piece own table: its
+        label is a summary label and not a count label, and its
+        number counts rows removed from a draft in a sentence
+        that continues past the word rows. It therefore states
+        no header count and fails nothing at capture: the piece
+        stands read in full and D-1 stands present but not
+        derivable. The same standing holds for the two prose
+        variants of the same shape, a note label carrying a
+        terminal count and a count label whose sentence
+        continues past the word rows. The genuine third form
+        lines keep their standing exactly: Header count: 99
+        rows and Header: 99 rows over a table of 2 data rows
+        fail signal two at capture and truncate their piece,
+        their matching forms stating 2 rows stand clean, a
+        genuine line carrying the planned or target exception
+        still excepts, and a genuine line whose exception a
+        negation governs still fails.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, header in (
+                ("prose-summary-removed",
+                 "Header summary: 99 rows were removed from "
+                 "the draft."),
+                ("prose-note-terminal",
+                 "Header note: 99 rows."),
+                ("prose-count-label-removed",
+                 "Header: 99 rows were removed from the draft.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("genuine-count-mismatch",
+                 "Header count: 99 rows"),
+                ("genuine-plain-mismatch",
+                 "Header: 99 rows"),
+                ("genuine-negated",
+                 "Header count: 99 rows, not a planned count.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNotNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("genuine-count-match",
+                 "Header count: 2 rows"),
+                ("genuine-plain-match",
+                 "Header: 2 rows"),
+                ("genuine-excepted-planned",
+                 "Header count: 99 rows, stated as a planned "
+                 "count."),
+                ("genuine-excepted-target",
+                 "Header: 99 rows, stated as a target count.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        files = self._signal_two_metrics_files(
+            "", "Header summary: 99 rows were removed from "
+            "the draft\n")
+        root = build(make_case("third-form-prose-exhibit",
+                               files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("signal-two", result.stdout)
+        entry = piece_entry_for(
+            result.stdout, "build-metrics-record.md")
+        self.assertTrue(entry)
+        self.assertNotIn("truncated", entry.lower())
+        block = row_block(result.stdout, "D-1")
+        self.assertTrue(block)
+        self.assertIn("present but not derivable", block)
+        for label, header, clean in (
+                ("entry-count-mismatch",
+                 "Header count: 99 rows\n", False),
+                ("entry-plain-mismatch",
+                 "Header: 99 rows\n", False),
+                ("entry-count-match",
+                 "Header count: 2 rows\n", True),
+                ("entry-excepted-planned",
+                 "Header count: 99 rows, stated as a planned "
+                 "count.\n", True)):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files("", header)
+                root = build(make_case(label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                if clean:
+                    self.assertNotIn("signal-two", result.stdout)
+                    self.assertNotIn("truncated", entry.lower())
+                    self.assertIn("present but not derivable", block)
+                else:
+                    self.assertIn("signal-two", result.stdout)
+                    self.assertIn("truncated", entry.lower())
+                    self.assertIn("Verdict: missing", block)
+
     def test_signal_two_two_correction_statements_last_governs_at_capture(self):
         """C2B-02, shell side verification, standing for C1B-05.
 
