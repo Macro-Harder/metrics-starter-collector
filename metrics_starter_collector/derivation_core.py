@@ -7631,6 +7631,35 @@ def derive_report(captured):
                       or captured.walk_note or smaller_sets
                       or uncovered_steps
                       or not universe.evidenced)
+    if not universe.evidenced:
+        # The D4R-08 naming duty on the no steps evidenced limb
+        # of the disjunction: no other coverage line states this
+        # cause, so the coverage statement states it here and
+        # names the pieces missing, the step record and the gate
+        # record of every step the tree states but no step record
+        # or gate file evidences, with the steps not covered.
+        stated_steps = sorted(set(universe.ledger)
+                              | set(universe.metrics))
+        coverage += ("; partial cause: no step stands evidenced "
+                     "in the capture")
+        if stated_steps:
+            missing_pieces = []
+            for step in stated_steps:
+                missing_pieces.append(
+                    "the step record for Step %d "
+                    "(steps/step-%02d-record.md)" % (step, step))
+                missing_pieces.append(
+                    "the gate record for Step %d "
+                    "(steps/step-%02d-gate-record.md)" % (step, step))
+            coverage += ("; steps not covered: %s; pieces "
+                         "missing: %s, each a missing piece, "
+                         "absent from the capture"
+                         % (_steps_phrase(stated_steps),
+                            ", ".join(missing_pieces)))
+        else:
+            coverage += ("; pieces missing: the step record and "
+                         "the gate record for any step, no such "
+                         "piece stands in the capture")
     header_lines = ["Root: " + str(captured.root),
                     "Build identity: "
                     + _build_identity_statement(captured),

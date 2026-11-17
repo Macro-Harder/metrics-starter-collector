@@ -510,6 +510,16 @@ INVENTORY = {
             "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_d_queue_governs",
         ],
     },
+    "test_h_step16_unit3": {
+        "count": 5,
+        "cases": [
+            "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_control_complete_report_not_partial",
+            "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_control_run_a_smaller_set_unchanged",
+            "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_control_run_b_uncovered_step_unchanged",
+            "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_no_steps_evidenced_names_missing_pieces",
+            "tests.test_h_step16_unit3.TestStep16Unit3.test_r16_05_no_steps_evidenced_two_stated_steps",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -538,4 +548,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 455
+TOTAL = 460
