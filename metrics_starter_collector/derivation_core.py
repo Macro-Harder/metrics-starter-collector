@@ -4182,6 +4182,14 @@ def _derive_f2(captured, universe):
     near_only = {key: fact for key, fact in facts.items()
                  if fact["missing_gate"] and fact["near_match_sources"]}
     counted_steps = {fact["step"] for fact in counted.values()}
+    unread_counted = {}
+    for piece in gates:
+        if piece.record_class == CLS_GATE_ADJUDICATION:
+            continue
+        if _piece_not_read_in_full(piece):
+            key = _piece_instance_key(piece)
+            if key is not None:
+                unread_counted.setdefault(key, []).append(piece)
     history_steps = _f2_history_steps(captured, counted_steps)
     if not counted and not adjudication_only and not near_only and \
             not history_steps:
@@ -4245,6 +4253,24 @@ def _derive_f2(captured, universe):
         elif closure in _F2_CLOSURE_NOT_APPROVED:
             closing_ruled += 1
             closing_alone.append(key)
+        elif key in unread_counted:
+            # A gate piece not read in full, for whatever
+            # reason, is not read: no closure state position
+            # stands for its step, in the none stated words or
+            # any other, and the form held text names the piece
+            # and the bound or the state that stopped the
+            # reading, under the governing rule of fix pass 4.
+            naming = "; ".join(
+                "%s (state: %s)" % (_piece_state_naming(piece),
+                                    _piece_state_word(piece))
+                for piece in sorted(
+                    unread_counted[key],
+                    key=lambda piece: piece.paths[0]
+                    if piece.paths else ""))
+            problems.append(
+                "%s stands with a gate piece not read in full, "
+                "%s, so no closure state position stands for "
+                "that step" % (label, naming))
         else:
             problems.append(
                 "%s stands with recorded closure state %s, which "

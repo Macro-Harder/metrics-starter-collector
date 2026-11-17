@@ -714,6 +714,22 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit4.TestStep16Fix4Unit4.test_r16_4_held_unusable_queue_table_governs",
         ],
     },
+    "test_h_step16_fix4_unit5": {
+        "count": 11,
+        "cases": [
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_gates_malformed_bytes",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_gates_truncated",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_gates_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_gates_unread_past_line_limit",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_one_unread_gate_between_read_gates",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_05_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_all_gates_absent_byte_for_byte",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_gate_exactly_at_file_limit",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_go_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_no_closure_read_byte_for_byte",
+            "tests.test_h_step16_fix4_unit5.TestStep16Fix4Unit5.test_r16_4_held_step_no_gate_record_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -742,4 +758,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 594
+TOTAL = 605
