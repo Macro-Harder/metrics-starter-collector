@@ -1876,6 +1876,3 @@ class TestSlice5RoundsQuality(FixtureTestCase):
         self.assertIn("q4 seam boom", segment)
         self.assertIn("record disagrees", segment)
 
-if __name__ == "__main__":
-    unittest.main()
-

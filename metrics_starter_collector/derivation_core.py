@@ -512,6 +512,43 @@ def _reason_detail(piece):
     return reason
 
 
+def _piece_over_limit_not_read(piece):
+    """True where a piece stands not read past a limit.
+
+    The piece carries no text in the capture and its capture
+    state is the over limit state, on any limit route: the
+    single piece file or line limit, the tree byte or file
+    limit, or the whole walk bound. Other not read states, the
+    malformed, unreadable, truncated and duplicate disagreement
+    states, stand apart and keep their own handling.
+    """
+    return _piece_not_read_in_full(piece) and \
+        _quality_code(piece) == "over-limit-piece"
+
+
+def _limit_naming(piece):
+    """Name one over limit piece with the bound that stopped it.
+
+    The naming states the piece path and the capture reason
+    detail, which names the limit that stopped the reading, in
+    the form the WV2-09 bound naming duty requires: the bound
+    and the piece, both named, on the row that rests on it.
+    """
+    path = piece.paths[0] if piece.paths else piece.identity
+    detail = _reason_detail(piece)
+    if detail:
+        return "%s, which stands not read past a limit: %s" \
+            % (path, detail)
+    return "%s, which stands not read past a limit" % path
+
+
+def _unread_staffing_pieces(captured, step):
+    """The staffing feeder pieces of one step not read past a limit."""
+    return [piece for piece in
+            captured.step_pieces(step, *_STAFFING_CLASSES)
+            if _piece_over_limit_not_read(piece)]
+
+
 def _walk_order_sample(captured, piece):
     """The A7-4 walk order sample for a capture cut by a limit.
 
@@ -2417,6 +2454,29 @@ def _derive_e1(captured, universe):
             "and roster for each covered step, with the "
             "coverage bound restated here: covered %s; "
             "remainder none" % _steps_range_phrase(steps))
+    unread_covered = []
+    for step in steps:
+        for piece in _unread_staffing_pieces(captured, step):
+            unread_covered.append((step, piece))
+    if unread_covered:
+        naming = "; ".join(
+            _limit_naming(piece) for _step, piece in unread_covered)
+        unread_steps = sorted({step for step, _piece
+                               in unread_covered})
+        if result.bound is None:
+            result.bound = (
+                _steps_phrase(unread_steps),
+                "the staffing link for "
+                + _steps_phrase(unread_steps) + ", resting on "
+                + naming,
+                "the piece named read in full under the limit "
+                "that stopped its reading")
+        else:
+            result.bound = (
+                result.bound[0],
+                result.bound[1] + "; the covered steps also "
+                "rest on " + naming,
+                result.bound[2])
     result.statement = _join_statements(
         _e1_figure_statement(captured, covered),
         _universe_claim_statement(captured, universe))
@@ -2693,6 +2753,19 @@ def _derive_e2(captured, universe):
         for step in add_steps:
             if step in totals:
                 continue
+            unread = _unread_staffing_pieces(captured, step)
+            if unread:
+                naming = _limit_naming(unread[0])
+                figures += ("; Step %d total spins: not derivable, "
+                            "the total spins figure for that step "
+                            "stands in %s and is not read from it"
+                            % (step, naming))
+                coverage += ("; Step %d: the total spins position "
+                             "for that step rests on %s, so no "
+                             "absence is claimed for a figure "
+                             "whose only home is a piece that was "
+                             "not read" % (step, naming))
+                continue
             figures += ("; Step %d total spins: not derivable, "
                         "no total spins figure stands for that "
                         "step" % step)
@@ -2847,7 +2920,13 @@ def _ledger_data(captured):
     budget conflicts or stated build total conflicts, in
     statement order, as (position, first figure, later
     figure), and a later line restating the identical figure
-    records nothing.
+    records nothing. A ledger piece that stands not read past
+    a limit supplies no figure here, and it does not vanish:
+    the returned unread_ledgers list carries every such piece,
+    so a derivation resting on the ledger can stand present
+    but not derivable with the bound named, under WV2-09,
+    instead of treating the unread ledger as an inspected
+    empty one.
     """
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
@@ -2934,8 +3013,10 @@ def _ledger_data(captured):
         for m in re.finditer(r"Build total stated:\s*tokens (\d+)",
                              text):
             record_position("total_tokens", int(m.group(1)))
+    unread = [piece for piece in ledgers
+              if _piece_over_limit_not_read(piece)]
     return {"ledgers": ledgers, "pointer": pointer, "money": money,
-            "tokens": tokens,
+            "tokens": tokens, "unread_ledgers": unread,
             "budget_money": position_values["budget_money"],
             "budget_tokens": position_values["budget_tokens"],
             "total_money": position_values["total_money"],
@@ -3275,6 +3356,33 @@ def _derive_e3(captured, universe):
                               for s in covered)))
     ledger_pieces = captured.pieces_of(CLS_COST_LEDGER)
     if ledger_pieces:
+        unread = ledger_data["unread_ledgers"]
+        if unread:
+            piece = unread[0]
+            naming = _limit_naming(piece)
+            return _refusal(
+                "E-3", "present but not derivable", "no token figure",
+                denom, ledger_pieces[0].paths[0],
+                shows="a cost ledger piece stands in the tree at "
+                      + naming + ", so no byte of the ledger was "
+                      "read and no token figure is taken from it",
+                token=_quality_code(piece),
+                follows="the row rests on a piece that was not "
+                        "read past the bound named, so the row is "
+                        "present but not derivable; missing stands "
+                        "reserved for the case where no feeder "
+                        "record stands in the tree, and no token "
+                        "figure is claimed absent from a piece "
+                        "that was not read",
+                rule_name="E-3 not read past a limit rule",
+                broken="the cost ledger token figure field in "
+                       + piece.paths[0] + ", which stands not "
+                         "read past the limit named in its "
+                         "capture reason",
+                required="a cost ledger read in full, carrying "
+                         "its token figures",
+                held="the cost ledger stands in the tree at "
+                     + naming)
         return _refusal(
             "E-3", "missing", "no token figure", denom,
             ledger_pieces[0].paths[0],
@@ -3387,6 +3495,52 @@ def _derive_e4(captured, universe):
             money_total_conflicts, "stated build total")
     merged_money = dict(step_money)
     merged_money.update(ledger_data["money"])
+    unread_ledgers = ledger_data["unread_ledgers"]
+    if unread_ledgers:
+        piece = unread_ledgers[0]
+        naming = _limit_naming(piece)
+        if merged_money and all(step in merged_money
+                                for step in universe.evidenced):
+            figures = "; ".join(
+                "Step %d money %d" % (s, merged_money[s])
+                for s in sorted(merged_money))
+            present_pointer = ledger_data["pointer"] \
+                if ledger_data["money"] else \
+                (step_money_pointer or ledger_data["pointer"])
+            result = DerivationResult(
+                "E-4", "present", figures, denom, present_pointer,
+                rule_name="E-4 money rule")
+            result.bound = (
+                "the cost ledger feeder at " + piece.paths[0],
+                "the per step money link resting on " + naming,
+                "the cost ledger read in full under the limit "
+                "that stopped its reading")
+            return result
+        return _refusal(
+            "E-4", "present but not derivable",
+            "no per step money figure", denom,
+            _pointer("E-4", ledger_data["pointer"], captured),
+            shows="a cost ledger piece stands in the tree at "
+                  + naming + ", so no per step money figure is "
+                  "read from it",
+            token=_quality_code(piece),
+            follows="the row rests on a piece that was not read "
+                    "past the bound named, so the row is present "
+                    "but not derivable, and no per step money "
+                    "figure is claimed absent from a piece that "
+                    "was not read",
+            rule_name="E-4 not read past a limit rule",
+            broken="the per step money figure field in the cost "
+                   "ledger at " + piece.paths[0] + ", which "
+                     "stands not read past the limit named in "
+                     "its capture reason",
+            required="a money figure stated by a feeder for the "
+                     "step itself, in a cost ledger read in full "
+                     "inside the root or in a step record "
+                     "position for that step",
+            held="the cost ledger stands in the tree at "
+                 + naming + ", and no per step money figure is "
+                 "taken from a piece that was not read")
     if ledger_data["total_money"] is not None and \
             ledger_data["money"] and \
             sum(ledger_data["money"].values()) != \
@@ -6017,6 +6171,34 @@ def _derive_b2(captured, universe):
                                  universe)
     money_state = _b2_side_state(money_spent, money_budget,
                                  money_figures, universe)
+    unread_ledgers = data["unread_ledgers"]
+    if unread_ledgers and not (token_state == "yield" and
+                                money_state == "yield"):
+        piece = unread_ledgers[0]
+        naming = _limit_naming(piece)
+        return _refusal(
+            "B-2", "present but not derivable",
+            "no budget share figure", denom,
+            _pointer("B-2", pointer, captured),
+            shows="a cost ledger piece stands in the tree at "
+                  + naming + ", so no spent or budget figure is "
+                  "read from it",
+            token=_quality_code(piece),
+            follows="the row rests on a piece that was not read "
+                    "past the bound named, so the row is present "
+                    "but not derivable, and no spent or budget "
+                    "figure is claimed absent from a piece that "
+                    "was not read",
+            rule_name="B-2 not read past a limit rule",
+            broken="the ledger figure fields for spent and "
+                   "budget in " + piece.paths[0] + ", which "
+                     "stand not read past the limit named in "
+                     "its capture reason",
+            required="spent and budget figures taken from "
+                     "ledger feeders inside the root only, on "
+                     "both sides, read in full",
+            held="the cost ledger stands in the tree at "
+                 + naming)
     if ledgers:
         if token_state == "yield" and money_state == "yield":
             figures = (

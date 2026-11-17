@@ -341,7 +341,7 @@ INVENTORY = {
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_two_correction_statements_last_governs_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_further_negated_header_lines_do_not_except_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_structural_negation_header_lines_do_not_except_in_core",
-],
+        ],
     },
     "test_f_slice6_cost": {
         "count": 46,
@@ -484,6 +484,18 @@ INVENTORY = {
             "tests.test_g_slice7_report.TestSlice7Report.test_wv4_disputed_count_rerun_against_completed_header",
         ],
     },
+    "test_h_step16_unit1": {
+        "count": 7,
+        "cases": [
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_01_ledger_as_the_crossing_piece",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_01_ledger_over_single_piece_limit",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_01_ledger_wholly_past_tree_byte_limit",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_02_e1_bound_names_unread_step_record",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_02_e2_no_absence_claim_over_unread_record",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_held_piece_exactly_at_file_limit",
+            "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_held_tree_exactly_at_tree_byte_limit",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -512,4 +524,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 439
+TOTAL = 446

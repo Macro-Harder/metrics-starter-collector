@@ -2598,5 +2598,3 @@ class TestSlice2Capture(FixtureTestCase):
                     self.assertIn("Verdict: missing", block)
 
 
-if __name__ == "__main__":
-    unittest.main()
