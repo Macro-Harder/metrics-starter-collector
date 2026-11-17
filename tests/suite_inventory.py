@@ -675,6 +675,25 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_held_true_zero_byte_for_byte",
         ],
     },
+    "test_h_step16_fix4_unit3": {
+        "count": 14,
+        "cases": [
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_04_ledger_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_04_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_08_loop_step_record_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_08_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_d1_notice_skip_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_d1_two_tables_count_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_d1_two_tables_named_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_ledger_family_rows_on_unread_ledger",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t1_not_read_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t2_not_read_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t4_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t4_decision_table_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t7_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix4_unit3.TestStep16Fix4Unit3.test_r16_4_held_t7_all_gates_unread_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -703,4 +722,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 565
+TOTAL = 579

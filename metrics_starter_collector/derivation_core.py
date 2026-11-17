@@ -1515,7 +1515,33 @@ def _derive_t4(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     ledger = _ledger_piece(captured)
     pointer = ledger.paths[0] if ledger is not None else "PATH-LEDGER.md"
-    if ledger is None or ledger.text is None:
+    if ledger is not None and ledger.text is None:
+        naming = _piece_state_naming(ledger)
+        return _refusal(
+            "T-4", "present but not derivable",
+            "no banked duration figure", denom,
+            _pointer("T-4", pointer, captured),
+            shows="a path ledger piece stands in the capture and "
+                  "stands not read in full: " + naming + ", so no "
+                  "byte of that piece was read and no banked "
+                  "state is taken from it",
+            token="missing-field",
+            follows="the row rests on a piece that was not read "
+                    "in full, so the row is present but not "
+                    "derivable; missing stands reserved for the "
+                    "case where no feeder record stands in the "
+                    "tree, and no wait figure is claimed over a "
+                    "piece that was not read",
+            rule_name="T-4 not read in full rule",
+            broken="the BANKED entry field in " + ledger.paths[0]
+                   + ", which stands not read in full as its "
+                     "capture reason states",
+            required="a path ledger record read in full, "
+                     "carrying its BANKED entries with their "
+                     "interval durations",
+            held="the path ledger record stands in the tree at "
+                 + naming)
+    if ledger is None:
         return _refusal(
             "T-4", "missing", "no banked duration figure", denom,
             pointer,
@@ -2189,6 +2215,40 @@ def _derive_t7(captured, universe):
                         "the step",
                 rule_name="G-05 irreconcilable counts rule")
     loop_steps = _loop_steps(captured)
+    if not loop_steps:
+        unread_records = [piece for piece in
+                          captured.pieces_of(CLS_STEP_RECORD)
+                          if piece.text is None]
+        if unread_records:
+            naming = "; ".join(
+                _piece_state_naming(piece)
+                for piece in unread_records)
+            first = unread_records[0]
+            return _refusal(
+                "T-7", "present but not derivable",
+                "no rounds figure", denom, pointer,
+                shows="step records of the step universe stand "
+                      "not read in full: " + naming + ", so no "
+                      "byte of those pieces was read and no loop "
+                      "step marker is taken from them",
+                token="missing-field",
+                follows="the row rests on pieces that were not "
+                        "read in full, so the row is present "
+                        "but not derivable; missing stands "
+                        "reserved for the case where no feeder "
+                        "record stands in the tree, and no loop "
+                        "step is claimed absent from a piece "
+                        "that was not read",
+                rule_name="T-7 not read in full rule",
+                broken="the loop step marker field in "
+                       + first.paths[0] + ", which stands not "
+                         "read in full as its capture reason "
+                         "states",
+                required="a step record read in full, carrying "
+                         "its loop step marker and its round "
+                         "outcome records",
+                held="the step records stand in the tree at "
+                     + naming)
     if loop_steps:
         counted = {}
         failures = []
