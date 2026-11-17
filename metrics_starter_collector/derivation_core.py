@@ -5459,6 +5459,39 @@ def _derive_q4(captured, universe):
         return _unknown_version_result(
             captured, "Q-4", denom, _pointer("Q-4", pointer, captured))
     if not traces:
+        gate_unread = [piece for piece in
+                       captured.pieces_of(*GATE_CLASSES)
+                       if _piece_over_limit_not_read(piece)]
+        if gate_unread:
+            naming = "; ".join(
+                _limit_naming(piece) for piece in gate_unread)
+            first = gate_unread[0]
+            return _refusal(
+                "Q-4", "present but not derivable",
+                "no first trace figure", denom,
+                _pointer("Q-4", first.paths[0], captured),
+                shows="gate records stand, and the gate pieces "
+                      "the row rests on stand not read past a "
+                      "limit: " + naming + ", so no byte of "
+                      "those pieces was read and no first trace "
+                      "figure is taken from them",
+                token=_quality_code(first),
+                follows="the row rests on pieces that were not "
+                        "read past the bound named, so the row "
+                        "is present but not derivable; missing "
+                        "stands reserved for the case where no "
+                        "feeder record stands in the tree, and "
+                        "no first trace figure is claimed absent "
+                        "from a piece that was not read",
+                rule_name="Q-4 not read past a limit rule",
+                broken="the first trace figure field in "
+                       + first.paths[0] + ", which stands not "
+                         "read past the limit named in its "
+                         "capture reason",
+                required="a gate record read in full, carrying "
+                         "its first trace figures",
+                held="the gate records stand in the tree at "
+                     + naming)
         trace_pieces = [piece for piece in captured.pieces
                         if "trace" in piece.paths[0]
                         and piece.paths[0].endswith(".md")]
