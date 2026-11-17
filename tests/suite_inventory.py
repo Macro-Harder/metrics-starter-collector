@@ -341,7 +341,7 @@ INVENTORY = {
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_two_correction_statements_last_governs_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_further_negated_header_lines_do_not_except_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_structural_negation_header_lines_do_not_except_in_core",
-        ],
+],
     },
     "test_f_slice6_cost": {
         "count": 46,
@@ -496,6 +496,20 @@ INVENTORY = {
             "tests.test_h_step16_unit1.TestStep16Unit1.test_r16_held_tree_exactly_at_tree_byte_limit",
         ],
     },
+    "test_h_step16_unit2": {
+        "count": 9,
+        "cases": [
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_03_notice_as_table_data_row",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_03_truly_empty_table_held",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_04_second_table_item_counts",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_04_second_table_named_beside_present_row",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_b_date_only_items",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_b_open_items",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_c_table_outside_root",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_c_table_unrecognised_file",
+            "tests.test_h_step16_unit2.TestStep16Unit2.test_r16_held_attack4_case_d_queue_governs",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -524,4 +538,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 446
+TOTAL = 455

@@ -455,6 +455,31 @@ def _metrics_section(text, heading):
     return tail
 
 
+def _decision_table_sections(text):
+    """Every decision table section of a record text, in order.
+
+    A record may carry more than one decision table under the
+    decision table heading form. Each section runs from its
+    heading to the next headed section or to the end of the
+    text, cut in the same form _metrics_section cuts one
+    section, so no table of the record stands outside the set.
+    """
+    sections = []
+    if not text:
+        return sections
+    lowered = text.lower()
+    heading = "## decision table"
+    at = lowered.find(heading)
+    while at >= 0:
+        tail = text[at:]
+        nxt = tail.find("\n## ", len(heading))
+        if nxt > 0:
+            tail = tail[:nxt]
+        sections.append(tail)
+        at = lowered.find(heading, at + len(heading))
+    return sections
+
+
 def _quality_code(piece):
     state = (piece.quality_state or "").lower()
     if state == "malformed":
@@ -1317,7 +1342,11 @@ def _decision_feeders(captured):
     no text with a damage quality state where it stands unusable.
     The decision table stands in the assembled metrics record. The
     queue file, where it stands in the named form, takes
-    precedence over the decision table under WV-12.
+    precedence over the decision table under WV-12. Where the
+    record carries more than one decision table, the items of
+    every table stand together as the table items, and the count
+    of tables stands in the result so the row can name it: no
+    table of the record is silently ignored.
     """
     queue_pieces = captured.pieces_of(CLS_DECISION_QUEUE)
     queue_piece = queue_pieces[0] if queue_pieces else None
@@ -1327,8 +1356,12 @@ def _decision_feeders(captured):
     queue_items = _table_items(queue_piece.text) if queue_usable \
         else []
     assembled = captured.assembled_metrics or ""
-    section = _metrics_section(assembled, "## Decision table")
-    table_items = _table_items(section if section else assembled)
+    sections = _decision_table_sections(assembled)
+    table_items = []
+    for section in sections:
+        table_items.extend(_table_items(section))
+    if not sections:
+        table_items = _table_items(assembled)
     table_stands = bool(table_items) or \
         "## decision table" in assembled.lower()
     return {
@@ -1337,6 +1370,7 @@ def _decision_feeders(captured):
         "queue_items": queue_items,
         "table_items": table_items,
         "table_stands": table_stands,
+        "table_count": len(sections),
         "metrics_name": _metrics_record_name(captured),
     }
 
@@ -1505,10 +1539,13 @@ def _derive_t4(captured, universe):
         result.statement = "; ".join(parts) if parts else None
         return result
     if banked_seen:
-        section = _metrics_section(
-            captured.assembled_metrics or "", "## Decision table")
-        items = _table_items(section if section
-                             else captured.assembled_metrics)
+        sections = _decision_table_sections(
+            captured.assembled_metrics or "")
+        items = []
+        for section in sections:
+            items.extend(_table_items(section))
+        if not sections:
+            items = _table_items(captured.assembled_metrics)
         example = ""
         if items:
             origins = []
@@ -5509,8 +5546,19 @@ def _trace_is_pin_rows(captured, step):
 
 # ----------------------------------------------------------------- D-1
 
+_EMPTY_TABLE_NOTICE = re.compile(
+    r"^no decision queue items\b.*\brecorded yet\.?$", re.I)
+
+
 def _table_items(text):
-    """Decision table items from one record text, in row order."""
+    """Decision table items from one record text, in row order.
+
+    A data row that is the table own empty notice, the notice
+    text standing in the item cell with no origin and no raised
+    field beside it, is not an item: the table that carries it
+    holds no decision item at all, and the notice is never
+    counted as one item standing open.
+    """
     items = []
     if not text:
         return items
@@ -5522,6 +5570,9 @@ def _table_items(text):
         if len(cells) < 5:
             continue
         if cells[0] in ("Item", "---") or set(cells[0]) <= set("- "):
+            continue
+        if not cells[1] and not cells[2] and \
+                _EMPTY_TABLE_NOTICE.match(cells[0]):
             continue
         items.append({
             "item": cells[0],
@@ -5614,6 +5665,14 @@ def _derive_d1(captured, universe):
     denom = "denominator decision items in the governing record"
     feeders = _decision_feeders(captured)
     queue_piece = feeders["queue_piece"]
+    table_count = feeders.get("table_count", 0)
+    table_note = None
+    if table_count > 1:
+        tables_word = {2: "two", 3: "three", 4: "four",
+                       5: "five"}.get(table_count, str(table_count))
+        table_note = ("the metrics record carries %s decision "
+                      "tables, and the items of every table stand "
+                      "together as the feeder items" % tables_word)
     if feeders["queue_usable"]:
         items = feeders["queue_items"]
         feeder_name = "decision queue file"
@@ -5623,6 +5682,7 @@ def _derive_d1(captured, universe):
         if feeders["table_items"]:
             marking = _d1_marking(captured, items,
                                   feeders["table_items"])
+        marking = _join_statements(marking, table_note)
         if not items:
             return _refusal(
                 "D-1", "present but not derivable",
@@ -5642,7 +5702,7 @@ def _derive_d1(captured, universe):
         pointer = METRICS_CANONICAL_PATH
         foundation = _D1_FOUNDATION_TABLE_NO_QUEUE \
             if queue_piece is None else _D1_FOUNDATION_TABLE
-        marking = None
+        marking = table_note
         if not items:
             return _refusal(
                 "D-1", "present but not derivable",
@@ -5724,8 +5784,12 @@ def _derive_d1(captured, universe):
         origins = [item["origin"] for item in items]
         count_word = {1: "one", 2: "two", 3: "three", 4: "four",
                       5: "five"}.get(len(items), str(len(items)))
-        held = ("the decision table holds %s items, %s"
-                % (count_word, _names_phrase(names)))
+        if table_count > 1:
+            held = ("the decision tables hold %s items, %s"
+                    % (count_word, _names_phrase(names)))
+        else:
+            held = ("the decision table holds %s items, %s"
+                    % (count_word, _names_phrase(names)))
         if len(set(origins)) == 1 and origins and origins[0]:
             held += ", each with origin step %s" % origins[0]
         raised_values = {item["raised"] for item in items}
