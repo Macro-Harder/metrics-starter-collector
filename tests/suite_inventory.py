@@ -591,6 +591,28 @@ INVENTORY = {
             "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_read_staffing_rows_byte_for_byte",
         ],
     },
+    "test_h_step16_fix2_unit2": {
+        "count": 17,
+        "cases": [
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_origin_only_first_of_two_tables",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_origin_only_second_of_two_tables",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_origin_only_single_table",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_raised_only_first_of_two_tables",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_raised_only_second_of_two_tables",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_02_raised_only_single_table",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_attack4_case_b_date_only_items",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_attack4_case_b_open_items",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_attack4_case_c_table_outside_root",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_attack4_case_c_table_unrecognised_file",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_attack4_case_d_queue_governs",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_both_empty_notice_skipped",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_notice_words_with_real_fields",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_r16_04_second_table_item_counts",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_r16_04_second_table_named_beside_present",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_real_item_beside_notice_words",
+            "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_truly_empty_table",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -619,4 +641,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 506
+TOTAL = 523

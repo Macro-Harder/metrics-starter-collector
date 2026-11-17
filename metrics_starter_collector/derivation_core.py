@@ -5763,10 +5763,12 @@ def _table_items(text):
     """Decision table items from one record text, in row order.
 
     A data row that is the table own empty notice, the notice
-    text standing in the item cell with no origin and no raised
-    field beside it, is not an item: the table that carries it
-    holds no decision item at all, and the notice is never
-    counted as one item standing open.
+    text standing alone in the item cell, is not an item,
+    whichever of the origin and raised cells stand filled
+    beside it: the table that carries it holds no decision
+    item at all, and the notice is never counted as one item
+    standing open. A row whose item cell carries words beyond
+    the notice stands counted as it stands counted.
     """
     items = []
     if not text:
@@ -5780,8 +5782,7 @@ def _table_items(text):
             continue
         if cells[0] in ("Item", "---") or set(cells[0]) <= set("- "):
             continue
-        if not cells[1] and not cells[2] and \
-                _EMPTY_TABLE_NOTICE.match(cells[0]):
+        if _EMPTY_TABLE_NOTICE.match(cells[0]):
             continue
         items.append({
             "item": cells[0],
