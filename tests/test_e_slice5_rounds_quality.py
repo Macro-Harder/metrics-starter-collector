@@ -1278,6 +1278,140 @@ class TestSlice5RoundsQuality(FixtureTestCase):
                         "breakdown table. " + header + table_tail)
                 self.assertIsNone(core._signal_failure(text))
 
+    def test_signal_two_further_negated_header_lines_do_not_except_in_core(self):
+        """C3B-01 and C3P-01, core limb, standing for R15-07.
+
+        Direct calls on the core check over a table of 2 data
+        rows under a header count of 99. The clause scoped
+        reading cured the finding forms inside one clause and
+        leaves three in family groups excepting. First,
+        negation word forms outside the cured set: a
+        contraction, isn't a planned count, and the modal form
+        cannot be a planned count. Second, a negation or a
+        rejection standing in a separate clause where the
+        clause is part of the one negation statement itself: a
+        parenthetical clause between the negation and the
+        phrase, and a trailing clause carrying the rejection.
+        Third, rejection words outside the cured set:
+        withdrawn, superseded, cancelled and dropped. Every
+        such line states no exception and still fails signal
+        two. The forms that already govern keep governing: is
+        not, no longer, not at all, never was, not stated as,
+        stated as no, no kind of, and the set members refused
+        and denied. The boundary controls keep their standing:
+        a negation governing a different statement on the same
+        line, not audited, does not defeat the exception, a
+        negation standing immediately before the phrase across
+        a semicolon governs, and the brief form lines keep
+        excepting.
+        """
+        import metrics_starter_collector.derivation_core as core
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        for label, header in (
+                ("contraction",
+                 "Rows stated in header: 99, isn't a planned "
+                 "count."),
+                ("cannot",
+                 "Rows stated in header: 99, cannot be a planned "
+                 "count."),
+                ("parenthetical-strictly",
+                 "Rows stated in header: 99, not, strictly "
+                 "speaking, a planned count."),
+                ("parenthetical-in-fact",
+                 "Rows stated in header: 99, not, in fact, a "
+                 "target count."),
+                ("parenthetical-in-any-form",
+                 "Rows stated in header: 99, never, in any form, "
+                 "a target count."),
+                ("parenthetical-as-record-states",
+                 "Rows stated in header: 99, not, as the record "
+                 "states, a planned count."),
+                ("trailing-rejected",
+                 "Rows stated in header: 99, a planned count, "
+                 "rejected."),
+                ("trailing-rejected-on-review",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count; rejected on review."),
+                ("trailing-which-was-rejected",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, which was rejected."),
+                ("trailing-was-rejected",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count, was rejected."),
+                ("trailing-rejected-by-board",
+                 "Rows stated in header: 99, a planned count, "
+                 "rejected by the board."),
+                ("trailing-since-withdrawn",
+                 "Rows stated in header: 99, stated as a target "
+                 "count, since withdrawn."),
+                ("withdrawn",
+                 "Rows stated in header: 99, the planned count "
+                 "was withdrawn."),
+                ("superseded",
+                 "Rows stated in header: 99, the planned count "
+                 "was superseded."),
+                ("cancelled",
+                 "Rows stated in header: 99, the planned count "
+                 "was cancelled."),
+                ("dropped",
+                 "Rows stated in header: 99, the planned count "
+                 "was dropped."),
+                ("is-not",
+                 "Rows stated in header: 99, is not a planned "
+                 "count."),
+                ("no-longer",
+                 "Rows stated in header: 99, no longer a planned "
+                 "count."),
+                ("not-at-all",
+                 "Rows stated in header: 99, not at all a "
+                 "planned count."),
+                ("never-was",
+                 "Rows stated in header: 99, never was a planned "
+                 "count."),
+                ("not-stated-as",
+                 "Rows stated in header: 99, not stated as a "
+                 "planned count."),
+                ("stated-as-no",
+                 "Rows stated in header: 99, stated as no "
+                 "planned count."),
+                ("no-kind-of",
+                 "Rows stated in header: 99, no kind of planned "
+                 "count."),
+                ("refused",
+                 "Rows stated in header: 99, the planned count "
+                 "was refused."),
+                ("denied",
+                 "Rows stated in header: 99, the planned count "
+                 "was denied."),
+                ("semicolon-not",
+                 "Rows stated in header: 99; not a planned "
+                 "count.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertEqual(
+                    core._signal_failure(text), "signal-two")
+        for label, header in (
+                ("not-audited",
+                 "Rows stated in header: 99, not audited, stated "
+                 "as a planned count."),
+                ("brief-planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("brief-target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count."),
+                ("brief-a-planned",
+                 "Rows stated in header: 99, a planned count."),
+                ("brief-a-target",
+                 "Rows stated in header: 99, a target count.")):
+            with self.subTest(form=label):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(core._signal_failure(text))
+
     def test_signal_two_two_correction_statements_last_governs_in_core(self):
         """C2B-02, core limb, standing for C1B-05. Brief Section 5.
 

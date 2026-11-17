@@ -1063,6 +1063,191 @@ class TestSlice2Capture(FixtureTestCase):
                 self.assertTrue(block)
                 self.assertIn("Verdict: missing", block)
 
+    def test_signal_two_further_negated_header_lines_do_not_except_at_capture(self):
+        """C3B-01 and C3P-01, shell limb, standing for R15-07.
+
+        The further negated header lines in the shell form, by
+        direct call, and a sample of them through the module
+        entry route. The clause scoped reading cured the
+        finding forms inside one clause and leaves three in
+        family groups excepting. First, negation word forms
+        outside the cured set: a contraction, isn't a planned
+        count, and the modal form cannot be a planned count.
+        Second, a negation or a rejection standing in a
+        separate clause where the clause is part of the one
+        negation statement itself: a parenthetical clause
+        between the negation and the phrase, and a trailing
+        clause carrying the rejection. Third, rejection words
+        outside the cured set: withdrawn, superseded,
+        cancelled and dropped. Every such line states no
+        exception and still fails signal two at capture. The
+        forms that already govern keep governing: is not, no
+        longer, not at all, never was, not stated as, stated
+        as no, no kind of, and the set members refused and
+        denied. The boundary controls keep their standing: a
+        negation governing a different statement on the same
+        line, not audited, does not defeat the exception, a
+        negation standing immediately before the phrase across
+        a semicolon governs, and the brief form lines keep
+        excepting. Through the entry route, a sample of the
+        exhibit lines and the semicolon control stand
+        truncated on signal two with D-1 missing, and the not
+        audited control stands read in full with D-1 present
+        but not derivable.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+        negated = (
+            ("contraction",
+             "Rows stated in header: 99, isn't a planned count."),
+            ("cannot",
+             "Rows stated in header: 99, cannot be a planned "
+             "count."),
+            ("parenthetical-strictly",
+             "Rows stated in header: 99, not, strictly speaking, "
+             "a planned count."),
+            ("parenthetical-in-fact",
+             "Rows stated in header: 99, not, in fact, a target "
+             "count."),
+            ("parenthetical-in-any-form",
+             "Rows stated in header: 99, never, in any form, a "
+             "target count."),
+            ("parenthetical-as-record-states",
+             "Rows stated in header: 99, not, as the record "
+             "states, a planned count."),
+            ("trailing-rejected",
+             "Rows stated in header: 99, a planned count, "
+             "rejected."),
+            ("trailing-rejected-on-review",
+             "Rows stated in header: 99, stated as a planned "
+             "count; rejected on review."),
+            ("trailing-which-was-rejected",
+             "Rows stated in header: 99, stated as a planned "
+             "count, which was rejected."),
+            ("trailing-was-rejected",
+             "Rows stated in header: 99, stated as a planned "
+             "count, was rejected."),
+            ("trailing-rejected-by-board",
+             "Rows stated in header: 99, a planned count, "
+             "rejected by the board."),
+            ("trailing-since-withdrawn",
+             "Rows stated in header: 99, stated as a target "
+             "count, since withdrawn."),
+            ("withdrawn",
+             "Rows stated in header: 99, the planned count was "
+             "withdrawn."),
+            ("superseded",
+             "Rows stated in header: 99, the planned count was "
+             "superseded."),
+            ("cancelled",
+             "Rows stated in header: 99, the planned count was "
+             "cancelled."),
+            ("dropped",
+             "Rows stated in header: 99, the planned count was "
+             "dropped."),
+            ("is-not",
+             "Rows stated in header: 99, is not a planned count."),
+            ("no-longer",
+             "Rows stated in header: 99, no longer a planned "
+             "count."),
+            ("not-at-all",
+             "Rows stated in header: 99, not at all a planned "
+             "count."),
+            ("never-was",
+             "Rows stated in header: 99, never was a planned "
+             "count."),
+            ("not-stated-as",
+             "Rows stated in header: 99, not stated as a planned "
+             "count."),
+            ("stated-as-no",
+             "Rows stated in header: 99, stated as no planned "
+             "count."),
+            ("no-kind-of",
+             "Rows stated in header: 99, no kind of planned "
+             "count."),
+            ("refused",
+             "Rows stated in header: 99, the planned count was "
+             "refused."),
+            ("denied",
+             "Rows stated in header: 99, the planned count was "
+             "denied."),
+            ("semicolon-not",
+             "Rows stated in header: 99; not a planned count."))
+        for label, header in negated:
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNotNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("not-audited",
+                 "Rows stated in header: 99, not audited, stated "
+                 "as a planned count."),
+                ("brief-planned",
+                 "Rows stated in header: 99, stated as a planned "
+                 "count."),
+                ("brief-target",
+                 "Rows stated in header: 99, stated as a target "
+                 "count."),
+                ("brief-a-planned",
+                 "Rows stated in header: 99, a planned count."),
+                ("brief-a-target",
+                 "Rows stated in header: 99, a target count.")):
+            with self.subTest(form=label, route="direct"):
+                text = ("# Step 1 audit paper\n\nSeverity "
+                        "breakdown table. " + header + table_tail)
+                self.assertIsNone(shell._signal_two_failure(text))
+        for label, header in (
+                ("contraction",
+                 "Rows stated in header: 99, isn't a planned "
+                 "count."),
+                ("cannot",
+                 "Rows stated in header: 99, cannot be a planned "
+                 "count."),
+                ("parenthetical-strictly",
+                 "Rows stated in header: 99, not, strictly "
+                 "speaking, a planned count."),
+                ("trailing-rejected",
+                 "Rows stated in header: 99, a planned count, "
+                 "rejected."),
+                ("withdrawn",
+                 "Rows stated in header: 99, the planned count "
+                 "was withdrawn."),
+                ("semicolon-not",
+                 "Rows stated in header: 99; not a planned "
+                 "count.")):
+            with self.subTest(form=label, route="entry"):
+                files = self._signal_two_metrics_files(
+                    "", header + "\n")
+                root = build(make_case(
+                    "further-negated-capture-" + label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("signal-two", result.stdout)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                self.assertIn("truncated", entry.lower())
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                self.assertIn("Verdict: missing", block)
+        files = self._signal_two_metrics_files(
+            "", "Rows stated in header: 99, not audited, stated "
+            "as a planned count.\n")
+        root = build(make_case(
+            "further-negated-capture-not-audited", files=files))
+        result = run_product(root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("signal-two", result.stdout)
+        entry = piece_entry_for(
+            result.stdout, "build-metrics-record.md")
+        self.assertTrue(entry)
+        self.assertNotIn("truncated", entry.lower())
+        block = row_block(result.stdout, "D-1")
+        self.assertTrue(block)
+        self.assertIn("present but not derivable", block)
+
     def test_signal_two_two_correction_statements_last_governs_at_capture(self):
         """C2B-02, shell side verification, standing for C1B-05.
 

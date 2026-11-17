@@ -65,7 +65,7 @@ INVENTORY = {
         ],
     },
     "test_b_slice2_capture": {
-        "count": 52,
+        "count": 53,
         "cases": [
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_3_nearest_closed_pattern_note",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_a7_4_walk_order_sample_where_limit_cuts_capture",
@@ -119,6 +119,7 @@ INVENTORY = {
             "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_negated_header_lines_do_not_except_at_capture",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_two_correction_statements_last_governs_at_capture",
             "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_second_table_not_counted_at_capture",
+            "tests.test_b_slice2_capture.TestSlice2Capture.test_signal_two_further_negated_header_lines_do_not_except_at_capture",
         ],
     },
     "test_c_slice3_staffing": {
@@ -264,7 +265,7 @@ INVENTORY = {
 ],
     },
     "test_e_slice5_rounds_quality": {
-        "count": 68,
+        "count": 69,
         "cases": [
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_q1_population_and_exclusion_list_before_count",
             "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_ca10_t7_population_and_exclusion_list",
@@ -334,6 +335,7 @@ INVENTORY = {
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_negated_header_lines_do_not_except_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_second_table_not_counted_in_core",
                     "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_two_correction_statements_last_governs_in_core",
+                    "tests.test_e_slice5_rounds_quality.TestSlice5RoundsQuality.test_signal_two_further_negated_header_lines_do_not_except_in_core",
 ],
     },
     "test_f_slice6_cost": {
@@ -505,4 +507,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 432
+TOTAL = 434

@@ -1583,31 +1583,79 @@ def _header_count_excepted(header_line):
 
     The exception fires only where the header count stands
     stated as a planned count or as a target count and no
-    negation governs that statement. A negation word standing
-    in the same clause before the planned or target statement,
-    as not a planned count, no planned count, never a target
-    count, or not planned count, governs the statement, and a
-    rejection word standing in the same clause after it, as
-    the planned count was rejected, governs it as well: every
-    such negated form states no exception. The brief form
-    lines, the count stated as a planned count and the count
-    stated as a target count with no negation standing, except.
+    negation governs that statement. A negation form is one of
+    the words not, no or never, the modal form cannot, or a
+    contraction ending in n't, as isn't. A rejection form is
+    one of the words rejected, refused, denied, negated,
+    withdrawn, superseded, cancelled, canceled or dropped.
+
+    A negation form standing in the same clause before the
+    planned or target statement governs it, as not a planned
+    count, no planned count, never a target count, or isn't a
+    planned count, and so does a negation form standing alone
+    in its own clause before the statement, with no complement
+    of its own in that clause, as not, strictly speaking, a
+    planned count, because such a negation can only attach to
+    the statement that follows it, across any parenthetical
+    clause between them. A negation form standing in an
+    earlier clause with a complement of its own in that
+    clause, as not audited, stated as a planned count, governs
+    that complement and does not govern the statement. A
+    rejection form standing in the same clause after the
+    statement governs it, as the planned count was rejected
+    or the planned count was withdrawn, and so does a
+    rejection form standing in a later clause that carries no
+    subject of its own beyond a relative or auxiliary word,
+    as a planned count, rejected, or stated as a planned
+    count, which was rejected, because such a clause is the
+    trailing part of the one statement. The brief form lines,
+    the count stated as a planned count and the count stated
+    as a target count with no negation standing, except.
     """
+    negation = r"(?:\b(?:not|no|never|cannot)\b|\b\w+n't\b)"
+    rejection = (
+        r"\b(?:rejected|refused|denied|negated|withdrawn"
+        r"|superseded|cancelled|canceled|dropped)\b")
     found = re.search(
         r"\bplanned count\b|\btarget count\b"
-        r"|\bstated as (?:a |an )?(?:planned|target)\b",
+        r"|\bstated as (?:a |an )?(?:planned|target)"
+        r"(?: count)?\b",
         header_line)
     if not found:
         return False
-    clause_before = re.split(
-        r"[,;]", header_line[:found.start()])[-1]
-    if re.search(r"\b(?:not|no|never)\b", clause_before):
+    clauses_before = re.split(
+        r"[,;]", header_line[:found.start()])
+    if re.search(negation, clauses_before[-1]):
         return False
-    clause_after = re.split(
-        r"[,;]", header_line[found.end():])[0]
-    if re.search(r"\b(?:rejected|refused|denied|negated)\b",
-                 clause_after):
+    for clause in reversed(clauses_before[:-1]):
+        if not re.search(negation, clause):
+            continue
+        if re.fullmatch(
+                r"(?:(?:the|a|an|it|this|that|there) )?"
+                r"(?:(?:count|record|statement|header) )?"
+                r"(?:(?:is|was|were|are|be|been) )?"
+                r"(?:not|no|never|cannot|\w+n't)"
+                r"(?: (?:at all|any longer|longer))?",
+                clause.strip().rstrip(".")):
+            return False
+        break
+    clauses_after = re.split(
+        r"[,;]", header_line[found.end():])
+    if re.search(rejection, clauses_after[0]):
         return False
+    for clause in clauses_after[1:]:
+        rejected = re.search(rejection, clause)
+        if not rejected:
+            continue
+        head_words = clause[:rejected.start()].split()
+        if all(word in (
+                "which", "that", "it", "this", "was", "were",
+                "is", "are", "has", "have", "had", "been",
+                "being", "since", "and", "but", "now", "then",
+                "later", "subsequently")
+               for word in head_words):
+            return False
+        break
     return True
 
 
