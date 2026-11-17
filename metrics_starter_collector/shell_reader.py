@@ -124,42 +124,53 @@ _SIGNAL_ONE_EXCEPTION = (
     re.compile(r"skipped by design"),
     re.compile(r"reserved by design"))
 
+# The third header count form is compositional, in three
+# parts. The label is the word header followed by any words
+# drawn from count, counts, row and total, and no other word.
+# The opening is a property of the statement position: the
+# start of the line, a place standing after sentence or clause
+# closing punctuation and spacing, a spaced dash, or two or
+# more spaces. The qualifier matter after the count phrase is
+# any composition of the qualifier words, which carry no verb
+# form and no new subject. A comma or semicolon clause after
+# the count phrase, after qualifier matter, or after a
+# parenthetical leaves the statement standing only where that
+# clause itself is an exception clause, carrying the planned
+# count or target count phrase, the stated as a planned or
+# stated as a target form, or a rejection word of the standing
+# set, or where the clause is qualifier matter alone.
+_THIRD_QUALIFIER_WORD = (
+    r"altogether|combined|exactly|overall|stated|header"
+    r"|table|total|full|only|all|for|the|in|as")
+_THIRD_QUALIFIER_SEQ = (
+    r"(?:\s+(?:" + _THIRD_QUALIFIER_WORD + r"))+")
+_THIRD_PARENTHETICAL = r"(?:\s*\([^()]*\))"
+_THIRD_PREFIX = (
+    r"(?:" + _THIRD_QUALIFIER_SEQ + r")?"
+    r"(?:" + _THIRD_PARENTHETICAL
+    + r"(?:" + _THIRD_QUALIFIER_SEQ + r")?)?")
+_THIRD_EXCEPTION_CLAUSE = (
+    r"[^,;]*?(?:\bplanned count\b|\btarget count\b"
+    r"|\bstated as (?:a |an )?(?:planned|target)"
+    r"(?: count)?\b"
+    r"|\b(?:rejected|refused|denied|negated|withdrawn"
+    r"|superseded|cancelled|canceled|dropped)\b)")
+
 _HEADER_COUNT = (
     re.compile(r"rows stated in header:\s*(\d+)"),
     re.compile(r"(\d+)\s+rows stated in (the )?header"),
     re.compile(
-        r"(?:^|\.\s)header(?: row count| counts| count)?:"
-        r"\s*(\d+)\s+rows"
+        r"(?:^|[.!?;:]\s+|\s-\s+|\s{2,})"
+        r"header(?:\s+(?:counts|count|row|total))*"
+        r"\s*:\s*(\d+)\s+rows"
         r"(?=\s*(?:[.!]|$)"
-        r"|(?:\s+(?:stated in the header|in the table"
-        r"|in the header|in total|total|stated|exactly"
-        r"|only|overall))+\s*(?:[.!]|$)"
-        r"|(?:\s+(?:stated in the header|in the table"
-        r"|in the header|in total|total|stated|exactly"
-        r"|only|overall))+\s*[,;]"
-        r"(?=.*(?:\bplanned\b|\btarget\b|\brejected\b"
-        r"|\brefused\b|\bdenied\b|\bnegated\b|\bwithdrawn\b"
-        r"|\bsuperseded\b|\bcancelled\b|\bcanceled\b"
-        r"|\bdropped\b))"
-        r"|(?:\s+(?:stated in the header|in the table"
-        r"|in the header|in total|total|stated|exactly"
-        r"|only|overall))*\s*\([^()]*\)\s*(?:[.!]|$)"
-        r"|\s*\([^()]*\)\s*[,;]"
-        r"(?=.*(?:\bplanned\b|\btarget\b|\brejected\b"
-        r"|\brefused\b|\bdenied\b|\bnegated\b|\bwithdrawn\b"
-        r"|\bsuperseded\b|\bcancelled\b|\bcanceled\b"
-        r"|\bdropped\b))"
-        r"|\s*[,;]"
-        r"(?=.*(?:\bplanned\b|\btarget\b|\brejected\b"
-        r"|\brefused\b|\bdenied\b|\bnegated\b|\bwithdrawn\b"
-        r"|\bsuperseded\b|\bcancelled\b|\bcanceled\b"
-        r"|\bdropped\b))"
-        r"|\s*[,;]\s*"
-        r"(?:stated in the header|in the table|in the header"
-        r"|in total|total|stated|exactly|only|overall)"
-        r"(?:\s+(?:stated in the header|in the table"
-        r"|in the header|in total|total|stated|exactly"
-        r"|only|overall))*\s*(?:[.!]\s*)?$)"))
+        + r"|" + _THIRD_QUALIFIER_SEQ + r"\s*(?:[.!?]|$)"
+        + r"|" + _THIRD_PREFIX + r"\s*(?:[.!?]|$)"
+        + r"|" + _THIRD_PREFIX + r"\s*[,;]"
+        + _THIRD_EXCEPTION_CLAUSE
+        + r"|" + _THIRD_PREFIX + r"\s*[,;]"
+        + _THIRD_QUALIFIER_SEQ + r"\s*(?:[.!?]\s*)?$"
+        + r")"))
 # The correction vocabularies stand in the order the Derivation
 # core collects them, so where two matches share one starting
 # place in the record the last correction figure taken here is

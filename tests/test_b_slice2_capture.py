@@ -2394,6 +2394,209 @@ class TestSlice2Capture(FixtureTestCase):
         self.assertIn("could not be listed", floor)
         self.assertIn("forced listing failure", floor)
 
+    def test_signal_two_third_form_compositional_corpus_at_capture(self):
+        """C5B-03 and C5B-04, shell limb. Brief Section 5.
+
+        The whole third form corpus in one pinning test, assembled
+        from the round 3, round 4 and round 5 papers and the Unit
+        18 and Unit 20 reports, each line tagged with its required
+        side. The label of the form is a composition of the label
+        own words: the word header followed by any words drawn
+        from count, counts, row and total, and no other word. The
+        opening of the form is a property of the statement
+        position: the start of the line, or a place standing
+        after sentence closing punctuation and spacing, or after
+        two spaces. The continuation is a property of the trailing
+        matter: qualifier matter, which carries no verb form and
+        no new subject, leaves the statement standing, in any
+        composition of the qualifier words; a parenthetical may
+        follow and may itself be followed by qualifier matter or
+        by a question ending; and a comma or semicolon clause
+        leaves the statement standing only where the clause is an
+        exception clause, carrying the planned count or target
+        count phrase or a rejection word for the exception judge,
+        and not where it merely mentions planned or target
+        wording in another sense. Genuine lines over a table of
+        2 data rows under a stated count of 99 fail at capture;
+        prose lines state no count; matching, excepted and
+        corrected forms stand clean; and the first and second
+        forms keep their standing.
+        """
+        import metrics_starter_collector.shell_reader as shell
+        table_tail = (
+            "\n| Severity | Count |\n| --- | --- |\n"
+            "| Critical | 0 |\n| High | 1 |\n")
+
+        def direct(header):
+            return ("# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. " + header + table_tail)
+
+        tails_fail = (
+            ("tail-in-full", "Header count: 99 rows in full"),
+            ("tail-as-stated", "Header count: 99 rows as stated"),
+            ("tail-for-the-table",
+             "Header count: 99 rows for the table"),
+            ("tail-combined", "Header count: 99 rows combined"),
+            ("tail-in-all", "Header count: 99 rows in all"),
+            ("tail-altogether", "Header count: 99 rows altogether"),
+            ("tail-listed-plus-new",
+             "Header count: 99 rows total in full"),
+            ("tail-new-plus-listed",
+             "Header count: 99 rows in the table in full"),
+            ("tail-two-new", "Header count: 99 rows in all combined"),
+            ("tail-case-upper", "HEADER COUNT: 99 ROWS IN FULL"),
+            ("tail-case-title", "Header Count: 99 Rows Altogether"))
+        endings_fail = (
+            ("ending-question", "Header count: 99 rows?"),
+            ("ending-question-after-tail",
+             "Header count: 99 rows total?"),
+            ("ending-question-after-new-tail",
+             "Header count: 99 rows in full?"))
+        openings_fail = (
+            ("opening-colon", "Counts: Header count: 99 rows"),
+            ("opening-dash", "Counts - Header count: 99 rows"),
+            ("opening-exclamation", "Done! Header count: 99 rows"),
+            ("opening-question", "Done? Header count: 99 rows"),
+            ("opening-semicolon", "Done; Header count: 99 rows"),
+            ("opening-two-spaces", "Table.  Header count: 99 rows"),
+            ("opening-full-stop-standing",
+             "Severity breakdown table. Header count: 99 rows"))
+        labels_fail = (
+            ("label-total-count", "Header total count: 99 rows"),
+            ("label-row-counts", "Header row counts: 99 rows"),
+            ("label-count-total", "Header count total: 99 rows"),
+            ("label-total-count-tail",
+             "Header total count: 99 rows in full"),
+            ("label-standing-row-count",
+             "Header row count: 99 rows"),
+            ("label-standing-counts", "Header counts: 99 rows"))
+        parenthetical_fail = (
+            ("paren-question",
+             "Header count: 99 rows (stated in the header)?"),
+            ("paren-qualifier",
+             "Header count: 99 rows (stated in the header) overall"),
+            ("paren-new-tail-qualifier",
+             "Header count: 99 rows in full (stated in the header)"))
+        standing_fail = (
+            ("standing-plain", "Header count: 99 rows"),
+            ("standing-header-only", "Header: 99 rows"),
+            ("standing-listed-tail", "Header count: 99 rows total"),
+            ("standing-combined-listed",
+             "Header count: 99 rows total in the table"),
+            ("standing-exclamation", "Header count: 99 rows!"),
+            ("standing-parenthetical",
+             "Header count: 99 rows (stated in the header)"),
+            ("standing-negated-new-tail",
+             "Header count: 99 rows in full, not a planned count."))
+        for section, group in (
+                ("tails", tails_fail), ("endings", endings_fail),
+                ("openings", openings_fail), ("labels", labels_fail),
+                ("parenthetical", parenthetical_fail),
+                ("standing", standing_fail)):
+            for label, header in group:
+                with self.subTest(section=section, form=label,
+                                  route="direct"):
+                    self.assertIsNotNone(
+                        shell._signal_two_failure(direct(header)))
+        prose_no_count = (
+            ("prose-planned-schedule",
+             "Header: 99 rows, removed per the planned schedule"),
+            ("prose-target-schedule",
+             "Header: 99 rows, removed under the target schedule"),
+            ("prose-target-date",
+             "Header count: 99 rows, the target date moved"),
+            ("prose-planned-schedule-count-label",
+             "Header count: 99 rows, removed per the planned "
+             "schedule."),
+            ("prose-standing-comma",
+             "Header: 99 rows, all removed from the draft"),
+            ("prose-standing-summary",
+             "Header summary: 99 rows were removed from the draft."),
+            ("prose-substring-section", "Section header: 99 rows"),
+            ("prose-substring-notes", "Notes on the header: 99 rows."),
+            ("prose-label-summary-word", "Header summary: 99 rows"),
+            ("prose-label-note-word", "Header note: 99 rows."),
+            ("prose-direct-continuation",
+             "Header count: 99 rows were removed from the draft."))
+        for label, header in prose_no_count:
+            with self.subTest(section="prose", form=label,
+                              route="direct"):
+                self.assertIsNone(
+                    shell._signal_two_failure(direct(header)))
+        clean = (
+            ("match-new-tail", "Header count: 2 rows in full"),
+            ("match-new-label", "Header row counts: 2 rows"),
+            ("match-question", "Header count: 2 rows?"),
+            ("excepted-after-new-tail",
+             "Header count: 99 rows in full, stated as a planned "
+             "count"),
+            ("excepted-standing",
+             "Header count: 99 rows total, stated as a planned "
+             "count."))
+        for label, header in clean:
+            with self.subTest(section="clean", form=label,
+                              route="direct"):
+                self.assertIsNone(
+                    shell._signal_two_failure(direct(header)))
+        with self.subTest(section="correction", form="new-tail-five",
+                          route="direct"):
+            text = ("# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. Header count: 99 rows in full\n"
+                    "Corrected count: 5\n" + table_tail)
+            self.assertIsNotNone(shell._signal_two_failure(text))
+        with self.subTest(section="correction", form="new-tail-two",
+                          route="direct"):
+            text = ("# Step 1 audit paper\n\nSeverity breakdown "
+                    "table. Header count: 99 rows in full\n"
+                    "Corrected count: 2\n" + table_tail)
+            self.assertIsNone(shell._signal_two_failure(text))
+        for label, header, fails in (
+                ("first-form", "Rows stated in header: 99", True),
+                ("second-form", "99 rows stated in the header", True),
+                ("first-form-match", "Rows stated in header: 2",
+                 False)):
+            with self.subTest(section="other-forms", form=label,
+                              route="direct"):
+                result = shell._signal_two_failure(direct(header))
+                if fails:
+                    self.assertIsNotNone(result)
+                else:
+                    self.assertIsNone(result)
+        for label, header, clean_route in (
+                ("entry-tail-in-full", "Header count: 99 rows in "
+                 "full\n", False),
+                ("entry-ending-question", "Header count: 99 rows?\n",
+                 False),
+                ("entry-label-row-counts",
+                 "Header row counts: 99 rows\n", False),
+                ("entry-prose-planned-schedule",
+                 "Header: 99 rows, removed per the planned "
+                 "schedule\n", True),
+                ("entry-tail-match", "Header count: 2 rows in "
+                 "full\n", True),
+                ("entry-tail-excepted",
+                 "Header count: 99 rows in full, stated as a "
+                 "planned count.\n", True)):
+            with self.subTest(section="entry", form=label,
+                              route="entry"):
+                files = self._signal_two_metrics_files("", header)
+                root = build(make_case(label, files=files))
+                result = run_product(root)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entry = piece_entry_for(
+                    result.stdout, "build-metrics-record.md")
+                self.assertTrue(entry)
+                block = row_block(result.stdout, "D-1")
+                self.assertTrue(block)
+                if clean_route:
+                    self.assertNotIn("signal-two", result.stdout)
+                    self.assertNotIn("truncated", entry.lower())
+                    self.assertIn("present but not derivable", block)
+                else:
+                    self.assertIn("signal-two", result.stdout)
+                    self.assertIn("truncated", entry.lower())
+                    self.assertIn("Verdict: missing", block)
+
 
 if __name__ == "__main__":
     unittest.main()
