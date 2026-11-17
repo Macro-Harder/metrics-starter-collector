@@ -576,6 +576,31 @@ def _unread_staffing_pieces(captured, step):
             if _piece_over_limit_not_read(piece)]
 
 
+def _unread_staffing_naming(captured, steps):
+    """The unread staffing pieces of the given steps, with naming.
+
+    Returns (pairs, naming): pairs holds (step, piece) for every
+    staffing feeder piece of the steps that stands not read past
+    a limit, in step order, and naming joins the limit naming of
+    each such piece in the same order, in the form the WV2-09
+    bound naming duty requires, the bound and the piece named.
+    """
+    pairs = []
+    for step in steps:
+        for piece in _unread_staffing_pieces(captured, step):
+            pairs.append((step, piece))
+    naming = "; ".join(
+        _limit_naming(piece) for _step, piece in pairs)
+    return pairs, naming
+
+
+def _staffing_steps_with_pieces(captured):
+    """Every step a staffing feeder piece stands for, in order."""
+    return sorted({piece.step for piece in
+                   captured.pieces_of(*_STAFFING_CLASSES)
+                   if piece.step is not None})
+
+
 def _walk_order_sample(captured, piece):
     """The A7-4 walk order sample for a capture cut by a limit.
 
@@ -2285,23 +2310,57 @@ def _steps_range_phrase(steps):
     return _each_step(steps)
 
 
-def _e1_bound(covered_steps, uncovered_steps):
+def _e1_bound(covered_steps, uncovered_steps, captured=None):
     """The E-1 bound and reconciliation for a present row whose
     coverage has a remainder: the bound names the excepted steps,
     the link excepted and the record that would clear it, and the
     reconciliation clause restates the coverage bound in the same
     line as the value, in the covered and remainder form.
+
+    An excepted step whose staffing feeder stands not read past
+    a limit stands apart in the bound: the bound names that piece
+    and the limit that stopped its reading, in the form the
+    covered steps bound carries, and claims nothing about what
+    the unread piece lists, because no byte of it was read.
     """
     if not uncovered_steps:
         return None, None
     remainder = _steps_range_phrase(uncovered_steps)
     covered = _steps_range_phrase(covered_steps)
-    bound = (remainder,
-             "the staffed against base link for %s, whose step "
-             "records list staffing with no base count beside it"
-             % remainder,
-             "a step record for each of %s stating a base count "
-             "beside its staffing list" % remainder)
+    unread_steps = []
+    unread_naming = ""
+    if captured is not None:
+        pairs, unread_naming = _unread_staffing_naming(
+            captured, uncovered_steps)
+        unread_steps = sorted({step for step, _piece in pairs})
+    read_steps = [step for step in uncovered_steps
+                  if step not in unread_steps]
+    if not unread_steps:
+        bound = (remainder,
+                 "the staffed against base link for %s, whose step "
+                 "records list staffing with no base count beside it"
+                 % remainder,
+                 "a step record for each of %s stating a base count "
+                 "beside its staffing list" % remainder)
+    else:
+        links = []
+        cleared = []
+        if read_steps:
+            read_phrase = _steps_range_phrase(read_steps)
+            links.append(
+                "the staffed against base link for %s, whose step "
+                "records list staffing with no base count beside it"
+                % read_phrase)
+            cleared.append(
+                "a step record for each of %s stating a base count "
+                "beside its staffing list" % read_phrase)
+        links.append(
+            "the staffing link for " + _steps_phrase(unread_steps)
+            + ", resting on " + unread_naming)
+        cleared.append(
+            "the piece named read in full under the limit that "
+            "stopped its reading")
+        bound = (remainder, "; ".join(links), "; ".join(cleared))
     phrase = ""
     if len(covered_steps) > 1 and covered_steps == list(
             range(covered_steps[0], covered_steps[-1] + 1)):
@@ -2351,6 +2410,42 @@ def _derive_e1_marked(captured, universe, pointer):
             captured, "E-1", denom, _pointer("E-1", pointer, captured))
     if not covered:
         if captured.pieces_of(*_STAFFING_CLASSES):
+            instance_steps = sorted({
+                int(re.match(r"step-(\d+)", key).group(1))
+                for key in universe.instances})
+            pairs, naming = _unread_staffing_naming(
+                captured, instance_steps)
+            if pairs:
+                return _refusal(
+                    "E-1", "present but not derivable",
+                    "no staffed and base pair stands", denom,
+                    _pointer("E-1", pointer, captured),
+                    shows="step records and roster artifacts stand, "
+                          "and the staffing pieces the row rests "
+                          "on stand not read past a limit: "
+                          + naming + ", so no byte of those pieces "
+                          "was read and no staffed or base figure "
+                          "is taken from them",
+                    token=_quality_code(pairs[0][1]),
+                    follows="the row rests on pieces that were not "
+                            "read past the bound named, so the row "
+                            "is present but not derivable; no "
+                            "instance is claimed to carry no pair, "
+                            "and no pair figure is claimed absent "
+                            "from a piece that was not read",
+                    rule_name="E-1 not read past a limit rule",
+                    broken="the staffed and base pair field for "
+                           + _steps_phrase(sorted(
+                               {step for step, _piece in pairs}))
+                           + ", which stands in a piece not read "
+                             "past the limit named in its capture "
+                             "reason",
+                    required="a step record or roster artifact "
+                             "read in full, stating a staffed "
+                             "count and a base count for the same "
+                             "instance",
+                    held="the staffing pieces stand in the tree "
+                         "at " + naming)
             return _refusal(
                 "E-1", "present but not derivable",
                 "no staffed and base pair stands", denom,
@@ -2439,6 +2534,41 @@ def _derive_e1(captured, universe):
             captured, "E-1", denom, _pointer("E-1", pointer, captured))
     if not covered:
         if captured.pieces_of(*_STAFFING_CLASSES):
+            unread_steps = list(universe.evidenced) or \
+                _staffing_steps_with_pieces(captured)
+            pairs, naming = _unread_staffing_naming(
+                captured, unread_steps)
+            if pairs:
+                return _refusal(
+                    "E-1", "present but not derivable",
+                    "no staffed and base pair stands", denom,
+                    _pointer("E-1", pointer, captured),
+                    shows="step records and roster artifacts stand, "
+                          "and the staffing pieces the row rests "
+                          "on stand not read past a limit: "
+                          + naming + ", so no byte of those pieces "
+                          "was read and no staffed or base figure "
+                          "is taken from them",
+                    token=_quality_code(pairs[0][1]),
+                    follows="the row rests on pieces that were not "
+                            "read past the bound named, so the row "
+                            "is present but not derivable; no step "
+                            "is claimed to carry no pair, and no "
+                            "pair figure is claimed absent from a "
+                            "piece that was not read",
+                    rule_name="E-1 not read past a limit rule",
+                    broken="the staffed and base pair field for "
+                           + _steps_phrase(sorted(
+                               {step for step, _piece in pairs}))
+                           + ", which stands in a piece not read "
+                             "past the limit named in its capture "
+                             "reason",
+                    required="a step record or roster artifact "
+                             "read in full, stating a staffed "
+                             "count and a base count for the same "
+                             "step",
+                    held="the staffing pieces stand in the tree "
+                         "at " + naming)
             return _refusal(
                 "E-1", "present but not derivable",
                 "no staffed and base pair stands", denom,
@@ -2486,7 +2616,7 @@ def _derive_e1(captured, universe):
         _pointer("E-1", pointer, captured),
         rule_name="E-1 staffing pair rule")
     result.coverage = coverage
-    bound, reconciled = _e1_bound(steps, uncovered)
+    bound, reconciled = _e1_bound(steps, uncovered, captured)
     if bound is not None:
         result.bound = bound
         result.reconciled_against = reconciled
@@ -2817,6 +2947,23 @@ def _derive_e2(captured, universe):
                          "record, so the total quantity is not "
                          "derivable for that step because no "
                          "total stands for it" % step)
+        for step in sorted(universe.evidenced):
+            if step in additions or step in totals:
+                continue
+            unread = _unread_staffing_pieces(captured, step)
+            if unread:
+                naming = _limit_naming(unread[0])
+                figures += ("; Step %d additions over base and "
+                            "total spins: not derivable, the "
+                            "labelled quantities for that step "
+                            "stand in %s and are not read from it"
+                            % (step, naming))
+                coverage += ("; Step %d: the additions over base "
+                             "and total spins position for that "
+                             "step rests on %s, so no absence is "
+                             "claimed for a figure whose only home "
+                             "is a piece that was not read"
+                             % (step, naming))
         for step in sorted(ca9):
             if step not in universe.evidenced:
                 continue
@@ -2902,6 +3049,29 @@ def _derive_e2(captured, universe):
                 "total spins for Step %d as %d; the feeder figure "
                 "stands and the record figure is not followed"
                 % (step, metrics_figure, step, record_figure))
+        pairs, naming = _unread_staffing_naming(
+            captured, sorted(universe.evidenced))
+        if pairs:
+            shows = shows.replace(
+                " and no roster additions over base figure stands "
+                "for any step",
+                "; the additions over base position for the steps "
+                "whose staffing pieces stand not read past a limit "
+                "rests on " + naming + ", so no additions over "
+                "base figure is claimed absent from a piece that "
+                "was not read", 1)
+            return _refusal(
+                "E-2", "present but not derivable",
+                "no additions over base figure", denom,
+                _pointer("E-2", pointer, captured),
+                shows=shows,
+                token="missing-field",
+                follows="a total alone never counts as additions, "
+                        "so the additions figure the row requires "
+                        "does not stand in the read feeders, and "
+                        "no additions figure is claimed absent "
+                        "from a piece that was not read",
+                rule_name="E-2 total alone rule")
         return _refusal(
             "E-2", "present but not derivable",
             "no additions over base figure", denom,
@@ -2913,6 +3083,39 @@ def _derive_e2(captured, universe):
                     "stand",
             rule_name="E-2 total alone rule")
     if captured.pieces_of(*_STAFFING_CLASSES):
+        unread_steps = list(universe.evidenced) or \
+            _staffing_steps_with_pieces(captured)
+        pairs, naming = _unread_staffing_naming(
+            captured, unread_steps)
+        if pairs:
+            return _refusal(
+                "E-2", "present but not derivable",
+                "no additions over base figure", denom,
+                _pointer("E-2", pointer, captured),
+                shows="step records and roster artifacts stand, "
+                      "and the staffing pieces the row rests on "
+                      "stand not read past a limit: "
+                      + naming + ", so no byte of those pieces "
+                      "was read and neither labelled quantity is "
+                      "taken from them",
+                token=_quality_code(pairs[0][1]),
+                follows="the row rests on pieces that were not "
+                        "read past the bound named, so the row is "
+                        "present but not derivable; neither "
+                        "labelled quantity is claimed absent from "
+                        "a piece that was not read",
+                rule_name="E-2 not read past a limit rule",
+                broken="the additions over base and total spins "
+                       "fields for "
+                       + _steps_phrase(sorted(
+                           {step for step, _piece in pairs}))
+                       + ", which stand in a piece not read past "
+                         "the limit named in its capture reason",
+                required="a step record or roster artifact read "
+                         "in full, stating an additions over "
+                         "base figure or a total spins figure",
+                held="the staffing pieces stand in the tree at "
+                     + naming)
         return _refusal(
             "E-2", "present but not derivable",
             "no additions over base figure", denom,

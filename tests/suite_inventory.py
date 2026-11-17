@@ -577,6 +577,20 @@ INVENTORY = {
             "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_22_e3_ledger_standing_no_token_code_wording",
         ],
     },
+    "test_h_step16_fix2_unit1": {
+        "count": 9,
+        "cases": [
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_01_case1a_no_pair_no_quantity_name_bound",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_01_excepted_branch_unread_step_record",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_01_walk_bound_cut_on_step_record",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_case1c_remaining_feeders_supply",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_ledger_rows_case1a_byte_for_byte",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_ledger_rows_walk_bound_byte_for_byte",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_no_staffing_piece_stands_missing",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_piece_exactly_at_file_limit",
+            "tests.test_h_step16_fix2_unit1.TestStep16Fix2Unit1.test_r16_2_held_read_staffing_rows_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -605,4 +619,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 497
+TOTAL = 506
