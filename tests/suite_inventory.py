@@ -663,6 +663,18 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit1.TestStep16Fix4Unit1.test_r16_4_held_step_record_trace_gates_unread",
         ],
     },
+    "test_h_step16_fix4_unit2": {
+        "count": 7,
+        "cases": [
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_03_one_register_unread_one_empty_read",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_03_two_registers_unread_over_file_limit",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_12_single_register_shows_text",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_held_cured_neighbour_e3_byte_for_byte",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_held_missing_byte_for_byte",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_held_read_control_byte_for_byte",
+            "tests.test_h_step16_fix4_unit2.TestStep16Fix4Unit2.test_r16_4_held_true_zero_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -691,4 +703,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 558
+TOTAL = 565

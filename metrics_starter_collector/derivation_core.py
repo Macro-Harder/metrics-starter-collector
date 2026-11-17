@@ -5119,6 +5119,35 @@ def _derive_q3(captured, universe):
             follows="no feeder record for the metric exists in the "
                     "tree, so the row is missing",
             rule_name="Q-3 feeder standing rule")
+    unread = [(piece, label) for piece, label in registers
+              if _piece_not_read_in_full(piece)]
+    if unread:
+        naming = "; ".join(
+            _piece_state_naming(piece) for piece, _label in unread)
+        first = unread[0][0]
+        return _refusal(
+            "Q-3", "present but not derivable", "no escape figure",
+            denom, pointer,
+            shows="register pieces the row rests on stand not "
+                  "read in full: " + naming + ", so no byte of "
+                  "those pieces was read and no register contents "
+                  "are taken from them",
+            token=_quality_code(first),
+            follows="the row rests on pieces that were not read "
+                    "in full, so the row is present but not "
+                    "derivable; missing stands reserved for the "
+                    "case where no feeder record stands in the "
+                    "tree, and no measured zero and no escape "
+                    "figure is claimed over a piece that was "
+                    "not read",
+            rule_name="Q-3 not read in full rule",
+            broken="the escape figure field in " + first.paths[0]
+                   + ", which stands not read in full as its "
+                     "capture reason states",
+            required="a fix or defect register record read in "
+                     "full, carrying its register entries",
+            held="the register records stand in the tree at "
+                 + naming)
     entries = _q3_entries(captured)
     valid = [entry for entry in entries
              if entry["origin"] is not None and not entry["copied"]]
