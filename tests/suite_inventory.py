@@ -613,6 +613,20 @@ INVENTORY = {
             "tests.test_h_step16_fix2_unit2.TestStep16Fix2Unit2.test_r16_2_held_truly_empty_table",
         ],
     },
+    "test_h_step16_fix2_unit3": {
+        "count": 9,
+        "cases": [
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_03_capture_counts_reconcile_on_defect_form",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_03_dirs_past_bound_not_pieces_not_counted",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_03_negative_difference_is_stated",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_dir_inside_bound_no_piece_line_unchanged",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_git_form_byte_for_byte",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_neutral_walk_bound_counts_close",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_plain_unrecognised_byte_for_byte",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_walk_bound_cut_on_files",
+            "tests.test_h_step16_fix2_unit3.TestStep16Fix2Unit3.test_r16_2_held_walk_bound_ledger_rows_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -641,4 +655,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 523
+TOTAL = 532

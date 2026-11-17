@@ -749,6 +749,10 @@ def _walk_entries(root_path, root_resolved, stats=None):
     recognisable piece past the bound still stands in the
     capture as a not visited piece, so its rows take the partial
     form and never the missing form and never the floor form.
+    An entry past the bound that does not stand as a file, a
+    directory among them, forms no piece at all: a directory is
+    not a file in any count the capture states, inside the bound
+    or past it.
 
     A directory that cannot be listed does not vanish in
     silence: the failure surfaces in the walk note in the error
@@ -826,7 +830,7 @@ def _walk_entries(root_path, root_resolved, stats=None):
     for index, (rel, full) in enumerate(ordered):
         recognised = inventory.classify(rel) is not None
         if index >= WALK_BOUND:
-            if recognised:
+            if recognised and full.is_file():
                 entries.append(rel)
                 unvisited[rel] = (
                     "over-limit-piece: not visited: the whole "

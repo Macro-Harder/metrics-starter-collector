@@ -8233,8 +8233,12 @@ def derive_report(captured):
     # the walk enumerated files those counts do not cover, the
     # line states the enumeration count and the count not
     # covered beside the visited counts, so its figures
-    # reconcile with the tree as a user counts it. Where no
-    # enumerated file stands uncounted, the line stands in its
+    # reconcile with the tree as a user counts it. The same two
+    # parts stand where the count not covered stands negative,
+    # where a counted piece stands as no file, so the position
+    # is stated in the open on that form as on the positive
+    # form. Where no enumerated file stands uncounted and no
+    # counted piece stands as no file, the line stands in its
     # standing form, byte for byte.
     files_not_counted = captured.walk_files_total - captured.tree_files
     run_cost_line = (
@@ -8242,7 +8246,7 @@ def derive_report(captured):
         "read: %d | Entries visited: %d"
         % (captured.tree_files, files_opened, bytes_read,
            captured.tree_files + len(captured.near_matches)))
-    if files_not_counted > 0:
+    if files_not_counted != 0:
         run_cost_line += (
             " | Walk enumerated files: %d | Files not counted: %d"
             % (captured.walk_files_total, files_not_counted))
