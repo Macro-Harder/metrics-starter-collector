@@ -1010,10 +1010,19 @@ def capture_read(root):
             continue
         record_class, step = found
         if rel in damaged:
-            size = measured_size(rel)
-            text = None
-            quality = "unreadable"
             reason = damaged[rel]
+            text = None
+            if "link target outside the tree" in reason:
+                # A link out of the tree is not followed and its
+                # target stands outside the root: the piece
+                # carries the brief state for that case, outside
+                # the root and not read, and no size of the
+                # outside target is taken or printed for it.
+                size = 0
+                quality = "outside the root and not read"
+            else:
+                size = measured_size(rel)
+                quality = "unreadable"
         elif rel in unvisited_set:
             size = measured_size(rel)
             text = None

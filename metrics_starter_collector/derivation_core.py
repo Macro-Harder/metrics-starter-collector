@@ -585,13 +585,16 @@ def _walk_order_sample(captured, piece):
     in walk order leaves the later paths not read.
     """
     detail = _reason_detail(piece)
-    if piece.paths[0] in captured.tree_cut_paths and \
+    if "whole walk bound" in detail:
+        found = re.search(
+            r"the whole walk bound of [\d,]+ entries", detail)
+        limit_phrase = found.group(0) if found else \
+            "the whole walk bound of 10000 entries"
+        last_visited = None
+    elif piece.paths[0] in captured.tree_cut_paths and \
             captured.tree_cut_kind:
         limit_phrase = "the " + captured.tree_cut_kind
         last_visited = captured.tree_last_visited or "none stated"
-    elif "whole walk bound" in detail:
-        limit_phrase = "the whole walk bound of 10000 entries"
-        last_visited = None
     elif "line limit" in detail:
         limit_phrase = "the line limit of 65536 bytes"
         last_visited = None
@@ -3429,9 +3432,10 @@ def _derive_e3(captured, universe):
                   "it carries no token figure in any form the "
                   "row can read, so no token figure stands in "
                   "any feeder record",
-            token="no-feeder-record",
-            follows="no feeder record for the metric exists in "
-                    "the tree, so the row is missing",
+            token="missing-field",
+            follows="the cost ledger stands in the tree and no "
+                    "token figure stands in it, so the row is "
+                    "missing",
             rule_name="E-3 feeder standing rule",
             broken="the cost ledger token figure field",
             required="a cost ledger entry for the step carrying "
@@ -5992,13 +5996,13 @@ def _derive_b1(captured, universe, t1_result, t2_result):
         return _refusal(
             "B-1", "missing", "no B-1 figure", denom,
             _pointer("B-1", pointer, captured),
-            shows="the T-1 and T-2 rows the row ranks from are "
+            shows="the T-1 and T-2 rows this row totals from are "
                   "missing, with the timestamp field and its form "
                   "named on those rows",
             token="no-feeder-record",
-            follows="both ranking inputs are missing, so no split "
-                    "or ranking figure exists for this row",
-            rule_name="B-1 ranking input rule",
+            follows="both inputs are missing, so no build total "
+                    "figure exists for this row",
+            rule_name="B-1 totals input rule",
             broken="the step elapsed and step active figures that "
                    "are this row's only inputs",
             required="a formed elapsed figure and a formed active "

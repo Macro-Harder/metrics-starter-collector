@@ -563,6 +563,20 @@ INVENTORY = {
             "tests.test_h_step16_unit6.TestStep16Unit6.test_r16_21_walk_bound_unrecognised_files_not_counted_stated",
         ],
     },
+    "test_h_step16_unit7": {
+        "count": 9,
+        "cases": [
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_10_b1_both_inputs_missing_totals_wording",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_10_control_b1_present_row_unchanged",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_18_control_single_tree_limit_sample_unchanged",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_18_walk_bound_piece_sample_names_walk_bound",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_19_control_outside_link_piece_treatment_unchanged",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_19_control_unreadable_inside_root_keeps_state_word",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_19_outside_link_state_and_no_outside_size",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_22_control_e3_unread_and_absent_ledger_unchanged",
+            "tests.test_h_step16_unit7.TestStep16Unit7.test_r16_22_e3_ledger_standing_no_token_code_wording",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -591,4 +605,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 488
+TOTAL = 497
