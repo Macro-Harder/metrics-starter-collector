@@ -676,13 +676,17 @@ def _tally_word(word):
     carries the tally letters as the tal ending of its
     stem standing before the ly suffix, and it is known
     in this test by the letters standing before tally
-    ending in a vowel or in n, r or s, the stem endings
-    of that family, totally, accidentally, digitally,
-    incidentally and mentally among them, while a fused
-    prefix ends in another consonant or in a digit,
-    Boardtally, Gate2tally, Reviewtally and Step2tally
-    among them. A word beginning with tally in any other
-    form, tallyho among them, stands as no tally word.
+    ending in a vowel or in n, r, s, c or p, the stem
+    endings of that family, totally, accidentally,
+    digitally, incidentally, mentally, rectally and
+    septally among them, the c and p endings standing
+    where the family letter of the word stands inside
+    its stem, rec and sep standing before the tal
+    ending, while a fused prefix ends in another
+    consonant or in a digit, Boardtally, Gate2tally,
+    Reviewtally and Step2tally among them. A word
+    beginning with tally in any other form, tallyho
+    among them, stands as no tally word.
     """
     if word in ("tally", "tallies", "tallied", "tallying"):
         return True
@@ -691,7 +695,7 @@ def _tally_word(word):
     prefix = word[:-len("tally")]
     if not prefix:
         return False
-    return prefix[-1] not in "aeiounrs"
+    return prefix[-1] not in "aeiounrscp"
 
 
 def _summary_word(word):
@@ -797,8 +801,10 @@ def _tally_statement_head(line):
     feeder flips nothing in its prose form.
 
     Exact boundary of the cure, as extended in fix pass
-    11, as narrowed in fix pass 12 Unit 1, and as widened
-    in fix pass 12 Unit 2: a line is in the scan reach
+    11, as narrowed in fix pass 12 Unit 1, as widened
+    in fix pass 12 Unit 2, and as widened in its tally
+    family exclusion in fix pass 13 Unit 1: a line is
+    in the scan reach
     where, after its
     list and heading marks and one list marker in the
     general form are stripped, an opening run of the
@@ -835,13 +841,17 @@ def _tally_statement_head(line):
     family carrying the tally letters as the tal ending
     of its stem standing before the ly suffix and known
     in this test by the letters standing before tally
-    ending in a vowel or in n, r or s, the stem endings
-    of that family, totally, accidentally, digitally,
-    incidentally and mentally among them, while a fused
-    prefix ends in another consonant or in a digit,
-    Boardtally, Gate2tally, Reviewtally and Step2tally
-    among them, a word beginning with tally in any other
-    form, tallyho among them, standing as no tally word;
+    ending in a vowel or in n, r, s, c or p, the stem
+    endings of that family, totally, accidentally,
+    digitally, incidentally, mentally, rectally and
+    septally among them, the c and p endings standing
+    where the family letter of the word stands inside
+    its stem, rec and sep standing before the tal
+    ending, while a fused prefix ends in another
+    consonant or in a digit, Boardtally, Gate2tally,
+    Reviewtally and Step2tally among them, a word
+    beginning with tally in any other form, tallyho
+    among them, standing as no tally word;
     or the last two words
     of the run are trace summary, in that order, or
     summary trace, in the reversed order, the summary
