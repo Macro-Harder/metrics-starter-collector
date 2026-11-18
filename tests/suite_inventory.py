@@ -1234,6 +1234,44 @@ INVENTORY = {
             "tests.test_h_step16_fix9_unit1.TestStep16Fix9Unit1.test_r16_9_held_twenty_word_head_alone",
         ],
     },
+    "test_h_step16_fix9_unit2": {
+        "count": 33,
+        "cases": [
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_03_plain_paper_link_outside_root",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_03_plain_paper_link_to_directory_outside_root",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_boundary_plain_paper_marker_truncated_step02",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_boundary_plain_paper_marker_truncated_step17",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_adjudication_link_outside_root",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_adjudication_marker_truncated",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_adjudication_unreadable_dangling_link",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_duplicate_same_content_read_control",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_empty_population_byte_for_byte",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_lone_adjudication_over_limit",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_lone_plain_paper_over_limit",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_named_carrier_duplicate_differing",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_named_carrier_marker_truncated",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_named_carrier_read_control",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_named_carrier_unreadable_dangling_link",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_duplicate_identity",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_duplicate_one_dangling_read_counts",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_link_loop",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_link_to_directory_inside_root",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_malformed",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_read_control",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_signal_failed",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_signal_three",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_signal_two",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_unreadable_dangling_link",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_plain_paper_unreadable_directory",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_r16_5_11_form_a_adjudication_bound",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_r16_5_11_form_c_correcting_names_other_only",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_read_population_byte_for_byte",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_scattered_for_read_evidence",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_single_unread_round_record_byte_for_byte",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_step_record_converse_read",
+            "tests.test_h_step16_fix9_unit2.TestStep16Fix9Unit2.test_r16_9_held_step_record_converse_unread",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1262,4 +1300,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 1014
+TOTAL = 1047

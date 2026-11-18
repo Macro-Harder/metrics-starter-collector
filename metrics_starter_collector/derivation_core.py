@@ -5630,7 +5630,7 @@ def _q1_lone_separable(piece):
     position from the miniature feeder position, an audit
     paper on a plain path in the marker truncated state
     named by no read piece. The separable positions stand
-    in seven forms: the piece stands not read past a
+    in eight forms: the piece stands not read past a
     limit, the settled form of the position; the piece
     stands in the gate adjudication class, in any not
     read state, a class the miniature feeder does not
@@ -5647,14 +5647,21 @@ def _q1_lone_separable(piece):
     piece stands in the unreadable state, a state the
     miniature feeder does not stand in, stated on the
     capture piece itself in the dangling link form and
-    in the directory at its path form alike; and the
-    piece stands in the duplicate identity disagreement
+    in the directory at its path form alike; the piece
+    stands in the duplicate identity disagreement
     state, the not read in full state whose capture
     reason states the duplicate content disagreement,
-    a state the miniature feeder does not stand in. A
-    plain audit paper in the marker truncated state
-    named by nothing stands in none of these forms and
-    stands outside this test, in its carried form.
+    a state the miniature feeder does not stand in; and
+    the piece stands in the outside the root state, the
+    state the capture assembly names outside the root
+    and not read, stated on the capture piece itself
+    where a link target stands outside the tree, in the
+    link to a regular file form and in the link to a
+    directory form alike, a state the miniature feeder
+    does not stand in. A plain audit paper in the marker
+    truncated state named by nothing stands in none of
+    these forms and stands outside this test, in its
+    carried form.
     """
     if _piece_over_limit_not_read(piece):
         return True
@@ -5667,6 +5674,9 @@ def _q1_lone_separable(piece):
     if _piece_signal_truncated(piece):
         return True
     if (piece.quality_state or "") == "unreadable":
+        return True
+    if (piece.quality_state or "") == \
+            "outside the root and not read":
         return True
     if (piece.quality_state or "") == "not read in full" and \
             "disagreement" in (piece.not_read_reason or ""):
@@ -5948,8 +5958,9 @@ def _derive_q1(captured, universe):
     # class in any not read state, the malformed state, the
     # signal form of the truncated state, a carrier
     # named by a read piece in any not read state, the
-    # unreadable state, and the duplicate identity
-    # disagreement state. The
+    # unreadable state, the duplicate identity
+    # disagreement state, and the outside the root
+    # state. The
     # branch reaches no further: a plain audit paper in the
     # marker truncated state stands outside it in its
     # carried form, capture indistinguishable from the
