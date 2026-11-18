@@ -283,15 +283,21 @@ class TestStep16Fix6Unit5(FixtureTestCase):
         self._assert_lone_governed(self._run(files), ADJ_PATH)
 
     def test_r16_6_09_lone_adjudication_truncated_boundary(self):
-        """Scope boundary: a truncated lone adjudication, settled form.
+        """Scope boundary as settled in pass 6, widened in pass 7.
 
         The charged C6-07 forms stand on the file limit state
-        in both classes. A truncated piece in these classes
-        stands under the settled D-19 reach, which governs
-        round record and red paper paths, and the governed
-        miniature cells rest on a truncated audit paper
-        standing in the scattered form, so the truncated lone
-        form stands in that form, outside the narrowed cure.
+        in both classes, and in pass 6 this truncated lone
+        adjudication form stood in the scattered form, outside
+        the narrowed cure, because the governed miniature
+        cells rest on a truncated audit paper standing in
+        that form. Round 7 item R16-7-05 separates this form
+        from the miniature cells by its class, the gate
+        adjudication class, which the miniature feeder does
+        not stand in, and charges it to fix pass 7 Unit 4, so
+        it now takes the governed not derivable form naming
+        the piece and its truncation state. The plain audit
+        paper in the marker truncated state stands in the
+        scattered form still, as the boundary it is.
         """
         files = _clean_files()
         files[ROUND1_PATH] = NO_BREAKDOWN_ROUND1
@@ -299,8 +305,10 @@ class TestStep16Fix6Unit5(FixtureTestCase):
         report = self._run(files)
         q1 = row_block(report, "Q-1")
         assert_verdict(self, q1, "present but not derivable", "Q-1")
-        self.assertIn("scattered", q1)
-        self.assertIn("no-post-triage-breakdown", q1)
+        self.assertIn(ADJ_PATH, q1)
+        self.assertIn("truncated", q1)
+        self.assertNotIn("scattered", q1)
+        self.assertNotIn("no-post-triage-breakdown", q1)
 
     def test_r16_6_09_lone_plain_paper_over_limit(self):
         """C6-07 form two: a lone audit paper on a plain path."""

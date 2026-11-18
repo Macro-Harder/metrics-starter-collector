@@ -554,6 +554,22 @@ def _piece_marker_truncated(piece):
         "truncation marker" in (piece.not_read_reason or "")
 
 
+def _piece_signal_truncated(piece):
+    """True where a piece stands in the signal truncated form.
+
+    The capture holds such a piece with no text, in the
+    truncated state, its capture reason naming the
+    completeness signal it failed, in the form signal-one,
+    signal-two or signal-three failed. The marker form of
+    the same state stands apart, on the test above: its
+    capture reason states that the piece carries a
+    truncation marker and names no signal.
+    """
+    return piece.quality_state == "truncated" and \
+        piece.text is None and \
+        "signal" in (piece.not_read_reason or "")
+
+
 def _piece_over_limit_not_read(piece):
     """True where a piece stands not read past a limit.
 
@@ -5553,6 +5569,50 @@ def _q1_lone_unread_feeders(captured):
     return pieces
 
 
+_Q1_CARRIER_CLASSES = (CLS_FIX_REGISTER, CLS_DEFECT_REGISTER,
+                       CLS_OTHER_REGISTER, CLS_GATE_RECORD)
+
+
+def _q1_lone_separable(piece):
+    """Whether a collected lone feeder stands separable.
+
+    A lone feeder collected by _q1_lone_unread_feeders
+    stands separable from the governed miniature cells
+    where a capture visible property separates its
+    position from the miniature feeder position, an audit
+    paper on a plain path in the marker truncated state
+    named by no read piece. The separable positions stand
+    in five forms: the piece stands not read past a
+    limit, the settled form of the position; the piece
+    stands in the gate adjudication class, in any not
+    read state, a class the miniature feeder does not
+    stand in and the settled reach does not cover; the
+    piece stands in the malformed state, a state the
+    miniature feeder does not stand in; the piece stands
+    in the signal form of the truncated state, whose
+    capture reason names the failed signal where the
+    miniature feeder reason names its marker; and the
+    piece stands in a carrier class, where its standing
+    in the collected list itself states that a read
+    piece names it as carrier, a naming the miniature
+    feeder does not carry, in any not read state. A
+    plain audit paper in the marker truncated state
+    named by nothing stands in none of these forms and
+    stands outside this test, in its carried form.
+    """
+    if _piece_over_limit_not_read(piece):
+        return True
+    if piece.record_class == CLS_GATE_ADJUDICATION:
+        return True
+    if piece.record_class in _Q1_CARRIER_CLASSES:
+        return True
+    if (piece.quality_state or "") == "malformed":
+        return True
+    if _piece_signal_truncated(piece):
+        return True
+    return False
+
+
 def _q1_read_breakdown_evidence(captured, carrier, unnamed):
     """Whether read evidence in a counted form stands in the tree.
 
@@ -5821,15 +5881,20 @@ def _derive_q1(captured, universe):
                     "with the incompleteness as the reason, and the "
                     "round is marked incomplete",
             rule_name="D-19 signal failed paper rule")
-    # The lone feeder position is taken on the not read past
-    # a limit state only: the charged forms of this position
-    # stand on that state in both feeder classes, and a
-    # truncated piece in these classes stands under the
-    # settled D-19 reach beside it, which the governed
-    # miniature cells rest on.
+    # The lone feeder position is taken on the separable
+    # subforms _q1_lone_separable states: the not read past
+    # a limit state in any collected class, the adjudication
+    # class in any not read state, the malformed state, the
+    # signal form of the truncated state, and a carrier
+    # named by a read piece in any not read state. The
+    # branch reaches no further: a plain audit paper in the
+    # marker truncated state stands outside it in its
+    # carried form, capture indistinguishable from the
+    # governed miniature cells, which rest on a feeder in
+    # exactly that position standing in the scattered form.
     lone_feeders = [piece for piece in
                     _q1_lone_unread_feeders(captured)
-                    if _piece_over_limit_not_read(piece)]
+                    if _q1_lone_separable(piece)]
     if lone_feeders and not _q1_read_breakdown_evidence(
             captured, carrier, unnamed):
         piece = lone_feeders[0]
