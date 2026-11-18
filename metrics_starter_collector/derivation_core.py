@@ -651,27 +651,42 @@ def _tally_statement_head(line):
     _TALLY_COUNTED_PATTERN, which carries no head test of
     its own: the line, after its list and heading marks
     are stripped, opens with a head, a run of plain words
-    with no sentence punctuation among them, whose last
-    word is tally, or whose closing words are trace
-    summary, or which opens with the trace for step form.
-    The head words may carry the marks a counted head may
-    carry, a hyphen inside a word or a comma on a word,
-    and the head may stand behind a numbered list marker,
-    in which form the head closes with the colon every
-    tally statement in that form carries, where the
-    golden closing prose line, which carries its tally
-    words inside an instruction sentence with no colon
-    at the tally word, does not. The test is a form test,
-    not a list of heads, so it cannot drift from the
-    counted reach on a head: any head in that form stands
-    in the reach, Board tally, Step 2 tally, Tally, Gate
-    record tally and Trace summary among them, beside the
-    settled Gate tally, Trace tally and Trace for step
-    heads, and beside heads stated in more words, Alpha
-    beta gamma delta epsilon tally, Step 2 gate record
-    review tally and Alpha beta gamma delta epsilon
-    trace summary among them, the hyphenated Step-2 tally
-    head and the comma head Board, tally. A line of prose
+    with no sentence punctuation among them, which closes
+    with the word tally, or with the words trace summary,
+    or with the trace for step form. A head is the run,
+    so a run that passes through the tally words and
+    closes on other words is no head, and a line whose
+    opening run does not close with the tally words opens
+    with no tally statement head. The head words may
+    carry the marks a counted head may carry, a hyphen
+    inside a word, a comma on a word, an underscore, a
+    slash or an apostrophe inside a word, or two hyphens
+    inside a word, and the closing trace summary words
+    may stand joined by a hyphen or split by a comma, as
+    in Trace-summary and Trace, summary. The head may
+    stand behind a numbered list marker, in the plain
+    digits form, in a parenthesis, in brackets, or with
+    no space after its marker, in which forms the head
+    closes with the colon every tally statement in that
+    form carries, where the golden closing prose line,
+    which carries its tally words inside an instruction
+    sentence with no colon at the tally word, does not.
+    The trace for step form stands under the same colon
+    condition in every position, its colon standing
+    immediately after the step number. The test is a form
+    test, not a list of heads, so it cannot drift from
+    the counted reach on a head: any head in that form
+    stands in the reach, Board tally, Step 2 tally,
+    Tally, Gate record tally and Trace summary among
+    them, beside the settled Gate tally, Trace tally and
+    Trace for step heads, and beside heads stated in more
+    words, Alpha beta gamma delta epsilon tally, Step 2
+    gate record review tally and Alpha beta gamma delta
+    epsilon trace summary among them, the hyphenated
+    Step-2 tally head, the comma head Board, tally, the
+    underscore head Step_2 tally, the slash head Step/2
+    tally, the apostrophe head Board's tally and the
+    double hyphen head Step--2 tally. A line of prose
     that merely mentions a tally beside the LANDED word,
     the golden board tally closing lines among them,
     opens with no such head and stands outside the reach,
@@ -679,22 +694,30 @@ def _tally_statement_head(line):
     prose form.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
-    word = r"[A-Za-z0-9]+(?:[-,][A-Za-z0-9]+)*,?"
-    numbered = re.match(r"\d+[.)]\s+", stripped)
-
-    def head_at(text, colon_required):
-        for pattern in (r"(?:%s\s+)*tally\b" % word,
-                        r"(?:%s\s+)*trace summary\b" % word):
-            m = re.match(pattern, text, re.I)
-            if m and (not colon_required
-                      or text[m.end():m.end() + 1] == ":"):
-                return True
-        return bool(re.match(r"trace for step \d+\b", text, re.I))
-
-    if head_at(stripped, False):
+    word = r"[A-Za-z0-9]+(?:[-_/',]+[A-Za-z0-9]+)*,?"
+    marker = re.match(r"(?:\(\d+\)|\[\d+\]|\d+[.)])\s*",
+                      stripped)
+    numbered = marker is not None
+    text = stripped[marker.end():] if marker else stripped
+    end = re.search(r"[.:;!?]", text)
+    if end:
+        run, terminator = text[:end.start()], end.group(0)
+    else:
+        run, terminator = text, ""
+    run = run.strip()
+    if numbered and terminator != ":":
+        return False
+    if not re.fullmatch(r"%s(?:\s+%s)*" % (word, word), run):
+        return False
+    if re.search(r"(?:^|[\s-])tally,?$", run, re.I):
         return True
-    if numbered:
-        return head_at(stripped[numbered.end():], True)
+    if re.search(r"(?:^|\s)trace(?:\s+|,\s+|-)summary,?$",
+                 run, re.I):
+        return True
+    if terminator == ":" and re.search(
+            r"(?:^|\s)(?:trace|tally)\s+for\s+step\s+\d+,?$",
+            run, re.I):
+        return True
     return False
 
 
