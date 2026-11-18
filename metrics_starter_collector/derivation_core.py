@@ -587,10 +587,24 @@ def _trace_feeders_not_read(captured):
     of the row takes a first trace from them. A feeder piece
     not read in full, for whatever reason, over limit, not
     visited, truncated or malformed, stands in this list.
+    Inside the audit paper class the list applies the same
+    path test _trace_candidates applies: an audit paper whose
+    path carries neither the purple word nor the round record
+    form supplies no trace candidate when read, so it is no
+    feeder and its unread standing flips nothing.
     """
-    return [piece for piece in captured.pieces
-            if piece.record_class in _TRACE_FEEDER_CLASSES
-            and _piece_not_read_in_full(piece)]
+    found = []
+    for piece in captured.pieces:
+        if piece.record_class not in _TRACE_FEEDER_CLASSES:
+            continue
+        if not _piece_not_read_in_full(piece):
+            continue
+        if piece.record_class == CLS_AUDIT_PAPER and \
+                "purple" not in piece.paths[0].lower() and \
+                "round-record" not in piece.paths[0].lower():
+            continue
+        found.append(piece)
+    return found
 
 
 def _malformed_trace_statements(captured):
@@ -601,6 +615,13 @@ def _malformed_trace_statements(captured):
     step in a form _parse_trace_segment cannot count. Such a
     statement stands in the tree, read in full; its step is a
     missing field position, never a missing feeder position.
+    Three statement forms stand in the scan: the first trace
+    line form, which states its step in the line; the Counts
+    form of an audit paper, which states no step in the line
+    and takes the step of its piece; and the full trace form
+    of a gate ruling, in the same step position. A line in a
+    counted form parses and stands outside this scan, so a
+    read control in any of the three forms counts as before.
     """
     found = []
     seen = set()
@@ -609,12 +630,23 @@ def _malformed_trace_statements(captured):
                 piece.record_class not in _TRACE_FEEDER_CLASSES:
             continue
         for line in piece.text.splitlines():
+            step = None
             m = re.search(r"first trace for step (\d+)", line, re.I)
             if m and _parse_trace_segment(line) is None:
                 step = int(m.group(1))
-                if step not in seen:
-                    seen.add(step)
-                    found.append((step, piece))
+            elif piece.record_class == CLS_AUDIT_PAPER and \
+                    ("purple" in piece.paths[0].lower() or
+                     "round-record" in piece.paths[0].lower()) and \
+                    re.search(r"Counts:", line) and \
+                    _parse_trace_segment(line) is None:
+                step = piece.step
+            elif piece.record_class == CLS_GATE_RULING and \
+                    "full trace" in line.lower() and \
+                    _parse_trace_segment(line) is None:
+                step = piece.step
+            if step is not None and step not in seen:
+                seen.add(step)
+                found.append((step, piece))
     return found
 
 
@@ -6088,7 +6120,8 @@ def _derive_q4(captured, universe):
                 "parts and totals in reconciled form")
     unread_omitted = [piece for piece in
                       _trace_feeders_not_read(captured)
-                      if piece.step not in traces]
+                      if piece.step not in traces
+                      or piece.paths[0] != sources.get(piece.step)]
     if unread_omitted:
         omit_steps = sorted({piece.step for piece in unread_omitted
                              if piece.step is not None})

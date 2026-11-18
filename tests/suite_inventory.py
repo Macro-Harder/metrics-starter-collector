@@ -778,6 +778,34 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_ruling_no_go_truncated_beside_record_go",
         ],
     },
+    "test_h_step16_fix5_unit3": {
+        "count": 23,
+        "cases": [
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_09_counts_form_alone_c5",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_09_counts_form_beside_counted",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_09_full_trace_form_alone",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_09_full_trace_form_beside_counted",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_10_same_step_companion_unread_bound",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_12_blue_paper_unread_stays_missing",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_12_plain_paper_unread_stays_missing",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_blue_paper_read_control",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_counts_read_control",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_full_trace_read_control",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_plain_paper_read_control",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_01_companion_unread",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_01_purple_paper_unread",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_02_gates_malformed",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_02_gates_truncated",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_06_step2_gate_unread",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_06_step3_gate_unread",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_07_malformed_alone",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_07_malformed_beside",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_r16_4_11_adjudication_unread",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_same_step_companion_read_control",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -806,4 +834,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 638
+TOTAL = 661
