@@ -539,6 +539,21 @@ def _reason_detail(piece):
     return reason
 
 
+def _piece_marker_truncated(piece):
+    """True where a piece stands in the marker truncated form.
+
+    The capture holds such a piece with no text, in the
+    truncated state, its capture reason stating that the piece
+    carries a truncation marker. The signal form of the same
+    state stands apart: its capture reason names the
+    completeness signal it failed, and a repaired piece stands
+    apart again, because the capture holds its completed text.
+    """
+    return piece.quality_state == "truncated" and \
+        piece.text is None and \
+        "truncation marker" in (piece.not_read_reason or "")
+
+
 def _piece_over_limit_not_read(piece):
     """True where a piece stands not read past a limit.
 
@@ -4792,16 +4807,27 @@ def _derive_f2(captured, universe):
             # no rate stands over the instance and the instance
             # takes a problem clause naming every such piece
             # and its bound or state. A later counted source
-            # standing in the truncated state stands apart, in
-            # the held neighbour position of fix pass 5: the
-            # capture holds a truncated piece with no text, so
-            # a truncated ruling carrying a countable outcome
-            # and a truncated ruling supplying no outcome word
-            # stand in one capture form, and the neighbour form
-            # is the charged held form of that position.
+            # standing in the marker truncated form stands
+            # apart, in the held neighbour position of fix
+            # pass 5: the capture holds a marker truncated
+            # piece with no text, so a marker truncated ruling
+            # carrying a countable outcome and a marker
+            # truncated ruling supplying no outcome word stand
+            # in one capture form, and the neighbour form is
+            # the charged held form of that position. The
+            # exclusion stands keyed to that form alone, on
+            # the capture reason that states the piece carries
+            # a truncation marker: a later source failing a
+            # completeness signal, whose capture reason names
+            # the signal it failed, stands in no neighbour
+            # position and blocks as every other not read
+            # state does, and a repaired piece, whose completed
+            # text the capture holds, is read on that text and
+            # blocks nothing.
             later = [piece for piece in unread_counted[key]
                      if piece is not unread_first.get(key)
-                     and piece.quality_state != "truncated"]
+                     and piece.text is None
+                     and not _piece_marker_truncated(piece)]
             if later:
                 naming = "; ".join(
                     "%s (state: %s)" % (
@@ -4824,25 +4850,58 @@ def _derive_f2(captured, universe):
                     qualified += 1
                 else:
                     plain += 1
-        elif closure == _F2_CLOSURE_PLAIN:
-            # A closing state alone records no first ruling
-            # outcome, so no approval stands on it in any
-            # mixture, under D4R-13 and DG-01: the instance is
-            # tallied apart here and, where a rate stands over
-            # the outcome carrying instances, it is excluded
-            # from the numerator and from the denominator alike
-            # and named in the coverage, in the DG-08 mixed
-            # tree form.
-            closing_plain += 1
-            closing_ruled += 1
-            closing_alone.append(key)
-        elif closure == _F2_CLOSURE_QUALIFIED:
-            closing_qualified += 1
-            closing_ruled += 1
-            closing_alone.append(key)
-        elif closure in _F2_CLOSURE_NOT_APPROVED:
-            closing_ruled += 1
-            closing_alone.append(key)
+        elif closure == _F2_CLOSURE_PLAIN or \
+                closure == _F2_CLOSURE_QUALIFIED or \
+                closure in _F2_CLOSURE_NOT_APPROVED:
+            # A gate piece not read in full, for whatever
+            # reason, is not read: where a counted source of
+            # a closure alone instance stands not read in
+            # full, in any state, the marker truncated state
+            # included, no rate stands over the instance on a
+            # coverage asserting that no first ruling outcome
+            # is recorded for the step, because the unread
+            # source may carry the first ruling itself. The
+            # instance takes a problem clause naming every
+            # such piece and its bound or state, and it is
+            # neither tallied as closing alone nor named in
+            # the excluded clauses below. A source whose
+            # completed text the capture holds, the repaired
+            # form, stands read on that text and flips
+            # nothing here.
+            unread_here = [piece for piece in unread_counted.get(key, [])
+                           if piece.text is None]
+            if unread_here:
+                naming = "; ".join(
+                    "%s (state: %s)" % (
+                        _piece_state_naming(piece),
+                        _piece_state_word(piece))
+                    for piece in sorted(
+                        unread_here,
+                        key=lambda piece: piece.paths[0]
+                        if piece.paths else ""))
+                problems.append(
+                    "%s stands with a gate piece not read in "
+                    "full, %s, so no first ruling position "
+                    "stands for that step" % (label, naming))
+            elif closure == _F2_CLOSURE_PLAIN:
+                # A closing state alone records no first ruling
+                # outcome, so no approval stands on it in any
+                # mixture, under D4R-13 and DG-01: the instance
+                # is tallied apart here and, where a rate stands
+                # over the outcome carrying instances, it is
+                # excluded from the numerator and from the
+                # denominator alike and named in the coverage,
+                # in the DG-08 mixed tree form.
+                closing_plain += 1
+                closing_ruled += 1
+                closing_alone.append(key)
+            elif closure == _F2_CLOSURE_QUALIFIED:
+                closing_qualified += 1
+                closing_ruled += 1
+                closing_alone.append(key)
+            else:
+                closing_ruled += 1
+                closing_alone.append(key)
         elif key in unread_counted:
             # A gate piece not read in full, for whatever
             # reason, is not read: no closure state position

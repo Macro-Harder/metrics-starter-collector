@@ -995,6 +995,31 @@ INVENTORY = {
             "tests.test_h_step16_fix6_unit5.TestStep16Fix6Unit5.test_r16_6_held_step_record_converse_unread",
         ],
     },
+    "test_h_step16_fix7_unit1": {
+        "count": 20,
+        "cases": [
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_closure_not_approved_truncated_ruling_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_closure_plain_truncated_ruling_go",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_closure_plain_truncated_ruling_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_closure_qualified_truncated_ruling_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_no_ruling_control_present_2_of_2",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_read_control_ruling_go_3_of_3",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_01_read_control_ruling_hold_2_of_3",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_02_signal_failed_ruling_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_02_signal_failed_ruling_no_go",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_02_sound_sequence_read_control_disagreement",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_all_read_go_byte_for_byte",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_disagreement_names_unread_record",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_first_source_over_limit",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_later_source_malformed_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_later_source_over_limit_hold",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_repaired_ruling_beside_closure_alone",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_repaired_ruling_disagreement",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_held_ruling_no_go_read_beside_record_go",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_remainder_marker_truncated_hold_outcome_position",
+            "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_remainder_marker_truncated_no_go_byte_identical",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1023,4 +1048,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 810
+TOTAL = 830
