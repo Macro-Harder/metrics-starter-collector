@@ -1146,6 +1146,37 @@ INVENTORY = {
             "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_trace_summary_head_alone",
         ],
     },
+    "test_h_step16_fix8_unit2": {
+        "count": 26,
+        "cases": [
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_duplicate_same_content_read_control",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_named_carrier_read_control",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_plain_paper_duplicate_identity",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_plain_paper_read_control",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_plain_paper_unreadable_dangling_link",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_02_plain_paper_unreadable_directory",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_boundary_plain_paper_marker_truncated_step02",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_boundary_plain_paper_marker_truncated_step17",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_adjudication_marker_truncated",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_adjudication_unreadable_dangling_link",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_empty_population_byte_for_byte",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_lone_adjudication_over_limit",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_lone_plain_paper_over_limit",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_named_carrier_marker_truncated",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_named_carrier_unreadable_dangling_link",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_plain_paper_malformed",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_plain_paper_signal_failed",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_plain_paper_signal_three",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_plain_paper_signal_two",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_r16_5_11_form_a_adjudication_bound",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_r16_5_11_form_c_correcting_names_other_only",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_read_population_byte_for_byte",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_scattered_for_read_evidence",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_single_unread_round_record_byte_for_byte",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_step_record_converse_read",
+            "tests.test_h_step16_fix8_unit2.TestStep16Fix8Unit2.test_r16_8_held_step_record_converse_unread",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1174,4 +1205,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 936
+TOTAL = 962

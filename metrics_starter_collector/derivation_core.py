@@ -5607,7 +5607,7 @@ def _q1_lone_separable(piece):
     position from the miniature feeder position, an audit
     paper on a plain path in the marker truncated state
     named by no read piece. The separable positions stand
-    in five forms: the piece stands not read past a
+    in seven forms: the piece stands not read past a
     limit, the settled form of the position; the piece
     stands in the gate adjudication class, in any not
     read state, a class the miniature feeder does not
@@ -5616,11 +5616,19 @@ def _q1_lone_separable(piece):
     miniature feeder does not stand in; the piece stands
     in the signal form of the truncated state, whose
     capture reason names the failed signal where the
-    miniature feeder reason names its marker; and the
+    miniature feeder reason names its marker; the
     piece stands in a carrier class, where its standing
     in the collected list itself states that a read
     piece names it as carrier, a naming the miniature
-    feeder does not carry, in any not read state. A
+    feeder does not carry, in any not read state; the
+    piece stands in the unreadable state, a state the
+    miniature feeder does not stand in, stated on the
+    capture piece itself in the dangling link form and
+    in the directory at its path form alike; and the
+    piece stands in the duplicate identity disagreement
+    state, the not read in full state whose capture
+    reason states the duplicate content disagreement,
+    a state the miniature feeder does not stand in. A
     plain audit paper in the marker truncated state
     named by nothing stands in none of these forms and
     stands outside this test, in its carried form.
@@ -5634,6 +5642,11 @@ def _q1_lone_separable(piece):
     if (piece.quality_state or "") == "malformed":
         return True
     if _piece_signal_truncated(piece):
+        return True
+    if (piece.quality_state or "") == "unreadable":
+        return True
+    if (piece.quality_state or "") == "not read in full" and \
+            "disagreement" in (piece.not_read_reason or ""):
         return True
     return False
 
@@ -5910,8 +5923,10 @@ def _derive_q1(captured, universe):
     # subforms _q1_lone_separable states: the not read past
     # a limit state in any collected class, the adjudication
     # class in any not read state, the malformed state, the
-    # signal form of the truncated state, and a carrier
-    # named by a read piece in any not read state. The
+    # signal form of the truncated state, a carrier
+    # named by a read piece in any not read state, the
+    # unreadable state, and the duplicate identity
+    # disagreement state. The
     # branch reaches no further: a plain audit paper in the
     # marker truncated state stands outside it in its
     # carried form, capture indistinguishable from the
