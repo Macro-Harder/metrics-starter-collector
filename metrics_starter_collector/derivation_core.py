@@ -5172,26 +5172,41 @@ def _q1_statement(captured, counted):
     return "; ".join(statements) if statements else None
 
 
-def _q1_unread_round_pieces(captured, counted):
+def _q1_unread_round_pieces(captured, counted, corrected_path=None):
     """Round feeder pieces standing not read in full, uncounted.
 
-    A round record or red paper of the audit class, standing
-    with no text in the capture, feeds a round the counted
-    branch cannot count: no counted candidate stands on a
-    piece with no text, so a piece standing in this list is
-    omitted by construction, and a piece whose path carries
-    a counted candidate stands outside this list.
+    A feeder piece standing with no text in the capture feeds
+    a round the counted branch cannot count: no counted
+    candidate stands on a piece with no text, so a piece
+    standing in this list is omitted by construction, and a
+    piece whose path carries a counted candidate stands
+    outside this list. The feeder classes and path forms are
+    the ones the derivation itself counts from: audit papers
+    in any counted path form, the round record and red paper
+    forms among them, beside gate adjudications, whose own
+    breakdown reading in _derive_q1 counts them in any path
+    form. An audit paper standing on a path the direct
+    reading excludes, a correcting record path or a register
+    path, stands outside this list, as it stands outside the
+    counted scope when read. In the correcting record
+    position the piece the correcting record stands for is
+    counted through the correction, so its path, passed as
+    corrected_path, stands outside this list in that call.
     """
     counted_paths = {candidate["path"] for candidate in counted}
     pieces = []
     for piece in captured.pieces:
-        if piece.text is not None or \
-                piece.record_class != CLS_AUDIT_PAPER:
+        if piece.text is not None:
             continue
         path = piece.paths[0] if piece.paths else ""
-        if "round" not in path and "-red" not in path:
+        if piece.record_class == CLS_AUDIT_PAPER:
+            if "correct" in path or "register" in path:
+                continue
+        elif piece.record_class == CLS_GATE_ADJUDICATION:
+            pass
+        else:
             continue
-        if path in counted_paths:
+        if path in counted_paths or path == corrected_path:
             continue
         pieces.append(piece)
     return pieces
@@ -5320,7 +5335,10 @@ def _derive_q1(captured, universe):
                     "path": correction.paths[0], "attacks": False,
                     "triage": True}]
         result = _q1_present_result(
-            captured, counted, excluded, denom, pointer)
+            captured, counted, excluded, denom, pointer,
+            _q1_unread_round_pieces(
+                captured, counted,
+                corrected_path=truncated_papers[0].paths[0]))
         return result
     if nonflow:
         held = []

@@ -851,6 +851,26 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_missing_branch_cured_byte_held",
         ],
     },
+    "test_h_step16_fix5_unit6": {
+        "count": 15,
+        "cases": [
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_a_adjudication_over_limit",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_a_adjudication_truncated",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_a_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_b_plain_paper_over_limit",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_b_plain_paper_truncated",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_b_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_c_absent_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_c_correcting_record_round2_truncated",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_c_correcting_record_round2_unread",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_11_form_c_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_q1_empty_population_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_q1_read_population_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_q1_single_unread_byte_for_byte",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_r16_4_10_over_limit_byte_held",
+            "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_r16_4_10_truncated_form",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -879,4 +899,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 696
+TOTAL = 711
