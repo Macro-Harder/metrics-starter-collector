@@ -1061,6 +1061,27 @@ INVENTORY = {
             "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_trace_tally_alone",
         ],
     },
+    "test_h_step16_fix7_unit3": {
+        "count": 16,
+        "cases": [
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_additions_companion_over_limit_both",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_additions_companion_over_limit_named",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_additions_companion_truncated_named",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_additions_read_companion_both_counted",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_additions_read_companion_named_only",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_totals_companion_malformed_named",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_totals_companion_over_limit_named",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_totals_companion_truncated_named",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_totals_read_companion_both_counted",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_04_totals_read_companion_named_only",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_clean_second_case_additions_branch",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_clean_second_case_totals_branch",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_cured_additions_branch_fix5",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_read_rows_byte_for_byte",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_roster_truncated_additions_branch",
+            "tests.test_h_step16_fix7_unit3.TestStep16Fix7Unit3.test_r16_7_held_roster_truncated_totals_branch",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1089,4 +1110,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 866
+TOTAL = 882

@@ -3343,15 +3343,24 @@ def _e2_reconciliation(captured, totals):
 
 
 def _roster_not_read_naming(captured, step):
-    """The state naming of a roster piece of one step standing
-    not read in full, or None where every roster piece of the
-    step stands read in full or no roster piece stands. The
-    E-2 second case clause asserts a countable form absence
-    over the roster of its step, so it stands only where the
-    roster stands read in full; where a roster piece stands
-    not read in full the clause takes this naming instead.
+    """The state naming of a staffing piece of one step standing
+    not read in full, or None where every staffing piece of the
+    step stands read in full. The E-2 second case clause
+    asserts a countable form absence over the staffing pieces
+    of its step: its named agents test ranges over step
+    records, rosters, opening records and step companions
+    alike, so the clause stands only where every piece that
+    test ranges over stands read in full. Where any such
+    piece stands not read in full the clause takes this
+    naming instead, on the naming form the roster cure
+    established, a roster piece standing first where one
+    stands not read in full so the cured roster form stands
+    byte for byte.
     """
     for piece in captured.step_pieces(step, CLS_ROSTER):
+        if _piece_not_read_in_full(piece):
+            return _piece_state_naming(piece)
+    for piece in captured.step_pieces(step, *_STAFFING_CLASSES):
         if _piece_not_read_in_full(piece):
             return _piece_state_naming(piece)
     return None
