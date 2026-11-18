@@ -649,54 +649,67 @@ def _tally_statement_head(line):
     A tally statement head is the opening form of a line
     whose counted sibling _trace_candidates counts under
     _TALLY_COUNTED_PATTERN, which carries no head test of
-    its own: the line, after its list and heading marks
-    are stripped, opens with a head, a run of plain words
-    with no sentence punctuation among them, which closes
-    with the word tally, or with the words trace summary,
-    or with the trace for step form. A head is the run,
-    so a run that passes through the tally words and
-    closes on other words is no head, and a line whose
-    opening run does not close with the tally words opens
-    with no tally statement head. The head words may
-    carry the marks a counted head may carry, a hyphen
-    inside a word, a comma on a word, an underscore, a
-    slash or an apostrophe inside a word, or two hyphens
-    inside a word, and the closing trace summary words
-    may stand joined by a hyphen or split by a comma, as
-    in Trace-summary and Trace, summary. The head may
-    stand behind a numbered list marker, in the plain
-    digits form, in a parenthesis, in brackets, or with
-    no space after its marker, in which forms the head
-    closes with the colon every tally statement in that
-    form carries, where the golden closing prose line,
-    which carries its tally words inside an instruction
-    sentence with no colon at the tally word, does not.
-    The trace for step form stands under the same colon
-    condition in every position, its colon standing
-    immediately after the step number. The test is a form
-    test, not a list of heads, so it cannot drift from
-    the counted reach on a head: any head in that form
-    stands in the reach, Board tally, Step 2 tally,
-    Tally, Gate record tally and Trace summary among
-    them, beside the settled Gate tally, Trace tally and
-    Trace for step heads, and beside heads stated in more
-    words, Alpha beta gamma delta epsilon tally, Step 2
-    gate record review tally and Alpha beta gamma delta
-    epsilon trace summary among them, the hyphenated
-    Step-2 tally head, the comma head Board, tally, the
-    underscore head Step_2 tally, the slash head Step/2
-    tally, the apostrophe head Board's tally and the
-    double hyphen head Step--2 tally. A line of prose
-    that merely mentions a tally beside the LANDED word,
-    the golden board tally closing lines among them,
-    opens with no such head and stands outside the reach,
-    as a piece that is no feeder flips nothing in its
-    prose form.
+    its own. The test therefore stands on the counted
+    pattern reach itself, in general form, and not on
+    any list of head spellings: after the list and
+    heading marks are stripped, and after a list marker
+    where the line carries one, the head is the opening
+    run of the line, the text up to its first sentence
+    punctuation, and the head stands exactly where the
+    words of that run close with the tally words. The
+    words of the run are its letter and digit sequences,
+    in whatever marks, joins or spacing the run carries
+    between or around them, because the counted pattern
+    counts its statement under any such head: a plus, an
+    equals sign, a hash, a percent sign or an ampersand
+    inside a word, a non ASCII letter, a mark closing a
+    word, a comma standing as its own token, and the
+    closing trace summary words joined by a comma with
+    no space, a slash, an underscore, two hyphens or a
+    spaced hyphen all stand inside the reach on the same
+    ground as the plainer marks of the earlier cures. A
+    list marker is a short token in brackets or
+    parentheses, a digits token closing on a dot, a
+    closing parenthesis, a hyphen or a colon, or a
+    single letter closing on a dot or a closing
+    parenthesis, with or without a space after it, the
+    roman parenthesis, letter, colon and hyphen marker
+    forms among them beside the digit forms of the
+    earlier cures. The closing forms are three: the last
+    word of the run is tally; or the last two words of
+    the run are trace summary, in that order, in
+    whatever join the run carries them; or, only where
+    the run closes on a colon, the last four words of
+    the run are trace for step and a step number, or
+    tally for step and a step number, a space standing
+    before that colon making no difference. A head
+    behind a list marker counts only where a colon
+    closes the run, so a numbered head whose run closes
+    on any other punctuation, or on none, stands outside
+    the scan in the tally form and in the trace summary
+    form alike. A head is the run, so a run that passes
+    through the tally words and closes on other words is
+    no head, and a line whose opening run does not close
+    with the tally words opens with no tally statement
+    head. Board tally, Step 2 tally, Tally, Gate record
+    tally and Trace summary stand in the reach, beside
+    the settled Gate tally, Trace tally and Trace for
+    step heads, beside heads stated in more words, Alpha
+    beta gamma delta epsilon tally, Step 2 gate record
+    review tally and Alpha beta gamma delta epsilon
+    trace summary among them, and beside every marked,
+    joined and marker carried spelling of those heads. A
+    line of prose that merely mentions a tally beside
+    the LANDED word, the golden board tally closing
+    lines among them, opens with no such head and stands
+    outside the reach, as a piece that is no feeder flips
+    nothing in its prose form.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
-    word = r"[A-Za-z0-9]+(?:[-_/',]+[A-Za-z0-9]+)*,?"
-    marker = re.match(r"(?:\(\d+\)|\[\d+\]|\d+[.)])\s*",
-                      stripped)
+    marker = re.match(
+        r"(?:\([^\s()]{1,6}\)\s*|\[[^\s\[\]]{1,6}\]\s*"
+        r"|\d+\s*[.):\-]\s*|\d+:\s*|[A-Za-z][.)]\s*)",
+        stripped)
     numbered = marker is not None
     text = stripped[marker.end():] if marker else stripped
     end = re.search(r"[.:;!?]", text)
@@ -707,16 +720,17 @@ def _tally_statement_head(line):
     run = run.strip()
     if numbered and terminator != ":":
         return False
-    if not re.fullmatch(r"%s(?:\s+%s)*" % (word, word), run):
+    words = [word.lower() for word in re.findall(r"[^\W_]+", run)]
+    if not words:
         return False
-    if re.search(r"(?:^|[\s-])tally,?$", run, re.I):
+    if words[-1] == "tally":
         return True
-    if re.search(r"(?:^|\s)trace(?:\s+|,\s+|-)summary,?$",
-                 run, re.I):
+    if len(words) >= 2 and words[-2:] == ["trace", "summary"]:
         return True
-    if terminator == ":" and re.search(
-            r"(?:^|\s)(?:trace|tally)\s+for\s+step\s+\d+,?$",
-            run, re.I):
+    if terminator == ":" and len(words) >= 4 and \
+            words[-3:-1] == ["for", "step"] and \
+            words[-4] in ("trace", "tally") and \
+            words[-1].isdigit():
         return True
     return False
 
