@@ -19,6 +19,7 @@ limit, unreadable, and the duplicate identity disagreement.
 No derivation in this module reads the tree again.
 """
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -643,6 +644,26 @@ _TALLY_COUNTED_PATTERN = re.compile(
     r"(\d+) CONTRADICTED")
 
 
+def _fold_word(word):
+    """One extracted word, lowered and folded for accents."""
+    folded = unicodedata.normalize("NFD", word.lower())
+    return "".join(char for char in folded
+                   if unicodedata.category(char) != "Mn")
+
+
+def _tally_word(word):
+    """Whether a folded word stands as the tally word.
+
+    The word stands as the tally word where it is tally
+    or tallies, where it begins with tally, the tallying
+    form among those, or where it ends with tally behind
+    a fused prefix, the Step2tally and Boardtally forms
+    among those.
+    """
+    return word in ("tally", "tallies") or \
+        word.startswith("tally") or word.endswith("tally")
+
+
 def _tally_statement_head(line):
     """Whether a line opens with a tally statement head.
 
@@ -654,84 +675,153 @@ def _tally_statement_head(line):
     any list of head spellings: after the list and
     heading marks are stripped, and after a list marker
     where the line carries one, the head is the opening
-    run of the line, the text up to its first sentence
-    punctuation, and the head stands exactly where the
-    words of that run close with the tally words. The
-    words of the run are its letter and digit sequences,
-    in whatever marks, joins or spacing the run carries
-    between or around them, because the counted pattern
-    counts its statement under any such head: a plus, an
-    equals sign, a hash, a percent sign or an ampersand
-    inside a word, a non ASCII letter, a mark closing a
-    word, a comma standing as its own token, and the
-    closing trace summary words joined by a comma with
-    no space, a slash, an underscore, two hyphens or a
-    spaced hyphen all stand inside the reach on the same
-    ground as the plainer marks of the earlier cures. A
-    list marker is a short token in brackets or
-    parentheses, a digits token closing on a dot, a
-    closing parenthesis, a hyphen or a colon, or a
-    single letter closing on a dot or a closing
-    parenthesis, with or without a space after it, the
-    roman parenthesis, letter, colon and hyphen marker
-    forms among them beside the digit forms of the
-    earlier cures. The closing forms are three: the last
-    word of the run is tally; or the last two words of
-    the run are trace summary, in that order, in
-    whatever join the run carries them; or, only where
-    the run closes on a colon, the last four words of
-    the run are trace for step and a step number, or
-    tally for step and a step number, a space standing
-    before that colon making no difference. A head
-    behind a list marker counts only where a colon
-    closes the run, so a numbered head whose run closes
-    on any other punctuation, or on none, stands outside
-    the scan in the tally form and in the trace summary
-    form alike. A head is the run, so a run that passes
-    through the tally words and closes on other words is
-    no head, and a line whose opening run does not close
-    with the tally words opens with no tally statement
-    head. Board tally, Step 2 tally, Tally, Gate record
-    tally and Trace summary stand in the reach, beside
-    the settled Gate tally, Trace tally and Trace for
-    step heads, beside heads stated in more words, Alpha
-    beta gamma delta epsilon tally, Step 2 gate record
-    review tally and Alpha beta gamma delta epsilon
-    trace summary among them, and beside every marked,
-    joined and marker carried spelling of those heads. A
-    line of prose that merely mentions a tally beside
-    the LANDED word, the golden board tally closing
-    lines among them, opens with no such head and stands
-    outside the reach, as a piece that is no feeder flips
-    nothing in its prose form.
+    run of the line, and the head stands exactly where
+    the words of that run close with the tally words.
+    The words of the run are its letter and digit
+    sequences, taken with a Unicode word extraction and
+    folded for accents, in whatever marks, joins or
+    spacing the run carries between or around them,
+    because the counted pattern counts its statement
+    under any such head: a plus, an equals sign, a hash,
+    a percent sign or an ampersand inside a word, a non
+    ASCII letter, a mark closing a word, a comma standing
+    as its own token, and the closing trace summary words
+    joined by a comma with no space, a slash, an
+    underscore, two hyphens or a spaced hyphen all stand
+    inside the reach on the same ground as the plainer
+    marks of the earlier cures. A list marker is a short
+    token in brackets or parentheses, a digits token
+    closing on a dot, a closing parenthesis, a hyphen or
+    a colon, or a single letter closing on a dot or a
+    closing parenthesis, with or without a space after
+    it, the roman parenthesis, letter, colon and hyphen
+    marker forms among them beside the digit forms of
+    the earlier cures, and, on the dot limbs extended in
+    fix pass 11, a token of two or more letters or digits
+    closing on a dot, a dotted digit sequence closing on
+    a dot, and a digits token closing on two dots. The
+    closing forms are three: the last word of the run
+    stands as the tally word; or the last two words of
+    the run are trace summary, in that order, in whatever
+    join the run carries them; or, only where the run
+    closes on a colon, the last four words of the run are
+    trace for step and a step number, or tally for step
+    and a step number, a space standing before that colon
+    making no difference. A head behind a list marker
+    counts only where a colon closes the run, so a
+    numbered head whose run closes on any other
+    punctuation, or on none, stands outside the scan in
+    the tally form and in the trace summary form alike.
+    A head is the run, so a run that passes through the
+    tally words and closes on other words is no head at
+    its own boundary, and a line whose opening runs do
+    not close with the tally words opens with no tally
+    statement head. Board tally, Step 2 tally, Tally,
+    Gate record tally and Trace summary stand in the
+    reach, beside the settled Gate tally, Trace tally
+    and Trace for step heads, beside heads stated in more
+    words, Alpha beta gamma delta epsilon tally, Step 2
+    gate record review tally and Alpha beta gamma delta
+    epsilon trace summary among them, and beside every
+    marked, joined and marker carried spelling of those
+    heads. A line of prose that merely mentions a tally
+    beside the LANDED word, the golden board tally
+    closing lines among them, opens with no such head
+    and stands outside the reach, as a piece that is no
+    feeder flips nothing in its prose form.
+
+    Exact boundary of the cure, as extended in fix pass
+    11: a line is in the scan reach where, after its
+    list and heading marks and one list marker in the
+    general form are stripped, an opening run of the
+    remaining text, taken up to a sentence punctuation
+    boundary of the line, carries at least one letter or
+    digit word, and those words, taken with a Unicode
+    word extraction and folded for accents, close in one
+    of the closing forms stated below, with a colon
+    closing the run wherever the line carries a list
+    marker, and with a colon closing the run wherever
+    the closing form is the trace for step form. The run
+    is tried at every sentence punctuation boundary of
+    the line in turn, a dot standing between two digits
+    standing as no boundary, and the head stands at the
+    first boundary whose run closes in a closing form; a
+    run that passes through the tally words and closes
+    on other words matches no closing form at its own
+    boundary. The closing forms are three: the last word
+    of the run stands as the tally word, where a word
+    stands as the tally word where, after accent
+    folding, it is tally or tallies, or it begins with
+    tally, the tallying form among those, or it ends
+    with tally behind a fused prefix, the Step2tally and
+    Boardtally forms among those; or the last two words
+    of the run are trace summary, in that order, or
+    summary trace, in the reversed order, the summary
+    word standing as summary or summaries, or the last
+    word of the run is the fused tracesummary or the
+    fused summarytrace; or, only where the run closes on
+    a colon, the last four words of the run are trace for
+    step and a step number, or tally for step and a step
+    number, a space standing before that colon making no
+    difference. The general marker form stands extended
+    on its dot limbs alone: beside a digits token closing
+    on a dot and a single letter closing on a dot, a
+    token of two or more letters or digits closing on a
+    dot, a dotted digit sequence closing on a dot, and a
+    digits token closing on two dots each stand as a
+    list marker in the general form; the bracket and
+    parenthesis limbs stand exactly as they stood before
+    this pass, in their length and in every other
+    respect. Nothing else about the run is tested: not
+    the marks inside or on its words beyond the accent
+    folding and the closing word forms stated here, not
+    the joins of its closing words, not the case of its
+    words, and not the number of its words. A line whose
+    runs at every boundary close on other words, a
+    numbered line whose run closes on punctuation other
+    than a colon, and a line carrying no such run stand
+    outside the reach, in prose position above all.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
     marker = re.match(
         r"(?:\([^\s()]{1,6}\)\s*|\[[^\s\[\]]{1,6}\]\s*"
+        r"|\d+(?:\.\d+)+\.?\s*|\d+\.\.\s*"
+        r"|[A-Za-z0-9]{2,}\.\s*"
         r"|\d+\s*[.):\-]\s*|\d+:\s*|[A-Za-z][.)]\s*)",
         stripped)
     numbered = marker is not None
     text = stripped[marker.end():] if marker else stripped
-    end = re.search(r"[.:;!?]", text)
-    if end:
-        run, terminator = text[:end.start()], end.group(0)
-    else:
-        run, terminator = text, ""
-    run = run.strip()
-    if numbered and terminator != ":":
-        return False
-    words = [word.lower() for word in re.findall(r"[^\W_]+", run)]
-    if not words:
-        return False
-    if words[-1] == "tally":
-        return True
-    if len(words) >= 2 and words[-2:] == ["trace", "summary"]:
-        return True
-    if terminator == ":" and len(words) >= 4 and \
-            words[-3:-1] == ["for", "step"] and \
-            words[-4] in ("trace", "tally") and \
-            words[-1].isdigit():
-        return True
+    boundaries = []
+    for match in re.finditer(r"[.:;!?]", text):
+        if match.group(0) == "." and 0 < match.start() and \
+                match.end() < len(text) and \
+                text[match.start() - 1].isdigit() and \
+                text[match.end()].isdigit():
+            continue
+        boundaries.append((text[:match.start()], match.group(0)))
+    boundaries.append((text, ""))
+    for run, terminator in boundaries:
+        if numbered and terminator != ":":
+            continue
+        words = [_fold_word(word) for word in
+                 re.findall(r"[^\W_]+", run)]
+        if not words:
+            continue
+        if _tally_word(words[-1]):
+            return True
+        if words[-1] in ("tracesummary", "summarytrace"):
+            return True
+        if len(words) >= 2 and \
+                ((words[-2] == "trace" and
+                  words[-1] in ("summary", "summaries")) or
+                 (words[-1] == "trace" and
+                  words[-2] in ("summary", "summaries"))):
+            return True
+        if terminator == ":" and len(words) >= 4 and \
+                words[-3:-1] == ["for", "step"] and \
+                words[-4] in ("trace", "tally") and \
+                words[-1].isdigit():
+            return True
     return False
 
 
