@@ -940,6 +940,34 @@ INVENTORY = {
             "tests.test_h_step16_fix6_unit3.TestStep16Fix6Unit3.test_r16_6_held_trace_record_verdict_counts_malformed",
         ],
     },
+    "test_h_step16_fix6_unit4": {
+        "count": 23,
+        "cases": [
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_05_t7_counted_gate_record_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_05_t7_counted_gate_ruling_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_05_t7_counted_gate_ruling_truncated",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_05_t7_mapping_gate_ruling_truncated",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_10_t4_unnamed_b6_08_table_named_queue",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_10_t4_unnamed_queue_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_10_t4_unnamed_queue_truncated",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_10_t4_unnamed_withheld_queue_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_ledger_unread_and_t1_t2_held",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_named_queue_absent_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_named_queue_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_named_queue_read_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_unnamed_queue_absent_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_unnamed_queue_read_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_unnamed_withheld_queue_absent",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t4_unnamed_withheld_queue_read",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_counted_read_control_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_counted_step_record_over_limit",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_counted_step_record_truncated",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_gate_ruling_read_control",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_mapping_read_control_byte_for_byte",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_mapping_step_record_truncated",
+            "tests.test_h_step16_fix6_unit4.TestStep16Fix6Unit4.test_r16_6_held_t7_missing_branch_cured",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -968,4 +996,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 765
+TOTAL = 788

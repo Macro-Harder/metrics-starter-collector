@@ -1796,6 +1796,14 @@ def _derive_t4(captured, universe):
                 "degraded form: the row is shown without its "
                 "queue cross check, from the BANKED interval "
                 "durations standing in the feeder records")
+        queue_piece = feeders["queue_piece"]
+        if queue_piece is not None and \
+                _piece_not_read_in_full(queue_piece):
+            parts.append(
+                "the governing queue file stands in the tree "
+                "not read in full: "
+                + _piece_state_naming(queue_piece)
+                + ", so no queue cross check is taken from it")
         marking = _t4_marking(captured, durations)
         if marking:
             parts.append(marking)
@@ -1821,8 +1829,16 @@ def _derive_t4(captured, universe):
                 count = origins.count(mode)
                 example = (", for example %d banked questions open "
                            "at Step %d" % (count, mode))
-        queue_stands = bool(captured.pieces_of(CLS_DECISION_QUEUE))
-        if queue_stands:
+        queue_pieces = captured.pieces_of(CLS_DECISION_QUEUE)
+        queue_piece = queue_pieces[0] if queue_pieces else None
+        if queue_piece is not None and \
+                _piece_not_read_in_full(queue_piece):
+            held_tail = ("and the governing queue file stands in "
+                         "the tree not read in full: "
+                         + _piece_state_naming(queue_piece)
+                         + ", so no queue cross check is taken "
+                           "from it")
+        elif queue_piece is not None:
             held_tail = ("and a queue file stands in the tree for "
                          "the cross check")
         else:
@@ -2392,18 +2408,23 @@ def _derive_t7(captured, universe):
                 held="the step records stand in the tree at "
                      + naming)
     if loop_steps:
-        unread_records = [piece for piece in
-                          captured.pieces_of(CLS_STEP_RECORD)
+        unread_records = [piece for piece in captured.pieces
                           if _piece_not_read_in_full(piece)
-                          and piece.step in universe.evidenced]
+                          and _piece_step(piece) is not None
+                          and (_piece_step(piece) in loop_steps
+                               or (piece.record_class
+                                   == CLS_STEP_RECORD
+                                   and _piece_step(piece)
+                                   in universe.evidenced))]
         unread_naming = "; ".join(
             _piece_state_naming(piece) for piece in unread_records)
-        unread_steps = sorted({piece.step for piece in unread_records
-                               if piece.step is not None})
+        unread_steps = sorted({_piece_step(piece)
+                               for piece in unread_records
+                               if _piece_step(piece) is not None})
         unread_clause = None
         if unread_records:
             unread_clause = (
-                "a step record of the evidenced universe stands "
+                "a record of the evidenced universe stands "
                 "not read in full: " + unread_naming + ", so no "
                 "loop step marker or round record is taken from "
                 "that piece")
