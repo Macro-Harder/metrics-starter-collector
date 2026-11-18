@@ -689,8 +689,9 @@ def _tally_statement_head(line):
     joined by a comma with no space, a slash, an
     underscore, two hyphens or a spaced hyphen all stand
     inside the reach on the same ground as the plainer
-    marks of the earlier cures. A list marker is a short
-    token in brackets or parentheses, a digits token
+    marks of the earlier cures. A list marker is a token
+    in brackets or parentheses, whatever its length, a
+    digits token
     closing on a dot, a closing parenthesis, a hyphen or
     a colon, or a single letter closing on a dot or a
     closing parenthesis, with or without a space after
@@ -769,22 +770,28 @@ def _tally_statement_head(line):
     token of two or more letters or digits closing on a
     dot, a dotted digit sequence closing on a dot, and a
     digits token closing on two dots each stand as a
-    list marker in the general form; the bracket and
-    parenthesis limbs stand exactly as they stood before
-    this pass, in their length and in every other
-    respect. Nothing else about the run is tested: not
-    the marks inside or on its words beyond the accent
-    folding and the closing word forms stated here, not
-    the joins of its closing words, not the case of its
-    words, and not the number of its words. A line whose
-    runs at every boundary close on other words, a
-    numbered line whose run closes on punctuation other
-    than a colon, and a line carrying no such run stand
-    outside the reach, in prose position above all.
+    list marker in the general form. The bracket and
+    parenthesis limbs stand extended in fix pass 11 as
+    well: a bracketed or parenthesised token standing at
+    the head of the line is a list marker whatever its
+    length, so the colon condition stated above engages
+    for it exactly as it engages inside the shorter
+    tokens, and a numbered no colon line under such a
+    marker stands outside the reach in the settled
+    numbered no colon residual. Nothing else about the
+    run is tested: not the marks inside or on its words
+    beyond the accent folding and the closing word forms
+    stated here, not the joins of its closing words, not
+    the case of its words, and not the number of its
+    words. A line whose runs at every boundary close on
+    other words, a numbered line whose run closes on
+    punctuation other than a colon, and a line carrying
+    no such run stand outside the reach, in prose
+    position above all.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
     marker = re.match(
-        r"(?:\([^\s()]{1,6}\)\s*|\[[^\s\[\]]{1,6}\]\s*"
+        r"(?:\([^\s()]+\)\s*|\[[^\s\[\]]+\]\s*"
         r"|\d+(?:\.\d+)+\.?\s*|\d+\.\.\s*"
         r"|[A-Za-z0-9]{2,}\.\s*"
         r"|\d+\s*[.):\-]\s*|\d+:\s*|[A-Za-z][.)]\s*)",
