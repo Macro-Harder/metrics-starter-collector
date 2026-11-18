@@ -745,6 +745,23 @@ INVENTORY = {
             "tests.test_h_step16_fix4_unit6.TestStep16Fix4Unit6.test_r16_4_held_staffing_over_limit_e2_byte_for_byte",
         ],
     },
+    "test_h_step16_fix5_unit1": {
+        "count": 12,
+        "cases": [
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_01_e3_malformed_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_01_e3_truncated_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_03_e4_malformed_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_03_e4_truncated_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_04_b2_malformed_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_04_b2_truncated_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_b2_over_limit_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_b2_read_control",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_e3_over_limit_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_e3_read_control",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_e4_over_limit_ledger",
+            "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_e4_read_control",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -773,4 +790,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 615
+TOTAL = 627

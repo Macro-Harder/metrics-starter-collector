@@ -3439,13 +3439,14 @@ def _ledger_data(captured):
     budget conflicts or stated build total conflicts, in
     statement order, as (position, first figure, later
     figure), and a later line restating the identical figure
-    records nothing. A ledger piece that stands not read past
-    a limit supplies no figure here, and it does not vanish:
-    the returned unread_ledgers list carries every such piece,
-    so a derivation resting on the ledger can stand present
-    but not derivable with the bound named, under WV2-09,
-    instead of treating the unread ledger as an inspected
-    empty one.
+    records nothing. A ledger piece that stands not read in
+    full, for whatever reason, over limit, truncated,
+    malformed, unreadable or not visited, supplies no figure
+    here, and it does not vanish: the returned unread_ledgers
+    list carries every such piece, so a derivation resting on
+    the ledger can stand present but not derivable with the
+    bound or the state named, under WV2-09, instead of
+    treating the unread ledger as an inspected empty one.
     """
     ledgers = captured.pieces_of(CLS_COST_LEDGER)
     pointer = ledgers[0].paths[0] if ledgers else COST_LEDGER_PATH
@@ -3533,7 +3534,7 @@ def _ledger_data(captured):
                              text):
             record_position("total_tokens", int(m.group(1)))
     unread = [piece for piece in ledgers
-              if _piece_over_limit_not_read(piece)]
+              if _piece_not_read_in_full(piece)]
     return {"ledgers": ledgers, "pointer": pointer, "money": money,
             "tokens": tokens, "unread_ledgers": unread,
             "budget_money": position_values["budget_money"],
@@ -3878,7 +3879,32 @@ def _derive_e3(captured, universe):
         unread = ledger_data["unread_ledgers"]
         if unread:
             piece = unread[0]
-            naming = _limit_naming(piece)
+            naming = _piece_state_naming(piece)
+            if _piece_over_limit_not_read(piece):
+                return _refusal(
+                    "E-3", "present but not derivable",
+                    "no token figure",
+                    denom, ledger_pieces[0].paths[0],
+                    shows="a cost ledger piece stands in the tree at "
+                          + naming + ", so no byte of the ledger was "
+                          "read and no token figure is taken from it",
+                    token=_quality_code(piece),
+                    follows="the row rests on a piece that was not "
+                            "read past the bound named, so the row is "
+                            "present but not derivable; missing stands "
+                            "reserved for the case where no feeder "
+                            "record stands in the tree, and no token "
+                            "figure is claimed absent from a piece "
+                            "that was not read",
+                    rule_name="E-3 not read past a limit rule",
+                    broken="the cost ledger token figure field in "
+                           + piece.paths[0] + ", which stands not "
+                             "read past the limit named in its "
+                             "capture reason",
+                    required="a cost ledger read in full, carrying "
+                             "its token figures",
+                    held="the cost ledger stands in the tree at "
+                         + naming)
             return _refusal(
                 "E-3", "present but not derivable", "no token figure",
                 denom, ledger_pieces[0].paths[0],
@@ -3887,17 +3913,17 @@ def _derive_e3(captured, universe):
                       "read and no token figure is taken from it",
                 token=_quality_code(piece),
                 follows="the row rests on a piece that was not "
-                        "read past the bound named, so the row is "
-                        "present but not derivable; missing stands "
-                        "reserved for the case where no feeder "
-                        "record stands in the tree, and no token "
-                        "figure is claimed absent from a piece "
-                        "that was not read",
-                rule_name="E-3 not read past a limit rule",
+                        "read in full, so the row is present but "
+                        "not derivable; missing stands reserved "
+                        "for the case where no feeder record "
+                        "stands in the tree, and no token figure "
+                        "is claimed absent from a piece that was "
+                        "not read",
+                rule_name="E-3 not read in full rule",
                 broken="the cost ledger token figure field in "
                        + piece.paths[0] + ", which stands not "
-                         "read past the limit named in its "
-                         "capture reason",
+                         "read in full as its capture reason "
+                         "states",
                 required="a cost ledger read in full, carrying "
                          "its token figures",
                 held="the cost ledger stands in the tree at "
@@ -4018,7 +4044,8 @@ def _derive_e4(captured, universe):
     unread_ledgers = ledger_data["unread_ledgers"]
     if unread_ledgers:
         piece = unread_ledgers[0]
-        naming = _limit_naming(piece)
+        naming = _piece_state_naming(piece)
+        over_limit = _piece_over_limit_not_read(piece)
         if merged_money and all(step in merged_money
                                 for step in universe.evidenced):
             figures = "; ".join(
@@ -4030,12 +4057,44 @@ def _derive_e4(captured, universe):
             result = DerivationResult(
                 "E-4", "present", figures, denom, present_pointer,
                 rule_name="E-4 money rule")
-            result.bound = (
-                "the cost ledger feeder at " + piece.paths[0],
-                "the per step money link resting on " + naming,
-                "the cost ledger read in full under the limit "
-                "that stopped its reading")
+            if over_limit:
+                result.bound = (
+                    "the cost ledger feeder at " + piece.paths[0],
+                    "the per step money link resting on " + naming,
+                    "the cost ledger read in full under the limit "
+                    "that stopped its reading")
+            else:
+                result.bound = (
+                    "the cost ledger feeder at " + piece.paths[0],
+                    "the per step money link resting on " + naming,
+                    "the cost ledger read in full")
             return result
+        if over_limit:
+            return _refusal(
+                "E-4", "present but not derivable",
+                "no per step money figure", denom,
+                _pointer("E-4", ledger_data["pointer"], captured),
+                shows="a cost ledger piece stands in the tree at "
+                      + naming + ", so no per step money figure is "
+                      "read from it",
+                token=_quality_code(piece),
+                follows="the row rests on a piece that was not read "
+                        "past the bound named, so the row is present "
+                        "but not derivable, and no per step money "
+                        "figure is claimed absent from a piece that "
+                        "was not read",
+                rule_name="E-4 not read past a limit rule",
+                broken="the per step money figure field in the cost "
+                       "ledger at " + piece.paths[0] + ", which "
+                         "stands not read past the limit named in "
+                         "its capture reason",
+                required="a money figure stated by a feeder for the "
+                         "step itself, in a cost ledger read in full "
+                         "inside the root or in a step record "
+                         "position for that step",
+                held="the cost ledger stands in the tree at "
+                     + naming + ", and no per step money figure is "
+                     "taken from a piece that was not read")
         return _refusal(
             "E-4", "present but not derivable",
             "no per step money figure", denom,
@@ -4045,15 +4104,15 @@ def _derive_e4(captured, universe):
                   "read from it",
             token=_quality_code(piece),
             follows="the row rests on a piece that was not read "
-                    "past the bound named, so the row is present "
-                    "but not derivable, and no per step money "
-                    "figure is claimed absent from a piece that "
-                    "was not read",
-            rule_name="E-4 not read past a limit rule",
+                    "in full, so the row is present but not "
+                    "derivable, and no per step money figure is "
+                    "claimed absent from a piece that was not "
+                    "read",
+            rule_name="E-4 not read in full rule",
             broken="the per step money figure field in the cost "
                    "ledger at " + piece.paths[0] + ", which "
-                     "stands not read past the limit named in "
-                     "its capture reason",
+                     "stands not read in full as its capture "
+                     "reason states",
             required="a money figure stated by a feeder for the "
                      "step itself, in a cost ledger read in full "
                      "inside the root or in a step record "
@@ -6947,7 +7006,31 @@ def _derive_b2(captured, universe):
     if unread_ledgers and not (token_state == "yield" and
                                 money_state == "yield"):
         piece = unread_ledgers[0]
-        naming = _limit_naming(piece)
+        naming = _piece_state_naming(piece)
+        if _piece_over_limit_not_read(piece):
+            return _refusal(
+                "B-2", "present but not derivable",
+                "no budget share figure", denom,
+                _pointer("B-2", pointer, captured),
+                shows="a cost ledger piece stands in the tree at "
+                      + naming + ", so no spent or budget figure is "
+                      "read from it",
+                token=_quality_code(piece),
+                follows="the row rests on a piece that was not read "
+                        "past the bound named, so the row is present "
+                        "but not derivable, and no spent or budget "
+                        "figure is claimed absent from a piece that "
+                        "was not read",
+                rule_name="B-2 not read past a limit rule",
+                broken="the ledger figure fields for spent and "
+                       "budget in " + piece.paths[0] + ", which "
+                         "stand not read past the limit named in "
+                         "its capture reason",
+                required="spent and budget figures taken from "
+                         "ledger feeders inside the root only, on "
+                         "both sides, read in full",
+                held="the cost ledger stands in the tree at "
+                     + naming)
         return _refusal(
             "B-2", "present but not derivable",
             "no budget share figure", denom,
@@ -6957,15 +7040,15 @@ def _derive_b2(captured, universe):
                   "read from it",
             token=_quality_code(piece),
             follows="the row rests on a piece that was not read "
-                    "past the bound named, so the row is present "
-                    "but not derivable, and no spent or budget "
-                    "figure is claimed absent from a piece that "
-                    "was not read",
-            rule_name="B-2 not read past a limit rule",
+                    "in full, so the row is present but not "
+                    "derivable, and no spent or budget figure is "
+                    "claimed absent from a piece that was not "
+                    "read",
+            rule_name="B-2 not read in full rule",
             broken="the ledger figure fields for spent and "
                    "budget in " + piece.paths[0] + ", which "
-                     "stand not read past the limit named in "
-                     "its capture reason",
+                     "stand not read in full as its capture "
+                     "reason states",
             required="spent and budget figures taken from "
                      "ledger feeders inside the root only, on "
                      "both sides, read in full",
