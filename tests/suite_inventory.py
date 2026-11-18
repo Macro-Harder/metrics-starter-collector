@@ -888,6 +888,30 @@ INVENTORY = {
             "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_ruling_no_go_truncated_beside_record_go",
         ],
     },
+    "test_h_step16_fix6_unit2": {
+        "count": 19,
+        "cases": [
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_b6_03_marked_record_over_limit",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_b6_03_marked_record_truncated",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_b6_03_read_control_no_pair_no_bound",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_b6_03_read_control_pair_counted",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_c6_01_read_control_no_pair_no_bound",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_c6_01_read_control_pair_counted",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_c6_01_restart_record_over_limit",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_03_c6_01_restart_record_truncated",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_b6_04_clean_control_second_case_stands",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_b6_04_read_control_additions_counted",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_b6_04_roster_truncated_no_absence",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_c6_06_clean_control_second_case_stands",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_c6_06_read_control_additions_counted",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_c6_06_roster_malformed_no_absence",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_04_c6_06_roster_truncated_no_absence",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_held_e2_additions_branch_roster_truncated",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_held_plain_e1_bound_step3_truncated",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_held_plain_e1_covered_roster_over_limit",
+            "tests.test_h_step16_fix6_unit2.TestStep16Fix6Unit2.test_r16_6_held_read_staffing_rows_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -916,4 +940,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 723
+TOTAL = 742

@@ -2817,11 +2817,37 @@ def _derive_e1_marked(captured, universe, pointer):
                 _instance_label(key) for key in keys)
             + "; remainder " + ", ".join(
                 _instance_label(key) for key in uncovered))
+    unread_keys = []
+    unread_pieces = []
+    for key in universe.instances:
+        for piece in grouped.get(key, []):
+            if _piece_not_read_in_full(piece):
+                if key not in unread_keys:
+                    unread_keys.append(key)
+                unread_pieces.append(piece)
+    marked_bound = None
+    if unread_pieces:
+        naming = "; ".join(
+            _piece_state_naming(piece) for piece in unread_pieces)
+        labels = ", ".join(
+            _instance_label(key) for key in unread_keys)
+        cleared = "the piece named read in full" if any(
+            not _piece_over_limit_not_read(piece)
+            for piece in unread_pieces) else (
+            "the piece named read in full under the limit "
+            "that stopped its reading")
+        marked_bound = (
+            labels,
+            "the staffing link for " + labels + ", resting on "
+            + naming,
+            cleared)
     result = DerivationResult(
         "E-1", "present", figures, coverage,
         _pointer("E-1", pointer, captured),
         rule_name="E-1 staffing pair rule")
     result.coverage = coverage
+    if marked_bound is not None:
+        result.bound = marked_bound
     plain_covered = {}
     for key, pair in covered.items():
         plain_covered[int(re.match(r"step-(\d+)", key).group(1))] = pair
@@ -3220,6 +3246,21 @@ def _e2_reconciliation(captured, totals):
             "step records and rosters for the steps counted")
 
 
+def _roster_not_read_naming(captured, step):
+    """The state naming of a roster piece of one step standing
+    not read in full, or None where every roster piece of the
+    step stands read in full or no roster piece stands. The
+    E-2 second case clause asserts a countable form absence
+    over the roster of its step, so it stands only where the
+    roster stands read in full; where a roster piece stands
+    not read in full the clause takes this naming instead.
+    """
+    for piece in captured.step_pieces(step, CLS_ROSTER):
+        if _piece_not_read_in_full(piece):
+            return _piece_state_naming(piece)
+    return None
+
+
 def _derive_e2(captured, universe):
     denom = "denominator step universe %d steps" % len(universe.evidenced)
     pointer = captured.first_path(
@@ -3384,14 +3425,26 @@ def _derive_e2(captured, universe):
                     for piece in captured.step_pieces(
                         step, *_STAFFING_CLASSES))
                 if not named:
-                    coverage += (
-                        "; Step %d stands in the second case: the "
-                        "stated total and the base position both "
-                        "stand, total spins Step %d: %d, with "
-                        "base: %d, and no roster addition entries "
-                        "and no named agents stand for that step "
-                        "in a countable form"
-                        % (step, step, totals[step], bases[step]))
+                    roster_naming = _roster_not_read_naming(
+                        captured, step)
+                    if roster_naming is not None:
+                        coverage += (
+                            "; Step %d: not derivable, the roster "
+                            "position for that step rests on %s, "
+                            "so no roster addition entries and no "
+                            "named agents are claimed absent for "
+                            "that step in a countable form"
+                            % (step, roster_naming))
+                    else:
+                        coverage += (
+                            "; Step %d stands in the second case: "
+                            "the stated total and the base position "
+                            "both stand, total spins Step %d: %d, "
+                            "with base: %d, and no roster addition "
+                            "entries and no named agents stand "
+                            "for that step in a countable form"
+                            % (step, step, totals[step],
+                               bases[step]))
         for step, metrics_figure, record_figure, _governed in \
                 _spin_disagreements(captured):
             figures += (
@@ -3428,14 +3481,26 @@ def _derive_e2(captured, universe):
                     for piece in captured.step_pieces(
                         step, *_STAFFING_CLASSES))
                 if not named:
-                    shows += (
-                        "; Step %d stands in the second case: the "
-                        "stated total and the base position both "
-                        "stand, total spins Step %d: %d, with "
-                        "base: %d, and no roster addition entries "
-                        "and no named agents stand for that step "
-                        "in a countable form"
-                        % (step, step, totals[step], bases[step]))
+                    roster_naming = _roster_not_read_naming(
+                        captured, step)
+                    if roster_naming is not None:
+                        shows += (
+                            "; Step %d: not derivable, the roster "
+                            "position for that step rests on %s, "
+                            "so no roster addition entries and no "
+                            "named agents are claimed absent for "
+                            "that step in a countable form"
+                            % (step, roster_naming))
+                    else:
+                        shows += (
+                            "; Step %d stands in the second case: "
+                            "the stated total and the base position "
+                            "both stand, total spins Step %d: %d, "
+                            "with base: %d, and no roster addition "
+                            "entries and no named agents stand "
+                            "for that step in a countable form"
+                            % (step, step, totals[step],
+                               bases[step]))
         for step, metrics_figure, record_figure, _governed in \
                 _spin_disagreements(captured):
             shows += (
