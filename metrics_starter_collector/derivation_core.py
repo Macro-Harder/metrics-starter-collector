@@ -5080,16 +5080,13 @@ def _q1_scale_name(raw):
     return raw.strip()
 
 
-def _q1_carrier_candidates(captured):
-    """Carrier form breakdowns, and those no round record names.
+def _q1_carrier_naming(captured):
+    """The carrier naming of the capture, by carrier path.
 
-    A carrier counts only where a round record names it as the
-    carrier record for its round, only where triage is stated and
-    a scale is named, and only in one of the four listed carrier
-    forms, with the sanctioned headings standing in their exact
-    form: a fix register round table, a defect register round
-    summary, an audit register round entry, or a gate record
-    round section.
+    Returns a dict from a carrier path to the set of rounds a
+    read piece names it as the carrier record for, or to None
+    where a read piece names it as the carrier record for both
+    rounds. A piece standing not read in full names nothing.
     """
     named = {}
     for piece in captured.pieces:
@@ -5109,6 +5106,21 @@ def _q1_carrier_candidates(captured):
                 r"names\s+(\S+)\s+as the carrier record for both "
                 r"rounds", piece.text):
             named[found.group(1)] = None
+    return named
+
+
+def _q1_carrier_candidates(captured):
+    """Carrier form breakdowns, and those no round record names.
+
+    A carrier counts only where a round record names it as the
+    carrier record for its round, only where triage is stated and
+    a scale is named, and only in one of the four listed carrier
+    forms, with the sanctioned headings standing in their exact
+    form: a fix register round table, a defect register round
+    summary, an audit register round entry, or a gate record
+    round section.
+    """
+    named = _q1_carrier_naming(captured)
     candidates = []
     unnamed = []
     for piece in captured.pieces:
@@ -5363,8 +5375,22 @@ def _q1_unread_round_pieces(captured, counted, corrected_path=None):
     position the piece the correcting record stands for is
     counted through the correction, so its path, passed as
     corrected_path, stands outside this list in that call.
+    Beside those classes the carrier classes the derivation
+    itself counts from stand in this list, in the counted
+    and correcting positions alike: the fix register, the
+    defect register, the audit register and the gate record
+    forms. A carrier counts only where a read piece names
+    it as the carrier record for a round, so a piece of a
+    carrier class stands in this list only where it stands
+    named for a round the counted population omits; a
+    carrier named only for a counted round, and a piece of
+    a carrier class no read piece names, stand outside it.
     """
     counted_paths = {candidate["path"] for candidate in counted}
+    counted_rounds = {candidate["round"] for candidate in counted}
+    named = _q1_carrier_naming(captured)
+    carrier_classes = (CLS_FIX_REGISTER, CLS_DEFECT_REGISTER,
+                       CLS_OTHER_REGISTER, CLS_GATE_RECORD)
     pieces = []
     for piece in captured.pieces:
         if piece.text is not None:
@@ -5375,12 +5401,96 @@ def _q1_unread_round_pieces(captured, counted, corrected_path=None):
                 continue
         elif piece.record_class == CLS_GATE_ADJUDICATION:
             pass
+        elif piece.record_class in carrier_classes:
+            if path not in named:
+                continue
+            rounds = named[path]
+            if rounds is not None and rounds <= counted_rounds:
+                continue
         else:
             continue
         if path in counted_paths or path == corrected_path:
             continue
         pieces.append(piece)
     return pieces
+
+
+def _q1_lone_unread_feeders(captured):
+    """Lone feeder pieces standing not read in full, uncounted.
+
+    The feeder classes are the ones the derivation itself
+    counts from in the lone position: audit papers in any
+    counted path form, the round record and red paper forms
+    among them, beside gate adjudications, whose own
+    breakdown reading counts them in any path form, and
+    carrier records in the carrier classes, the fix
+    register, the defect register, the audit register and
+    the gate record forms, where a read piece names the
+    piece as the carrier record for a round. An audit paper
+    standing on a path the direct reading excludes, a
+    correcting record path or a register path, stands
+    outside this list, as it stands outside the counted
+    scope when read, and a piece of a carrier class no read
+    piece names stands outside it on the same ground.
+    """
+    named = _q1_carrier_naming(captured)
+    carrier_classes = (CLS_FIX_REGISTER, CLS_DEFECT_REGISTER,
+                       CLS_OTHER_REGISTER, CLS_GATE_RECORD)
+    pieces = []
+    for piece in captured.pieces:
+        if piece.text is not None:
+            continue
+        path = piece.paths[0] if piece.paths else ""
+        if piece.record_class == CLS_AUDIT_PAPER:
+            if "correct" in path or "register" in path:
+                continue
+        elif piece.record_class == CLS_GATE_ADJUDICATION:
+            pass
+        elif piece.record_class in carrier_classes:
+            if path not in named:
+                continue
+        else:
+            continue
+        pieces.append(piece)
+    return pieces
+
+
+def _q1_read_breakdown_evidence(captured, carrier, unnamed):
+    """Whether read evidence in a counted form stands in the tree.
+
+    The scattered evidence refusal stands reserved for
+    evidence standing read in unlike forms, so this reading
+    states whether any read piece supplies a breakdown in a
+    scope the row counts from: a carrier candidate in either
+    the named or the unnamed position, a gate adjudication
+    round breakdown, or a post triage breakdown in a piece
+    the direct reading does not exclude.
+    """
+    if carrier or unnamed:
+        return True
+    for piece in captured.pieces:
+        if piece.text is None:
+            continue
+        if piece.record_class == CLS_GATE_ADJUDICATION:
+            if re.search(
+                    r"Round (\d+) post triage breakdown:",
+                    piece.text):
+                return True
+            continue
+        if piece.record_class in (
+                CLS_METRICS_SINGLE, CLS_METRICS_PAGE,
+                CLS_GATE_RECORD, CLS_GATE_RULING,
+                CLS_STEP_RECORD, CLS_STEP_COMPANION,
+                CLS_PATH_LEDGER, CLS_TIER_RECORD,
+                CLS_DECISION_QUEUE):
+            continue
+        path = piece.paths[0] if piece.paths else ""
+        if "correct" in path or "register" in path:
+            continue
+        if re.search(r"[Pp]ost triage (?:severity )?breakdown",
+                     piece.text):
+            return True
+    return False
 
 
 def _derive_q1(captured, universe):
@@ -5613,6 +5723,42 @@ def _derive_q1(captured, universe):
                     "with the incompleteness as the reason, and the "
                     "round is marked incomplete",
             rule_name="D-19 signal failed paper rule")
+    # The lone feeder position is taken on the not read past
+    # a limit state only: the charged forms of this position
+    # stand on that state in both feeder classes, and a
+    # truncated piece in these classes stands under the
+    # settled D-19 reach beside it, which the governed
+    # miniature cells rest on.
+    lone_feeders = [piece for piece in
+                    _q1_lone_unread_feeders(captured)
+                    if _piece_over_limit_not_read(piece)]
+    if lone_feeders and not _q1_read_breakdown_evidence(
+            captured, carrier, unnamed):
+        piece = lone_feeders[0]
+        token = _quality_code(piece)
+        if token == "truncated-no-correcting-record":
+            return _refusal(
+                "Q-1", "present but not derivable",
+                "no audit round figure", denom, pointer,
+                shows="the feeder piece %s is truncated and no "
+                      "correcting record stands for it, so its "
+                      "visible part counts toward nothing and the "
+                      "round it feeds is incomplete"
+                      % piece.paths[0],
+                token=token,
+                follows="the contribution is present but not "
+                        "derivable with the truncation as the "
+                        "reason, and the round is marked incomplete",
+                rule_name="D-19 truncated paper rule")
+        return _refusal(
+            "Q-1", "present but not derivable", "no audit round figure",
+            denom, pointer,
+            shows="the feeder piece %s supplies no breakdown"
+                  % _piece_state_naming(piece),
+            token=token,
+            follows="the feeder piece is not read in full, so no "
+                    "figure stands for the round it feeds",
+            rule_name="Q-1 damaged feeder rule")
     held_clauses = []
     audit_section = _metrics_section(
         captured.assembled_metrics or "", "## Audit round table")
