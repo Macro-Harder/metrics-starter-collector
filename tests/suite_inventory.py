@@ -806,6 +806,28 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit3.TestStep16Fix5Unit3.test_r16_5_held_same_step_companion_read_control",
         ],
     },
+    "test_h_step16_fix5_unit4": {
+        "count": 17,
+        "cases": [
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_07_e1_bound_step3_malformed",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_07_e1_bound_step3_truncated",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_07_e1_bound_steps2_3_truncated",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_07_e1_covered_step_roster_truncated",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_08_e2_additions_roster_malformed",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_08_e2_additions_roster_truncated",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_08_e2_no_quantity_step_roster_truncated",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_e1_bound_step2_record_over_limit",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_e1_bound_steps2_3_over_limit",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_e1_covered_step_roster_over_limit",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_e2_additions_roster_over_limit",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_e2_no_quantity_step_roster_over_limit",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_fix2_e1_no_pair_over_limit_byte_for_byte",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_fix2_e2_no_quantity_over_limit_byte_for_byte",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_r16_4_12_e1_shows_truncated_staffing",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_r16_4_12_e2_shows_truncated_staffing",
+            "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_read_staffing_rows_byte_for_byte",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -834,4 +856,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 661
+TOTAL = 678

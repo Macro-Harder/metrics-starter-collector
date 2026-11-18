@@ -2509,7 +2509,12 @@ def _e1_bound(covered_steps, uncovered_steps, captured=None):
     a limit stands apart in the bound: the bound names that piece
     and the limit that stopped its reading, in the form the
     covered steps bound carries, and claims nothing about what
-    the unread piece lists, because no byte of it was read.
+    the unread piece lists, because no byte of it was read. An
+    excepted step whose staffing feeder stands not read in full
+    in any other state stands apart in the same form: the bound
+    names that piece with the state that stopped its reading,
+    through _piece_state_naming, and claims nothing about what
+    the damaged piece lists, on the same ground.
     """
     if not uncovered_steps:
         return None, None
@@ -2517,13 +2522,19 @@ def _e1_bound(covered_steps, uncovered_steps, captured=None):
     covered = _steps_range_phrase(covered_steps)
     unread_steps = []
     unread_naming = ""
+    damaged_steps = []
+    damaged_naming = ""
     if captured is not None:
         pairs, unread_naming = _unread_staffing_naming(
             captured, uncovered_steps)
         unread_steps = sorted({step for step, _piece in pairs})
+        damaged, damaged_naming = _damaged_staffing_naming(
+            captured, uncovered_steps)
+        damaged_steps = sorted({step for step, _piece in damaged})
+    excepted_steps = sorted(set(unread_steps) | set(damaged_steps))
     read_steps = [step for step in uncovered_steps
-                  if step not in unread_steps]
-    if not unread_steps:
+                  if step not in excepted_steps]
+    if not excepted_steps:
         bound = (remainder,
                  "the staffed against base link for %s, whose step "
                  "records list staffing with no base count beside it"
@@ -2542,12 +2553,19 @@ def _e1_bound(covered_steps, uncovered_steps, captured=None):
             cleared.append(
                 "a step record for each of %s stating a base count "
                 "beside its staffing list" % read_phrase)
-        links.append(
-            "the staffing link for " + _steps_phrase(unread_steps)
-            + ", resting on " + unread_naming)
-        cleared.append(
-            "the piece named read in full under the limit that "
-            "stopped its reading")
+        if unread_steps:
+            links.append(
+                "the staffing link for " + _steps_phrase(unread_steps)
+                + ", resting on " + unread_naming)
+            cleared.append(
+                "the piece named read in full under the limit that "
+                "stopped its reading")
+        if damaged_steps:
+            links.append(
+                "the staffing link for "
+                + _steps_phrase(damaged_steps)
+                + ", resting on " + damaged_naming)
+            cleared.append("the piece named read in full")
         bound = (remainder, "; ".join(links), "; ".join(cleared))
     phrase = ""
     if len(covered_steps) > 1 and covered_steps == list(
@@ -2880,21 +2898,27 @@ def _derive_e1(captured, universe):
             "remainder none" % _steps_range_phrase(steps))
     unread_covered = []
     for step in steps:
-        for piece in _unread_staffing_pieces(captured, step):
-            unread_covered.append((step, piece))
+        for piece in captured.step_pieces(step, *_STAFFING_CLASSES):
+            if _piece_not_read_in_full(piece):
+                unread_covered.append((step, piece))
     if unread_covered:
         naming = "; ".join(
-            _limit_naming(piece) for _step, piece in unread_covered)
+            _piece_state_naming(piece)
+            for _step, piece in unread_covered)
         unread_steps = sorted({step for step, _piece
                                in unread_covered})
         if result.bound is None:
+            cleared = "the piece named read in full" if any(
+                not _piece_over_limit_not_read(piece)
+                for _step, piece in unread_covered) else (
+                "the piece named read in full under the limit "
+                "that stopped its reading")
             result.bound = (
                 _steps_phrase(unread_steps),
                 "the staffing link for "
                 + _steps_phrase(unread_steps) + ", resting on "
                 + naming,
-                "the piece named read in full under the limit "
-                "that stopped its reading")
+                cleared)
         else:
             result.bound = (
                 result.bound[0],
@@ -3190,6 +3214,19 @@ def _derive_e2(captured, universe):
                              "whose only home is a piece that was "
                              "not read" % (step, naming))
                 continue
+            damaged = _damaged_staffing_pieces(captured, step)
+            if damaged:
+                naming = _piece_state_naming(damaged[0])
+                figures += ("; Step %d total spins: not derivable, "
+                            "the total spins figure for that step "
+                            "stands in %s and is not read from it"
+                            % (step, naming))
+                coverage += ("; Step %d: the total spins position "
+                             "for that step rests on %s, so no "
+                             "absence is claimed for a figure "
+                             "whose only home is a piece that was "
+                             "not read" % (step, naming))
+                continue
             figures += ("; Step %d total spins: not derivable, "
                         "no total spins figure stands for that "
                         "step" % step)
@@ -3205,6 +3242,21 @@ def _derive_e2(captured, universe):
             unread = _unread_staffing_pieces(captured, step)
             if unread:
                 naming = _limit_naming(unread[0])
+                figures += ("; Step %d additions over base and "
+                            "total spins: not derivable, the "
+                            "labelled quantities for that step "
+                            "stand in %s and are not read from it"
+                            % (step, naming))
+                coverage += ("; Step %d: the additions over base "
+                             "and total spins position for that "
+                             "step rests on %s, so no absence is "
+                             "claimed for a figure whose only home "
+                             "is a piece that was not read"
+                             % (step, naming))
+                continue
+            damaged = _damaged_staffing_pieces(captured, step)
+            if damaged:
+                naming = _piece_state_naming(damaged[0])
                 figures += ("; Step %d additions over base and "
                             "total spins: not derivable, the "
                             "labelled quantities for that step "
