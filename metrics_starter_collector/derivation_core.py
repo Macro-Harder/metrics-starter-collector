@@ -615,13 +615,22 @@ def _malformed_trace_statements(captured):
     step in a form _parse_trace_segment cannot count. Such a
     statement stands in the tree, read in full; its step is a
     missing field position, never a missing feeder position.
-    Three statement forms stand in the scan: the first trace
+    Four statement forms stand in the scan: the first trace
     line form, which states its step in the line; the Counts
     form of an audit paper, which states no step in the line
-    and takes the step of its piece; and the full trace form
-    of a gate ruling, in the same step position. A line in a
+    and takes the step of its piece; the full trace form
+    of a gate ruling, in the same step position; and the
+    tally form of a gate record or gate ruling, which states
+    its step in the line where the line names one and
+    otherwise takes the step of its piece. A line in a
     counted form parses and stands outside this scan, so a
-    read control in any of the three forms counts as before.
+    read control in any of the four forms counts as before.
+    Inside the audit paper class the first trace line form
+    applies the same path test the Counts form applies: an
+    audit paper whose path carries neither the purple word
+    nor the round record form supplies no trace candidate
+    when read, so it is no feeder and a malformed statement
+    standing in it flips nothing.
     """
     found = []
     seen = set()
@@ -633,7 +642,12 @@ def _malformed_trace_statements(captured):
             step = None
             m = re.search(r"first trace for step (\d+)", line, re.I)
             if m and _parse_trace_segment(line) is None:
-                step = int(m.group(1))
+                if piece.record_class == CLS_AUDIT_PAPER and \
+                        "purple" not in piece.paths[0].lower() and \
+                        "round-record" not in piece.paths[0].lower():
+                    step = None
+                else:
+                    step = int(m.group(1))
             elif piece.record_class == CLS_AUDIT_PAPER and \
                     ("purple" in piece.paths[0].lower() or
                      "round-record" in piece.paths[0].lower()) and \
@@ -644,6 +658,22 @@ def _malformed_trace_statements(captured):
                     "full trace" in line.lower() and \
                     _parse_trace_segment(line) is None:
                 step = piece.step
+            elif piece.record_class in (CLS_GATE_RECORD,
+                                        CLS_GATE_RULING) and \
+                    "landed" in line.lower() and \
+                    "first trace" not in line.lower() and \
+                    re.match(r"(?:gate tally|trace tally|"
+                             r"trace for step \d+)\b",
+                             line.strip().lstrip("-#*> ").strip(),
+                             re.I) and \
+                    not re.search(
+                        r"(\d+) of (\d+) [^\n]{0,40}LANDED, "
+                        r"(\d+) PARTIAL, (\d+) CONTRADICTED", line) and \
+                    not re.search(
+                        r"\d+\s+LANDED.*\d+\s+PARTIAL.*"
+                        r"\d+\s+CONTRADICTED", line):
+                named = re.search(r"step (\d+)", line, re.I)
+                step = int(named.group(1)) if named else piece.step
             if step is not None and step not in seen:
                 seen.add(step)
                 found.append((step, piece))
