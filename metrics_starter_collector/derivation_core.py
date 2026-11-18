@@ -655,13 +655,29 @@ def _tally_word(word):
     """Whether a folded word stands as the tally word.
 
     The word stands as the tally word where it is tally
-    or tallies, where it begins with tally, the tallying
-    form among those, or where it ends with tally behind
-    a fused prefix, the Step2tally and Boardtally forms
-    among those.
+    or tallies, where it is tallying, the tally word with
+    the ing suffix, or where it ends with tally behind a
+    fused prefix and the word is not an adverb of the
+    totally family. An adverb of that family carries the
+    tally letters as the tal ending of its stem standing
+    before the ly suffix, and it is known in this test by
+    the letters standing before tally ending in a vowel
+    or in n, r or s, the stem endings of that family,
+    totally, accidentally, digitally, incidentally and
+    mentally among them, while a fused prefix ends in
+    another consonant or in a digit, Boardtally,
+    Gate2tally, Reviewtally and Step2tally among them. A
+    word beginning with tally in any other form, tallyho
+    among them, stands as no tally word.
     """
-    return word in ("tally", "tallies") or \
-        word.startswith("tally") or word.endswith("tally")
+    if word in ("tally", "tallies", "tallying"):
+        return True
+    if not word.endswith("tally"):
+        return False
+    prefix = word[:-len("tally")]
+    if not prefix:
+        return False
+    return prefix[-1] not in "aeiounrs"
 
 
 def _tally_statement_head(line):
@@ -752,10 +768,21 @@ def _tally_statement_head(line):
     boundary. The closing forms are three: the last word
     of the run stands as the tally word, where a word
     stands as the tally word where, after accent
-    folding, it is tally or tallies, or it begins with
-    tally, the tallying form among those, or it ends
-    with tally behind a fused prefix, the Step2tally and
-    Boardtally forms among those; or the last two words
+    folding, it is tally or tallies, or it is tallying,
+    the tally word with the ing suffix, or it ends with
+    tally behind a fused prefix and the word is not an
+    adverb of the totally family, an adverb of that
+    family carrying the tally letters as the tal ending
+    of its stem standing before the ly suffix and known
+    in this test by the letters standing before tally
+    ending in a vowel or in n, r or s, the stem endings
+    of that family, totally, accidentally, digitally,
+    incidentally and mentally among them, while a fused
+    prefix ends in another consonant or in a digit,
+    Boardtally, Gate2tally, Reviewtally and Step2tally
+    among them, a word beginning with tally in any other
+    form, tallyho among them, standing as no tally word;
+    or the last two words
     of the run are trace summary, in that order, or
     summary trace, in the reversed order, the summary
     word standing as summary or summaries, or the last
