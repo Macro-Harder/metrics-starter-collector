@@ -1020,6 +1020,47 @@ INVENTORY = {
             "tests.test_h_step16_fix7_unit1.TestStep16Fix7Unit1.test_r16_7_remainder_marker_truncated_no_go_byte_identical",
         ],
     },
+    "test_h_step16_fix7_unit2": {
+        "count": 36,
+        "cases": [
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_board_tally_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_board_tally_beside_counted",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_board_tally_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_board_tally_gate_ruling_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_board_tally_gate_ruling_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_gate_record_tally_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_gate_record_tally_beside_counted",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_gate_record_tally_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_step_2_tally_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_step_2_tally_beside_counted",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_step_2_tally_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_tally_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_tally_beside_counted",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_tally_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_trace_summary_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_trace_summary_beside_counted",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_03_trace_summary_counted_control",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_blue_paper_malformed_first_trace_read",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_blue_paper_unread_non_feeder_boundary",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_companion_counted_tally_converse",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_companion_malformed_tally_converse",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_counts_form_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_full_trace_form_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_golden_board_tally_member_line",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_golden_closing_prose_line",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_plain_paper_unread_non_feeder_boundary",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_read_control_byte_for_byte",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_same_step_fallback_line_limit_route",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_same_step_seam",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_gate_tally_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_gate_tally_blockquote_form",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_gate_tally_heading_form",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_gate_tally_list_form",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_trace_for_step_alone",
+            "tests.test_h_step16_fix7_unit2.TestStep16Fix7Unit2.test_r16_7_held_settled_trace_tally_alone",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1048,4 +1089,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 830
+TOTAL = 866

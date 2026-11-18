@@ -622,6 +622,41 @@ def _trace_feeders_not_read(captured):
     return found
 
 
+_TALLY_COUNTED_PATTERN = re.compile(
+    r"(\d+) of (\d+) [^\n]{0,40}LANDED, (\d+) PARTIAL, "
+    r"(\d+) CONTRADICTED")
+
+
+def _tally_statement_head(line):
+    """Whether a line opens with a tally statement head.
+
+    A tally statement head is the opening form of a line
+    whose counted sibling _trace_candidates counts under
+    _TALLY_COUNTED_PATTERN, which carries no head test of
+    its own: the line, after its list and heading marks
+    are stripped, opens with a short head, of at most five
+    words, whose last word is tally, or whose closing
+    words are trace summary, or which opens with the
+    trace for step form. The test is a form test, not a
+    list of heads, so it cannot drift from the counted
+    reach on a head: any head in that form stands in the
+    reach, Board tally, Step 2 tally, Tally, Gate record
+    tally and Trace summary among them, beside the settled
+    Gate tally, Trace tally and Trace for step heads. A
+    line of prose that merely mentions a tally beside the
+    LANDED word, the golden board tally closing lines
+    among them, opens with no such head and stands
+    outside the reach, as a piece that is no feeder flips
+    nothing in its prose form.
+    """
+    stripped = line.strip().lstrip("-#*> ").strip()
+    return bool(
+        re.match(r"(?:\w+\s+){0,4}tally\b", stripped, re.I)
+        or re.match(r"(?:\w+\s+){0,4}trace summary\b",
+                    stripped, re.I)
+        or re.match(r"trace for step \d+\b", stripped, re.I))
+
+
 def _malformed_trace_statements(captured):
     """First trace statements standing in read feeders unparsed.
 
@@ -677,13 +712,8 @@ def _malformed_trace_statements(captured):
                                         CLS_GATE_RULING) and \
                     "landed" in line.lower() and \
                     "first trace" not in line.lower() and \
-                    re.match(r"(?:gate tally|trace tally|"
-                             r"trace for step \d+)\b",
-                             line.strip().lstrip("-#*> ").strip(),
-                             re.I) and \
-                    not re.search(
-                        r"(\d+) of (\d+) [^\n]{0,40}LANDED, "
-                        r"(\d+) PARTIAL, (\d+) CONTRADICTED", line) and \
+                    _tally_statement_head(line) and \
+                    not _TALLY_COUNTED_PATTERN.search(line) and \
                     not re.search(
                         r"\d+\s+LANDED.*\d+\s+PARTIAL.*"
                         r"\d+\s+CONTRADICTED", line):
@@ -6317,9 +6347,7 @@ def _trace_candidates(captured):
                 step = _search_int(r"[Ss]tep (\d+)\b", line)
                 add(step if step is not None else piece.step,
                     parsed, "items", piece, rank)
-            m = re.search(
-                r"(\d+) of (\d+) [^\n]{0,40}LANDED, (\d+) PARTIAL, "
-                r"(\d+) CONTRADICTED", line)
+            m = _TALLY_COUNTED_PATTERN.search(line)
             if m and piece.record_class in (CLS_GATE_RECORD,
                                             CLS_GATE_RULING):
                 add(piece.step, (int(m.group(1)), int(m.group(3)),
