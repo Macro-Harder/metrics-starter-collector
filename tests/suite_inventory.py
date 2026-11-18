@@ -871,6 +871,23 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit6.TestStep16Fix5Unit6.test_r16_5_held_r16_4_10_truncated_form",
         ],
     },
+    "test_h_step16_fix6_unit1": {
+        "count": 12,
+        "cases": [
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_01_read_control_ruling_hold_disagreement",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_01_ruling_malformed_record_go",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_01_ruling_over_limit_record_go",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_01_ruling_truncated_settled_neighbour_position",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_02_disagreement_names_unread_record",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_02_read_control_all_read_disagreement",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_adjudication_truncated_beside_read_gates",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_all_read_go_byte_for_byte",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_both_read_disagreement",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_first_source_record_over_limit",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_ruling_no_go_read_beside_record_go",
+            "tests.test_h_step16_fix6_unit1.TestStep16Fix6Unit1.test_r16_6_held_ruling_no_go_truncated_beside_record_go",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -899,4 +916,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 711
+TOTAL = 723

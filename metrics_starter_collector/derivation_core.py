@@ -4615,6 +4615,25 @@ def _derive_f2(captured, universe):
                 "on the first ruling, stating %s, and the "
                 "disagreement stands stated and is not resolved"
                 % (label, " and ".join(fact["disagreement_forms"])))
+            if key in unread_counted:
+                # The disagreement position is taken ahead of
+                # the unread source positions below, so the
+                # reason names every counted source of the
+                # instance standing not read in full beside the
+                # read sources the disagreement states, and no
+                # feeder of the instance stands named nowhere.
+                naming = "; ".join(
+                    "%s (state: %s)" % (
+                        _piece_state_naming(piece),
+                        _piece_state_word(piece))
+                    for piece in sorted(
+                        unread_counted[key],
+                        key=lambda piece: piece.paths[0]
+                        if piece.paths else ""))
+                problems.append(
+                    "%s stands with a gate piece not read in "
+                    "full, %s, so no first ruling position "
+                    "stands for that step" % (label, naming))
             continue
         closure = fact["first_closure_state"]
         outcome = fact["first_ruling_outcome"]
@@ -4645,6 +4664,42 @@ def _derive_f2(captured, universe):
                 "%s, so no first ruling position stands for "
                 "that step" % (label, naming))
             continue
+        if outcome is not None and key in unread_counted:
+            # A gate piece not read in full, for whatever
+            # reason, is not read: where a counted source of
+            # the instance standing after the first counted
+            # source in source order stands not read in full,
+            # that source may carry the first ruling itself or
+            # a form that disagrees with the outcome counted
+            # from the read sources, in the position the both
+            # read control states as a stated disagreement, so
+            # no rate stands over the instance and the instance
+            # takes a problem clause naming every such piece
+            # and its bound or state. A later counted source
+            # standing in the truncated state stands apart, in
+            # the held neighbour position of fix pass 5: the
+            # capture holds a truncated piece with no text, so
+            # a truncated ruling carrying a countable outcome
+            # and a truncated ruling supplying no outcome word
+            # stand in one capture form, and the neighbour form
+            # is the charged held form of that position.
+            later = [piece for piece in unread_counted[key]
+                     if piece is not unread_first.get(key)
+                     and piece.quality_state != "truncated"]
+            if later:
+                naming = "; ".join(
+                    "%s (state: %s)" % (
+                        _piece_state_naming(piece),
+                        _piece_state_word(piece))
+                    for piece in sorted(
+                        later,
+                        key=lambda piece: piece.paths[0]
+                        if piece.paths else ""))
+                problems.append(
+                    "%s stands with a gate piece not read in "
+                    "full, %s, so no first ruling position "
+                    "stands for that step" % (label, naming))
+                continue
         if outcome is not None:
             ruled += 1
             counted_labels.append(label)
