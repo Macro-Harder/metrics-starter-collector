@@ -650,27 +650,52 @@ def _tally_statement_head(line):
     whose counted sibling _trace_candidates counts under
     _TALLY_COUNTED_PATTERN, which carries no head test of
     its own: the line, after its list and heading marks
-    are stripped, opens with a short head, of at most five
-    words, whose last word is tally, or whose closing
-    words are trace summary, or which opens with the
-    trace for step form. The test is a form test, not a
-    list of heads, so it cannot drift from the counted
-    reach on a head: any head in that form stands in the
-    reach, Board tally, Step 2 tally, Tally, Gate record
-    tally and Trace summary among them, beside the settled
-    Gate tally, Trace tally and Trace for step heads. A
-    line of prose that merely mentions a tally beside the
-    LANDED word, the golden board tally closing lines
-    among them, opens with no such head and stands
-    outside the reach, as a piece that is no feeder flips
-    nothing in its prose form.
+    are stripped, opens with a head, a run of plain words
+    with no sentence punctuation among them, whose last
+    word is tally, or whose closing words are trace
+    summary, or which opens with the trace for step form.
+    The head words may carry the marks a counted head may
+    carry, a hyphen inside a word or a comma on a word,
+    and the head may stand behind a numbered list marker,
+    in which form the head closes with the colon every
+    tally statement in that form carries, where the
+    golden closing prose line, which carries its tally
+    words inside an instruction sentence with no colon
+    at the tally word, does not. The test is a form test,
+    not a list of heads, so it cannot drift from the
+    counted reach on a head: any head in that form stands
+    in the reach, Board tally, Step 2 tally, Tally, Gate
+    record tally and Trace summary among them, beside the
+    settled Gate tally, Trace tally and Trace for step
+    heads, and beside heads stated in more words, Alpha
+    beta gamma delta epsilon tally, Step 2 gate record
+    review tally and Alpha beta gamma delta epsilon
+    trace summary among them, the hyphenated Step-2 tally
+    head and the comma head Board, tally. A line of prose
+    that merely mentions a tally beside the LANDED word,
+    the golden board tally closing lines among them,
+    opens with no such head and stands outside the reach,
+    as a piece that is no feeder flips nothing in its
+    prose form.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
-    return bool(
-        re.match(r"(?:\w+\s+){0,4}tally\b", stripped, re.I)
-        or re.match(r"(?:\w+\s+){0,4}trace summary\b",
-                    stripped, re.I)
-        or re.match(r"trace for step \d+\b", stripped, re.I))
+    word = r"[A-Za-z0-9]+(?:[-,][A-Za-z0-9]+)*,?"
+    numbered = re.match(r"\d+[.)]\s+", stripped)
+
+    def head_at(text, colon_required):
+        for pattern in (r"(?:%s\s+)*tally\b" % word,
+                        r"(?:%s\s+)*trace summary\b" % word):
+            m = re.match(pattern, text, re.I)
+            if m and (not colon_required
+                      or text[m.end():m.end() + 1] == ":"):
+                return True
+        return bool(re.match(r"trace for step \d+\b", text, re.I))
+
+    if head_at(stripped, False):
+        return True
+    if numbered:
+        return head_at(stripped[numbered.end():], True)
+    return False
 
 
 def _malformed_trace_statements(captured):

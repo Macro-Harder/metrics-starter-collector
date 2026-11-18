@@ -1110,6 +1110,42 @@ INVENTORY = {
             "tests.test_h_step16_fix7_unit4.TestStep16Fix7Unit4.test_r16_7_held_step_record_converse_unread",
         ],
     },
+    "test_h_step16_fix8_unit1": {
+        "count": 31,
+        "cases": [
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_comma_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_comma_tally_head_beside_counted",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_comma_tally_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_hyphenated_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_hyphenated_tally_head_beside_counted",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_hyphenated_tally_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_long_trace_summary_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_long_trace_summary_head_beside_counted",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_long_trace_summary_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_numbered_list_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_numbered_list_tally_head_beside_counted",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_numbered_list_tally_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_review_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_review_tally_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_review_tally_head_gate_ruling_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_six_word_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_six_word_tally_head_beside_counted",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_six_word_tally_head_counted_control",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_01_six_word_tally_head_gate_ruling_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_board_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_companion_malformed_tally_converse",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_five_word_tally_head_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_golden_board_tally_member_line",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_golden_closing_prose_line",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_prose_fragment_no_head",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_read_control_byte_for_byte",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_same_step_seam",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_settled_gate_tally_alone",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_settled_gate_tally_blockquote_form",
+            "tests.test_h_step16_fix8_unit1.TestStep16Fix8Unit1.test_r16_8_held_trace_summary_head_alone",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -1138,4 +1174,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 905
+TOTAL = 936
