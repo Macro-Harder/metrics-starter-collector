@@ -4398,6 +4398,15 @@ def _derive_f2(captured, universe):
             key = _piece_instance_key(piece)
             if key is not None:
                 unread_counted.setdefault(key, []).append(piece)
+    unread_first = {}
+    for key, fact in counted.items():
+        if not fact["counted_sources"]:
+            continue
+        first_path = fact["counted_sources"][0]["path"]
+        for piece in unread_counted.get(key, []):
+            if piece.paths and piece.paths[0] == first_path:
+                unread_first[key] = piece
+                break
     history_steps = _f2_history_steps(captured, counted_steps)
     if not counted and not adjudication_only and not near_only and \
             not history_steps:
@@ -4434,6 +4443,33 @@ def _derive_f2(captured, universe):
             continue
         closure = fact["first_closure_state"]
         outcome = fact["first_ruling_outcome"]
+        if outcome is not None and key in unread_first:
+            # A gate piece not read in full, for whatever
+            # reason, is not read: where the unread piece is
+            # the first counted source of the instance, the
+            # source the first ruling outcome is read from in
+            # source order, an outcome carried by a second
+            # counted source does not cure its unread state,
+            # because the unread piece may carry the first
+            # ruling itself or a form that disagrees with the
+            # outcome counted, in the position the both read
+            # control states as a stated disagreement. The
+            # instance takes a problem clause naming that
+            # piece and its bound or state, and no rate stands
+            # over it. A counted source standing unread beside
+            # a read first source stands apart, in the held
+            # neighbour position: the first ruling position
+            # rests on the read first source, and the unread
+            # later source withholds nothing it supplies.
+            piece = unread_first[key]
+            naming = "%s (state: %s)" % (
+                _piece_state_naming(piece),
+                _piece_state_word(piece))
+            problems.append(
+                "%s stands with a gate piece not read in full, "
+                "%s, so no first ruling position stands for "
+                "that step" % (label, naming))
+            continue
         if outcome is not None:
             ruled += 1
             counted_labels.append(label)

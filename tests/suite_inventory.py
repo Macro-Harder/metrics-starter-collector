@@ -762,6 +762,22 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit1.TestStep16Fix5Unit1.test_r16_5_held_e4_read_control",
         ],
     },
+    "test_h_step16_fix5_unit2": {
+        "count": 11,
+        "cases": [
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_02_both_read_control_disagreement",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_02_record_malformed_ruling_go",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_02_record_over_limit_ruling_go",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_02_record_truncated_ruling_go",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_adjudication_truncated_beside_read_gates",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_all_read_go_byte_for_byte",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_no_outcome_unread_gate_cured",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_record_at_file_limit_with_ruling",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_record_over_limit_ruling_closure_alone",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_ruling_no_go_read_beside_record_go",
+            "tests.test_h_step16_fix5_unit2.TestStep16Fix5Unit2.test_r16_5_held_ruling_no_go_truncated_beside_record_go",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -790,4 +806,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 627
+TOTAL = 638
