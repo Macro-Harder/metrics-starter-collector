@@ -1635,6 +1635,11 @@ def _derive_t4(captured, universe):
         named = [entry for entry in durations if entry[2]]
         if named:
             named_items = [entry[2] for entry in named]
+            queue_piece = feeders["queue_piece"]
+            queue_not_read = queue_piece is not None and \
+                _piece_not_read_in_full(queue_piece)
+            queue_naming = _piece_state_naming(queue_piece) \
+                if queue_not_read else None
             if feeders["queue_usable"]:
                 governing = [item["item"]
                              for item in feeders["queue_items"]]
@@ -1674,11 +1679,36 @@ def _derive_t4(captured, universe):
                              "decision table in the metrics record "
                              "standing as the cross check in place "
                              "of the queue file"]
+                    if queue_not_read:
+                        parts.append(
+                            "the governing queue file stands in "
+                            "the tree not read in full: "
+                            + queue_naming + ", so no queue cross "
+                            "check is taken from it")
                     marking = _t4_marking(captured, durations)
                     if marking:
                         parts.append(marking)
                     result.statement = "; ".join(parts)
                     return result
+                if queue_not_read:
+                    return _refusal(
+                        "T-4", "present but not derivable",
+                        "no banked duration figure", denom,
+                        _pointer("T-4", pointer, captured),
+                        shows="banked entries stand in the path "
+                              "ledger with durations naming %s, "
+                              "and the governing queue file "
+                              "stands in the tree not read in "
+                              "full: %s, and no decision table "
+                              "inside the root names that item"
+                              % (_names_phrase(named_items),
+                                 queue_naming),
+                        token="missing-field",
+                        follows="no cross check record names the "
+                                "item the banked duration "
+                                "matches, so no wait figure "
+                                "stands",
+                        rule_name="T-4 cross check standing rule")
                 return _refusal(
                     "T-4", "present but not derivable",
                     "no banked duration figure", denom,
@@ -1692,6 +1722,25 @@ def _derive_t4(captured, universe):
                     follows="no cross check record names the item "
                             "the banked duration matches, so no "
                             "wait figure stands",
+                    rule_name="T-4 cross check standing rule")
+            if queue_not_read:
+                return _refusal(
+                    "T-4", "present but not derivable",
+                    "no banked duration figure", denom,
+                    _pointer("T-4", pointer, captured),
+                    shows="banked entries stand in the path ledger "
+                          "with durations naming %s, and the "
+                          "governing queue file stands in the "
+                          "tree not read in full: %s, and no "
+                          "decision table stands inside the root "
+                          "to name that item"
+                          % (_names_phrase(named_items),
+                             queue_naming),
+                    token="missing-field",
+                    follows="an item counts only where a queue "
+                            "file or a decision table inside the "
+                            "root names it, so no wait figure "
+                            "stands",
                     rule_name="T-4 cross check standing rule")
             return _refusal(
                 "T-4", "present but not derivable",
@@ -2313,6 +2362,21 @@ def _derive_t7(captured, universe):
                 held="the step records stand in the tree at "
                      + naming)
     if loop_steps:
+        unread_records = [piece for piece in
+                          captured.pieces_of(CLS_STEP_RECORD)
+                          if _piece_not_read_in_full(piece)
+                          and piece.step in universe.evidenced]
+        unread_naming = "; ".join(
+            _piece_state_naming(piece) for piece in unread_records)
+        unread_steps = sorted({piece.step for piece in unread_records
+                               if piece.step is not None})
+        unread_clause = None
+        if unread_records:
+            unread_clause = (
+                "a step record of the evidenced universe stands "
+                "not read in full: " + unread_naming + ", so no "
+                "loop step marker or round record is taken from "
+                "that piece")
         counted = {}
         failures = []
         for step in loop_steps:
@@ -2357,7 +2421,9 @@ def _derive_t7(captured, universe):
                          "the step, with both parts of the mapping "
                          "test standing, the mapping conditions and "
                          "the pairing evidence",
-                held="; ".join(failures))
+                held="; ".join(
+                    failures + ([unread_clause] if unread_clause
+                                else [])))
         if counted:
             figures = "; ".join(
                 "Step %d: %d rounds counted" % (step, len(rounds))
@@ -2373,6 +2439,16 @@ def _derive_t7(captured, universe):
                 "T-7", "present", figures, coverage, pointer,
                 rule_name="T-7 outcome record rule")
             result.coverage = coverage
+            if unread_records:
+                result.bound = (
+                    "the " + _steps_phrase(unread_steps)
+                    + " rounds",
+                    "the loop step marker and round outcome "
+                    "records in " + unread_naming + ", so the "
+                    "counted rounds omit any loop step standing "
+                    "in the piece named",
+                    "a step record for the step named, read in "
+                    "full")
             return result
         stated_rounds = []
         for piece in captured.pieces:
@@ -2404,6 +2480,8 @@ def _derive_t7(captured, universe):
                 "count alone counts nothing, a table entry and an "
                 "outcome record being matched by step and by "
                 "outcome before either is counted" % (step, count))
+        if unread_clause:
+            held_parts.append(unread_clause)
         return _refusal(
             "T-7", "present but not derivable", "no rounds figure",
             denom, pointer,
@@ -2431,6 +2509,19 @@ def _derive_t7(captured, universe):
             held_parts.append(clause)
         held_parts.append(
             "round evidence stands scattered in unlike forms")
+        if loop_steps:
+            scattered_unread = [piece for piece in
+                                captured.pieces_of(CLS_STEP_RECORD)
+                                if _piece_not_read_in_full(piece)
+                                and piece.step in universe.evidenced]
+            if scattered_unread:
+                held_parts.append(
+                    "a step record of the evidenced universe "
+                    "stands not read in full: "
+                    + "; ".join(_piece_state_naming(piece)
+                                for piece in scattered_unread)
+                    + ", so no loop step marker or round record "
+                      "is taken from that piece")
         example = _t7_round_example(captured)
         held_text = ", and ".join(held_parts)
         if example:

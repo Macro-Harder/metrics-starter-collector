@@ -828,6 +828,29 @@ INVENTORY = {
             "tests.test_h_step16_fix5_unit4.TestStep16Fix5Unit4.test_r16_5_held_read_staffing_rows_byte_for_byte",
         ],
     },
+    "test_h_step16_fix5_unit5": {
+        "count": 18,
+        "cases": [
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_06_t7_counted_step3_over_limit",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_06_t7_counted_step3_truncated",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_13_t4_queue_malformed_table_cross_check",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_13_t4_queue_over_limit_cross_check_withheld",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_13_t4_queue_over_limit_table_cross_check",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_13_t4_queue_truncated_table_cross_check",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_14_t7_mapping_step3_over_limit",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_14_t7_mapping_step3_truncated",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t4_ledger_unread_and_t1_t2_held",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t4_queue_absent_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t4_queue_read_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t4_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t4_withheld_queue_absent",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_absent_feeder_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_counted_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_counted_read_loop_step_counted",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_mapping_read_control_byte_for_byte",
+            "tests.test_h_step16_fix5_unit5.TestStep16Fix5Unit5.test_r16_5_held_t7_missing_branch_cured_byte_held",
+        ],
+    },
     "test_collection_guard": {
         "count": 4,
         "cases": [
@@ -856,4 +879,4 @@ FIXTURE_CHECKS = {
     },
 }
 
-TOTAL = 678
+TOTAL = 696
