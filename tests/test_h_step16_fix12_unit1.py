@@ -27,8 +27,11 @@ for step forms.
 
 Held controls stand pinned beside the defect forms:
 the twelve driven forms of R16-12-01 in their entering
-behaviour (Q-4 missing in each, Unit 2 item, neither
-cured nor altered by this unit); the folded round 10
+behaviour as written for this unit (Q-4 missing in
+each, Unit 2 item, neither cured nor altered by this
+unit; the twelve tests stand amended by Unit 2 to the
+cured behaviour, as the amendment note at the close of
+this docstring records); the folded round 10
 prose sentence record, whose opening run closes on the
 word tally itself, standing governed; the four folded
 marker shape records (nested parenthesis, spaced
@@ -41,6 +44,25 @@ engaging the colon condition; the folded round 11 record
 (Trace for step 2a standing missing); the run closure
 limb; and the colon conditions per boundary in both
 directions.
+
+Amendment, fix pass 12 Unit 2: the twelve held tests of
+R16-12-01 in this module stand amended in place by Unit 2
+of this pass, under the same names, the same count and
+the same case identities, to pin the cured behaviour
+Unit 2 landed. As written for Unit 1 they pinned the
+entering behaviour of Unit 2 item at the Unit 1 entering
+head, Q-4 missing in each form, standing as held
+controls for that unit alone, neither cured nor altered
+by that unit. With the item cured by Unit 2, each of the
+twelve forms stands governed in its malformed form
+beside its counted sibling counting 2 of 2 LANDED, the
+beside form naming Step 2 uncounted in the present row
+and the gate ruling form standing governed, and the
+twelve tests assert that cured behaviour here; the
+defect forms stand pinned in their cured form in
+tests/test_h_step16_fix12_unit2.py. The eight defect
+tests of R16-12-02, the Board tallí boundary control and
+every other test of this module stand unamended.
 """
 from tests.fixture_builder import (
     FixtureTestCase, assert_verdict, gate_record, gate_ruling,
@@ -150,47 +172,50 @@ class TestStep16Fix12Unit1(FixtureTestCase):
         self.assertNotIn("Step 2", q4)
 
     # ------------------------------------------------------
-    # Held controls: R16-12-01 driven forms stand exactly
-    # in their entering behaviour, Q-4 missing in each
+    # Held controls: R16-12-01 driven forms, written for
+    # Unit 1 in their entering behaviour and amended in
+    # place by fix pass 12 Unit 2 to their cured behaviour,
+    # Q-4 governed in each, as the amendment note at the
+    # head of this module records
     # ------------------------------------------------------
 
     def test_r16_12_held_01_tallied_closing_missing(self):
-        self._candidate_missing(_bad("Board tallied"),
+        self._candidate_governed(_bad("Board tallied"),
                                 _read("Board tallied"))
 
     def test_r16_12_held_01_tallied_head_word_alone_missing(self):
-        self._candidate_missing(_bad("Tallied"), _read("Tallied"))
+        self._candidate_governed(_bad("Tallied"), _read("Tallied"))
 
     def test_r16_12_held_01_summarise_british_missing(self):
-        self._candidate_missing(_bad("Trace summarise"),
+        self._candidate_governed(_bad("Trace summarise"),
                                 _read("Trace summarise"))
 
     def test_r16_12_held_01_summarised_british_missing(self):
-        self._candidate_missing(_bad("Trace summarised"),
+        self._candidate_governed(_bad("Trace summarised"),
                                 _read("Trace summarised"))
 
     def test_r16_12_held_01_fused_prefix_trace_summary_missing(self):
-        self._candidate_missing(_bad("Boardtracesummary"),
+        self._candidate_governed(_bad("Boardtracesummary"),
                                 _read("Boardtracesummary"))
 
     def test_r16_12_held_01_fused_plural_trace_summary_missing(self):
-        self._candidate_missing(_bad("Tracesummaries"),
+        self._candidate_governed(_bad("Tracesummaries"),
                                 _read("Tracesummaries"))
 
     def test_r16_12_held_01_tallies_for_step_missing(self):
-        self._candidate_missing(_bad("Tallies for step 2"),
+        self._candidate_governed(_bad("Tallies for step 2"),
                                 _read("Tallies for step 2"))
 
     def test_r16_12_held_01_fused_tally_for_step_missing(self):
-        self._candidate_missing(_bad("Boardtally for step 2"),
+        self._candidate_governed(_bad("Boardtally for step 2"),
                                 _read("Boardtally for step 2"))
 
     def test_r16_12_held_01_stroke_letter_tally_missing(self):
-        self._candidate_missing(_bad("Board tałly"),
+        self._candidate_governed(_bad("Board tałly"),
                                 _read("Board tałly"))
 
     def test_r16_12_held_01_inserted_word_trace_summary_missing(self):
-        self._candidate_missing(_bad("Trace board summary"),
+        self._candidate_governed(_bad("Trace board summary"),
                                 _read("Trace board summary"))
 
     def test_r16_12_held_01_tallied_beside_step2_nowhere(self):
@@ -200,12 +225,13 @@ class TestStep16Fix12Unit1(FixtureTestCase):
         q4 = row_block(self._run(files), "Q-4")
         assert_verdict(self, q4, "present", "Q-4")
         self.assertIn("totals 4 LANDED", q4)
-        self.assertNotIn("Step 2", q4)
+        self.assertIn("Step 2", q4)
+        self.assertIn("uncounted", q4)
 
     def test_r16_12_held_01_summarise_gate_ruling_missing(self):
         report = self._q4_alone(_bad("Trace summarise"),
                                 ruling=True)
-        self._assert_q4_missing(report)
+        self._assert_q4_governed(report, path=RULING_2)
 
     # ------------------------------------------------------
     # Held controls: the four folded marker shape records
