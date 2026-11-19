@@ -47,7 +47,11 @@ Held controls stand pinned beside the defect forms, in
 full: the forty four alone forms of R16-16-01 standing
 missing exactly as they enter, this unit curing none of
 them, the inserted counts past the widened reach and the
-for step counts past four inserted words among them;
+for step counts past four inserted words among them,
+those forms written for Unit 1 in their entering
+behaviour and amended in place by fix pass 16 Unit 2
+to their cured behaviour, as the amendment note at the
+close of this docstring records;
 every governed closing standing governed in every driven
 position, alone, beside, and in gate rulings; the
 governed forms standing governed, the exact word sets,
@@ -61,6 +65,25 @@ Board tall\u00ed boundary control standing missing; the
 folded round 10 prose sentence record standing governed;
 and the four folded marker shape records standing
 present but not derivable.
+
+Amendment, fix pass 16 Unit 2: the forty four held
+tests of R16-16-01, its beside form and its gate ruling
+form stand amended in place to the cured behaviour of
+fix pass 16 Unit 2, under the same test names, the same
+count of 149 and the same case identities: the forty
+four alone forms standing governed beside their
+counted siblings in place of missing, the beside form
+naming Step 2 uncounted in place of Step 2 standing
+nowhere, and the gate ruling form standing governed in
+place of missing. The code level variant test
+test_code_level_tally_variant_positions stands amended
+in its one tallyes assertion: the spelling tallyes
+stands as the tally word standing alone in place of no
+tally word, that spelling standing as the tally word
+alone under the Unit 2 cure, as its report records.
+The twenty one defect tests of R16-16-02, its bounding
+held controls, the Board tall\u00ed boundary control
+and every other test of this module stand unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _fold_word, _inserted_words_governed, _summary_word,
@@ -255,193 +278,195 @@ class TestStep16Fix16Unit1(FixtureTestCase):
             "here, no counts stated"))
     # ------------------------------------------------------
     # Held controls: the forty four alone forms of
-    # R16-16-01 standing missing exactly as they enter
-    # beside their counted siblings, this unit curing
-    # none of them
+    # R16-16-01 beside their counted siblings, written
+    # for Unit 1 in their entering behaviour and amended
+    # in place by fix pass 16 Unit 2 to their cured
+    # behaviour, as the amendment note records
     # ------------------------------------------------------
 
     def test_r16_16_01_held_fused_ledgertally_missing(self):
-        self._candidate_missing(_bad("Ledgertally"),
+        self._candidate_governed(_bad("Ledgertally"),
                                 _read("Ledgertally"))
 
     def test_r16_16_01_held_fused_rostertally_missing(self):
-        self._candidate_missing(_bad("Rostertally"),
+        self._candidate_governed(_bad("Rostertally"),
                                 _read("Rostertally"))
 
     def test_r16_16_01_held_fused_registertally_missing(self):
-        self._candidate_missing(_bad("Registertally"),
+        self._candidate_governed(_bad("Registertally"),
                                 _read("Registertally"))
 
     def test_r16_16_01_held_fused_dockettallies_missing(self):
-        self._candidate_missing(_bad("Dockettallies"),
+        self._candidate_governed(_bad("Dockettallies"),
                                 _read("Dockettallies"))
 
     def test_r16_16_01_held_fused_journaltallied_missing(self):
-        self._candidate_missing(_bad("Journaltallied"),
+        self._candidate_governed(_bad("Journaltallied"),
                                 _read("Journaltallied"))
 
     def test_r16_16_01_held_fused_censustallying_missing(self):
-        self._candidate_missing(_bad("Censustallying"),
+        self._candidate_governed(_bad("Censustallying"),
                                 _read("Censustallying"))
 
     def test_r16_16_01_held_fused_committeetally_missing(self):
-        self._candidate_missing(_bad("Committeetally"),
+        self._candidate_governed(_bad("Committeetally"),
                                 _read("Committeetally"))
 
     def test_r16_16_01_held_fused_counciltallies_missing(self):
-        self._candidate_missing(_bad("Counciltallies"),
+        self._candidate_governed(_bad("Counciltallies"),
                                 _read("Counciltallies"))
 
     def test_r16_16_01_held_fused_workgrouptally_missing(self):
-        self._candidate_missing(_bad("Workgrouptally"),
+        self._candidate_governed(_bad("Workgrouptally"),
                                 _read("Workgrouptally"))
 
     def test_r16_16_01_held_variant_further_gateboardtallyed_missing(self):
-        self._candidate_missing(_bad("Gateboardtallyed"),
+        self._candidate_governed(_bad("Gateboardtallyed"),
                                 _read("Gateboardtallyed"))
 
     def test_r16_16_01_held_variant_further_reviewboardtallys_missing(self):
-        self._candidate_missing(_bad("Reviewboardtallys"),
+        self._candidate_governed(_bad("Reviewboardtallys"),
                                 _read("Reviewboardtallys"))
 
     def test_r16_16_01_held_variant_further_gateboardtallyes_missing(self):
-        self._candidate_missing(_bad("Gateboardtallyes"),
+        self._candidate_governed(_bad("Gateboardtallyes"),
                                 _read("Gateboardtallyes"))
 
     def test_r16_16_01_held_variant_tallyes_alone_missing(self):
-        self._candidate_missing(_bad("Tallyes"),
+        self._candidate_governed(_bad("Tallyes"),
                                 _read("Tallyes"))
 
     def test_r16_16_01_held_variant_talley_alone_missing(self):
-        self._candidate_missing(_bad("Talley"),
+        self._candidate_governed(_bad("Talley"),
                                 _read("Talley"))
 
     def test_r16_16_01_held_variant_talleys_alone_missing(self):
-        self._candidate_missing(_bad("Talleys"),
+        self._candidate_governed(_bad("Talleys"),
                                 _read("Talleys"))
 
     def test_r16_16_01_held_variant_talleyed_alone_missing(self):
-        self._candidate_missing(_bad("Talleyed"),
+        self._candidate_governed(_bad("Talleyed"),
                                 _read("Talleyed"))
 
     def test_r16_16_01_held_variant_boardtalley_missing(self):
-        self._candidate_missing(_bad("Boardtalley"),
+        self._candidate_governed(_bad("Boardtalley"),
                                 _read("Boardtalley"))
 
     def test_r16_16_01_held_variant_boardtallyies_missing(self):
-        self._candidate_missing(_bad("Boardtallyies"),
+        self._candidate_governed(_bad("Boardtallyies"),
                                 _read("Boardtallyies"))
 
     def test_r16_16_01_held_variant_chairtalleyed_missing(self):
-        self._candidate_missing(_bad("Chairtalleyed"),
+        self._candidate_governed(_bad("Chairtalleyed"),
                                 _read("Chairtalleyed"))
 
     def test_r16_16_01_held_summary_summarisers_missing(self):
-        self._candidate_missing(_bad("Trace summarisers"),
+        self._candidate_governed(_bad("Trace summarisers"),
                                 _read("Trace summarisers"))
 
     def test_r16_16_01_held_summary_summarizers_missing(self):
-        self._candidate_missing(_bad("Trace summarizers"),
+        self._candidate_governed(_bad("Trace summarizers"),
                                 _read("Trace summarizers"))
 
     def test_r16_16_01_held_summary_summarisings_missing(self):
-        self._candidate_missing(_bad("Trace summarisings"),
+        self._candidate_governed(_bad("Trace summarisings"),
                                 _read("Trace summarisings"))
 
     def test_r16_16_01_held_summary_summarys_missing(self):
-        self._candidate_missing(_bad("Trace summarys"),
+        self._candidate_governed(_bad("Trace summarys"),
                                 _read("Trace summarys"))
 
     def test_r16_16_01_held_fused_boardtracesummarisers_missing(self):
-        self._candidate_missing(_bad("Boardtracesummarisers"),
+        self._candidate_governed(_bad("Boardtracesummarisers"),
                                 _read("Boardtracesummarisers"))
 
     def test_r16_16_01_held_fused_boardtracesummarizers_missing(self):
-        self._candidate_missing(_bad("Boardtracesummarizers"),
+        self._candidate_governed(_bad("Boardtracesummarizers"),
                                 _read("Boardtracesummarizers"))
 
     def test_r16_16_01_held_fused_tracesummarisers_missing(self):
-        self._candidate_missing(_bad("Tracesummarisers"),
+        self._candidate_governed(_bad("Tracesummarisers"),
                                 _read("Tracesummarisers"))
 
     def test_r16_16_01_held_fused_boardtracessummarisers_missing(self):
-        self._candidate_missing(_bad("Boardtracessummarisers"),
+        self._candidate_governed(_bad("Boardtracessummarisers"),
                                 _read("Boardtracessummarisers"))
 
     def test_r16_16_01_held_between_traceboardgatesummary_missing(self):
-        self._candidate_missing(_bad("Traceboardgatesummary"),
+        self._candidate_governed(_bad("Traceboardgatesummary"),
                                 _read("Traceboardgatesummary"))
 
     def test_r16_16_01_held_between_traceboardgatepanelsummary_missing(self):
-        self._candidate_missing(_bad("Traceboardgatepanelsummary"),
+        self._candidate_governed(_bad("Traceboardgatepanelsummary"),
                                 _read("Traceboardgatepanelsummary"))
 
     def test_r16_16_01_held_between_summaryboardgatetrace_missing(self):
-        self._candidate_missing(_bad("Summaryboardgatetrace"),
+        self._candidate_governed(_bad("Summaryboardgatetrace"),
                                 _read("Summaryboardgatetrace"))
 
     def test_r16_16_01_held_between_tracesboardsummary_missing(self):
-        self._candidate_missing(_bad("Tracesboardsummary"),
+        self._candidate_governed(_bad("Tracesboardsummary"),
                                 _read("Tracesboardsummary"))
 
     def test_r16_16_01_held_between_summaryboardtraces_missing(self):
-        self._candidate_missing(_bad("Summaryboardtraces"),
+        self._candidate_governed(_bad("Summaryboardtraces"),
                                 _read("Summaryboardtraces"))
 
     def test_r16_16_01_held_inserted_six_forward_board_missing(self):
-        self._candidate_missing(_bad("Trace board gate review annex panel board summary"),
+        self._candidate_governed(_bad("Trace board gate review annex panel board summary"),
                                 _read("Trace board gate review annex panel board summary"))
 
     def test_r16_16_01_held_inserted_six_forward_gate_missing(self):
-        self._candidate_missing(_bad("Trace board gate review annex panel gate summary"),
+        self._candidate_governed(_bad("Trace board gate review annex panel gate summary"),
                                 _read("Trace board gate review annex panel gate summary"))
 
     def test_r16_16_01_held_inserted_five_reversed_missing(self):
-        self._candidate_missing(_bad("Summary board gate review annex panel trace"),
+        self._candidate_governed(_bad("Summary board gate review annex panel trace"),
                                 _read("Summary board gate review annex panel trace"))
 
     def test_r16_16_01_held_for_step_five_inserted_missing(self):
-        self._candidate_missing(_bad("Trace board gate review annex panel for step 2"),
+        self._candidate_governed(_bad("Trace board gate review annex panel for step 2"),
                                 _read("Trace board gate review annex panel for step 2"))
 
     def test_r16_16_01_held_for_step_six_inserted_missing(self):
-        self._candidate_missing(_bad("Trace board gate review annex panel board for step 2"),
+        self._candidate_governed(_bad("Trace board gate review annex panel board for step 2"),
                                 _read("Trace board gate review annex panel board for step 2"))
 
     def test_r16_16_01_held_stroke_l_tally_missing(self):
-        self._candidate_missing(_bad("Board ta\u026bly"),
+        self._candidate_governed(_bad("Board ta\u026bly"),
                                 _read("Board ta\u026bly"))
 
     def test_r16_16_01_held_stroke_t_tally_missing(self):
-        self._candidate_missing(_bad("Board \u01adally"),
+        self._candidate_governed(_bad("Board \u01adally"),
                                 _read("Board \u01adally"))
 
     def test_r16_16_01_held_stroke_s_summary_missing(self):
-        self._candidate_missing(_bad("Trace \u0282ummarise"),
+        self._candidate_governed(_bad("Trace \u0282ummarise"),
                                 _read("Trace \u0282ummarise"))
 
     def test_r16_16_01_held_stroke_m_summary_missing(self):
-        self._candidate_missing(_bad("Trace su\u0271marise"),
+        self._candidate_governed(_bad("Trace su\u0271marise"),
                                 _read("Trace su\u0271marise"))
 
     def test_r16_16_01_held_stroke_u_summary_missing(self):
-        self._candidate_missing(_bad("Trace s\u0289mmarise"),
+        self._candidate_governed(_bad("Trace s\u0289mmarise"),
                                 _read("Trace s\u0289mmarise"))
 
     def test_r16_16_01_held_stroke_d_summary_missing(self):
-        self._candidate_missing(_bad("Trace summaris\u0257"),
+        self._candidate_governed(_bad("Trace summaris\u0257"),
                                 _read("Trace summaris\u0257"))
 
     def test_r16_16_01_held_thorn_summary_missing(self):
-        self._candidate_missing(_bad("Trace summarise\u00fe"),
+        self._candidate_governed(_bad("Trace summarise\u00fe"),
                                 _read("Trace summarise\u00fe"))
 
     def test_r16_16_01_held_beside_step2_nowhere(self):
-        self._beside_step2_nowhere(_bad("Ledgertally"))
+        self._beside_step2_uncounted(_bad("Ledgertally"))
 
     def test_r16_16_01_held_gate_ruling_missing(self):
-        self._assert_q4_missing(self._q4_alone(
-            _bad("Ledgertally"), ruling=True))
+        report = self._q4_alone(
+            _bad("Ledgertally"), ruling=True)
+        self._assert_q4_governed(report, path=RULING_2)
     # ------------------------------------------------------
     # Held controls: the bounding forms of R16-16-02, the
     # mixed runs with a joining word between the closing
@@ -662,7 +687,7 @@ class TestStep16Fix16Unit1(FixtureTestCase):
         self.assertTrue(_tally_word(_fold_word("boardtallyes")))
         self.assertTrue(_tally_word(_fold_word("tallys")))
         self.assertTrue(_tally_word(_fold_word("tallyed")))
-        self.assertFalse(_tally_word(_fold_word("tallyes")))
+        self.assertTrue(_tally_word(_fold_word("tallyes")))
     # ------------------------------------------------------
     # Held controls: the seven enumerated family adverbs
     # and tallyho standing missing, the fused family
