@@ -35,12 +35,14 @@ trace summary closings in their governed forms, and the
 for step forms.
 
 Held controls stand pinned beside the defect forms:
-the twenty driven forms of R16-13-01 in their entering
-behaviour (Q-4 missing in each alone form beside a counted
-sibling counting 2 of 2 LANDED under the same head, Step 2
-standing nowhere in the beside form, and the gate ruling
-form standing missing; Unit 2 item, neither cured nor
-altered by this unit); the eight forms of R16-12-02 in
+the twenty driven forms of R16-13-01, written for this
+unit in their entering behaviour and amended in place by
+fix pass 13 Unit 2 to their cured behaviour (Q-4 governed
+in each alone form beside a counted sibling counting 2
+of 2 LANDED under the same head, Step 2 named uncounted
+in the beside form, and the gate ruling form standing
+governed; Unit 2 item, neither cured nor altered by
+this unit as it stood); the eight forms of R16-12-02 in
 their cured missing forms; the twelve forms of R16-12-01
 in their cured governed forms; the closing Board talli
 standing missing as a boundary control, its accent standing
@@ -54,6 +56,21 @@ present but not derivable; the golden prose lines standing
 unflipped; the settled R16-7-03 prose position; the folded
 round 11 record (Trace for step 2a standing missing); and
 the run closure limb.
+
+Amendment, fix pass 13 Unit 2: the twenty held control
+tests of R16-13-01 in this module stand amended in place
+by Unit 2 of fix pass 13 to the cured behaviour of that
+item, under the same test names, the same count of 62
+and the same case identities: the eighteen alone forms
+standing governed beside their counted siblings in place
+of missing, the Passtally beside form naming Step 2
+uncounted in place of Step 2 standing nowhere, and the
+Trace summarize gate ruling form standing governed in
+place of missing, each under its standing test name. The
+four defect tests of R16-13-02, the eight held forms of
+R16-12-02, the twelve held forms of R16-12-01, the Board
+talli boundary control and every other test of this
+module stand unamended.
 """
 from tests.fixture_builder import (
     FixtureTestCase, assert_verdict, gate_record, gate_ruling,
@@ -149,37 +166,39 @@ class TestStep16Fix13Unit1(FixtureTestCase):
         self.assertNotIn("Step 2", q4)
 
     # ------------------------------------------------------
-    # Held controls: R16-13-01 driven forms in their
-    # entering behaviour, Q-4 missing in each, Unit 2 item,
-    # neither cured nor altered by this unit
+    # Held controls: R16-13-01 driven forms, written for
+    # Unit 1 in their entering behaviour and amended in
+    # place by fix pass 13 Unit 2 to their cured behaviour,
+    # Q-4 governed in each, as the amendment note in the
+    # module docstring records
     # ------------------------------------------------------
 
     def test_r16_13_held_01_fused_tallied_missing(self):
-        self._candidate_missing(_bad("Boardtallied"),
+        self._candidate_governed(_bad("Boardtallied"),
                                 _read("Boardtallied"))
 
     def test_r16_13_held_01_fused_tallies_missing(self):
-        self._candidate_missing(_bad("Boardtallies"),
+        self._candidate_governed(_bad("Boardtallies"),
                                 _read("Boardtallies"))
 
     def test_r16_13_held_01_fused_tallying_missing(self):
-        self._candidate_missing(_bad("Boardtallying"),
+        self._candidate_governed(_bad("Boardtallying"),
                                 _read("Boardtallying"))
 
     def test_r16_13_held_01_fused_prefix_pass_missing(self):
-        self._candidate_missing(_bad("Passtally"),
+        self._candidate_governed(_bad("Passtally"),
                                 _read("Passtally"))
 
     def test_r16_13_held_01_fused_prefix_chair_missing(self):
-        self._candidate_missing(_bad("Chairtally"),
+        self._candidate_governed(_bad("Chairtally"),
                                 _read("Chairtally"))
 
     def test_r16_13_held_01_fused_prefix_green_missing(self):
-        self._candidate_missing(_bad("Greentally"),
+        self._candidate_governed(_bad("Greentally"),
                                 _read("Greentally"))
 
     def test_r16_13_held_01_fused_prefix_alpha_missing(self):
-        self._candidate_missing(_bad("Alphatally"),
+        self._candidate_governed(_bad("Alphatally"),
                                 _read("Alphatally"))
 
     def test_r16_13_held_01_fused_prefix_pass_beside_nowhere(self):
@@ -189,55 +208,56 @@ class TestStep16Fix13Unit1(FixtureTestCase):
         q4 = row_block(self._run(files), "Q-4")
         assert_verdict(self, q4, "present", "Q-4")
         self.assertIn("totals 4 LANDED", q4)
-        self.assertNotIn("Step 2", q4)
+        self.assertIn("Step 2", q4)
+        self.assertIn("uncounted", q4)
 
     def test_r16_13_held_01_summary_summarize_american_missing(self):
-        self._candidate_missing(_bad("Trace summarize"),
+        self._candidate_governed(_bad("Trace summarize"),
                                 _read("Trace summarize"))
 
     def test_r16_13_held_01_summary_summarized_american_missing(self):
-        self._candidate_missing(_bad("Trace summarized"),
+        self._candidate_governed(_bad("Trace summarized"),
                                 _read("Trace summarized"))
 
     def test_r16_13_held_01_summary_summarises_british_missing(self):
-        self._candidate_missing(_bad("Trace summarises"),
+        self._candidate_governed(_bad("Trace summarises"),
                                 _read("Trace summarises"))
 
     def test_r16_13_held_01_summary_summarize_gate_ruling_missing(self):
         report = self._q4_alone(_bad("Trace summarize"),
                                 ruling=True)
-        self._assert_q4_missing(report)
+        self._assert_q4_governed(report, path=RULING_2)
 
     def test_r16_13_held_01_fused_tracesummarise_british_missing(self):
-        self._candidate_missing(_bad("Boardtracesummarise"),
+        self._candidate_governed(_bad("Boardtracesummarise"),
                                 _read("Boardtracesummarise"))
 
     def test_r16_13_held_01_fused_tracesummarised_missing(self):
-        self._candidate_missing(_bad("Tracesummarised"),
+        self._candidate_governed(_bad("Tracesummarised"),
                                 _read("Tracesummarised"))
 
     def test_r16_13_held_01_fused_summarytraces_reversed_missing(self):
-        self._candidate_missing(_bad("Boardsummarytraces"),
+        self._candidate_governed(_bad("Boardsummarytraces"),
                                 _read("Boardsummarytraces"))
 
     def test_r16_13_held_01_stroke_letter_t_tally_missing(self):
-        self._candidate_missing(_bad("Board ŧally"),
+        self._candidate_governed(_bad("Board ŧally"),
                                 _read("Board ŧally"))
 
     def test_r16_13_held_01_inserted_two_words_summary_missing(self):
-        self._candidate_missing(_bad("Trace board gate summary"),
+        self._candidate_governed(_bad("Trace board gate summary"),
                                 _read("Trace board gate summary"))
 
     def test_r16_13_held_01_inserted_reversed_summary_missing(self):
-        self._candidate_missing(_bad("Summary board trace"),
+        self._candidate_governed(_bad("Summary board trace"),
                                 _read("Summary board trace"))
 
     def test_r16_13_held_01_fused_tallied_for_step_missing(self):
-        self._candidate_missing(_bad("Boardtallied for step 2"),
+        self._candidate_governed(_bad("Boardtallied for step 2"),
                                 _read("Boardtallied for step 2"))
 
     def test_r16_13_held_01_inserted_trace_for_step_missing(self):
-        self._candidate_missing(_bad("Trace board for step 2"),
+        self._candidate_governed(_bad("Trace board for step 2"),
                                 _read("Trace board for step 2"))
 
     # ------------------------------------------------------

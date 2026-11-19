@@ -652,7 +652,12 @@ def _fold_word(word):
     decomposition, to the letter l it stands in place of,
     a letter the tally word itself carries, so a word
     carrying that letter in place of one of its own
-    letters folds to the word itself. A word whose folded
+    letters folds to the word itself. It folds the
+    second stroke letter ŧ in the same way, to the
+    letter t it stands in place of, the first letter of
+    the tally word, so a word carrying that letter in
+    place of its first letter folds to the word itself
+    as well. A word whose folded
     form differs from the tally word in a letter stands
     as a different word under every limb: Board tallí
     folds to talli, its accent standing on a final letter
@@ -661,67 +666,95 @@ def _fold_word(word):
     folded = unicodedata.normalize("NFD", word.lower())
     folded = "".join(char for char in folded
                      if unicodedata.category(char) != "Mn")
-    return folded.replace("ł", "l")
+    return folded.replace("ł", "l").replace("ŧ", "t")
+
+
+_TALLY_WORD_FORMS = ("tally", "tallies", "tallied", "tallying")
+
+_TOTALLY_FAMILY = ("totally", "accidentally", "digitally",
+                   "incidentally", "mentally", "rectally",
+                   "septally")
 
 
 def _tally_word(word):
     """Whether a folded word stands as the tally word.
 
-    The word stands as the tally word where it is tally
-    or tallies, where it is tallied, the past tense of
-    the tally word, where it is tallying, the tally word
-    with the ing suffix, or where it ends with tally
-    behind a fused prefix and the word is not an adverb
-    of the totally family. An adverb of that family
+    The word stands as the tally word where it is one of
+    the enumerated forms of the tally word itself: tally,
+    tallies, tallied, the past tense of the tally word,
+    or tallying, the tally word with the ing suffix; or
+    where it ends with one of those same forms behind a
+    fused prefix, in whatever letters the prefix ends,
+    Boardtally, Gate2tally, Reviewtally and Step2tally
+    among the plain forms, Passtally, Chairtally,
+    Greentally and Alphatally among the forms whose
+    prefix ends in a letter of the totally family, and
+    Boardtallied, Boardtallies and Boardtallying among
+    the fused inflected forms. A word stands as no tally
+    word where it is an adverb of the totally family, or
+    ends with such an adverb: an adverb of that family
     carries the tally letters as the tal ending of its
-    stem standing before the ly suffix, and it is known
-    in this test by the letters standing before tally
-    ending in a vowel or in n, r, s, c or p, the stem
-    endings of that family, totally, accidentally,
-    digitally, incidentally, mentally, rectally and
-    septally among them, the c and p endings standing
-    where the family letter of the word stands inside
-    its stem, rec and sep standing before the tal
-    ending, while a fused prefix ends in another
-    consonant or in a digit, Boardtally, Gate2tally,
-    Reviewtally and Step2tally among them. A word
+    stem standing before the ly suffix, and the family
+    stands excluded by its own enumerated words, totally,
+    accidentally, digitally, incidentally, mentally,
+    rectally and septally, the rectally and septally
+    forms standing where the family letter of the word
+    stands inside its stem, rec and sep standing before
+    the tal ending, and by no letter test on the letters
+    standing before tally, a fused prefix ending in the
+    same letters standing admitted as the forms above
+    state. A word
     beginning with tally in any other form, tallyho
     among them, stands as no tally word.
     """
-    if word in ("tally", "tallies", "tallied", "tallying"):
+    if word in _TALLY_WORD_FORMS:
         return True
-    if not word.endswith("tally"):
+    if word in _TOTALLY_FAMILY:
         return False
-    prefix = word[:-len("tally")]
-    if not prefix:
+    if any(word.endswith(adverb) for adverb in _TOTALLY_FAMILY):
         return False
-    return prefix[-1] not in "aeiounrscp"
+    return any(word.endswith(form) and len(word) > len(form)
+               for form in _TALLY_WORD_FORMS)
+
+
+_SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
+                       "summarised", "summarises", "summarize",
+                       "summarizes", "summarized")
 
 
 def _summary_word(word):
     """Whether a folded word stands as the summary word.
 
-    The word stands as the summary word where it is
-    summary or summaries, or where it stands in a British
-    spelling of the same word, summarise or summarised.
+    The word stands as the summary word where it is one
+    of the enumerated forms of the summary word itself:
+    summary or summaries, or summarise, summarised or
+    summarises in its British spellings, or summarize,
+    summarizes or summarized in its American spellings.
     """
-    return word in ("summary", "summaries", "summarise",
-                    "summarised")
+    return word in _SUMMARY_WORD_FORMS
 
 
 def _fused_trace_summary(word):
     """Whether a folded word is a fused trace summary closing.
 
-    The word stands as the fused closing where it is the
-    fused tracesummary or the fused summarytrace, in
-    either case standing whole or fused behind a prefix,
-    or where it is the fused tracesummaries, the closing
-    words fused with the summary word in its plural form,
-    standing whole or fused behind a prefix.
+    The word stands as the fused closing where it ends
+    with the trace word fused with a summary word in any
+    of its enumerated forms, tracesummary, tracesummaries,
+    tracesummarise, tracesummarised and tracesummarized
+    among them, standing whole or fused behind a prefix;
+    or where it ends with a summary word fused with the
+    trace word, summarytrace among them, in either case
+    standing whole or fused behind a prefix; or where it
+    ends with a summary word fused with the plural trace
+    word, summarytraces among them, the closing words
+    fused in the reversed order with the trace word in
+    its plural form, standing whole or fused behind a
+    prefix.
     """
-    return word.endswith("tracesummary") or \
-        word.endswith("summarytrace") or \
-        word.endswith("tracesummaries")
+    return any(word.endswith("trace" + form) or
+               word.endswith(form + "trace") or
+               word.endswith(form + "traces")
+               for form in _SUMMARY_WORD_FORMS)
 
 
 def _tally_statement_head(line):
@@ -740,7 +773,9 @@ def _tally_statement_head(line):
     The words of the run are its letter and digit
     sequences, taken with a Unicode word extraction and
     folded for accents, the folding folding the stroke
-    letter ł to the letter l it stands in place of as
+    letter ł to the letter l it stands in place of and
+    the stroke letter ŧ to the letter t it stands in
+    place of as
     well, in whatever marks, joins or
     spacing the run carries between or around them,
     because the counted pattern counts its statement
@@ -768,15 +803,20 @@ def _tally_statement_head(line):
     trace summary words, the last two words of the run
     standing as trace and a summary word, in that order,
     in whatever join the run carries them, the summary
-    word standing in its British spellings as well, or
+    word standing in its British and American spellings
+    as well, or
     the closing words standing fused, whole or behind a
-    prefix, in the singular or the plural, or one further
-    word standing between the trace word and the summary
-    word; or, only where the run closes on a colon, the
+    prefix, in the singular or the plural, in either
+    order and in the plural reversed form, or one or two
+    further words standing between the trace word and
+    the summary word, or one further word standing
+    between the summary word and the trace word in the
+    reversed order; or, only where the run closes on a colon, the
     last four words of the run are trace for step and a
     step number, or a tally word for step and a step
     number, the head word read through the tally word
-    test, a space standing before that colon
+    test, or one further word stands between the trace
+    word and the for step words in that same form, a space standing before that colon
     making no difference. A head behind a list marker
     counts only where a colon closes the run, so a
     numbered head whose run closes on any other
@@ -802,8 +842,9 @@ def _tally_statement_head(line):
 
     Exact boundary of the cure, as extended in fix pass
     11, as narrowed in fix pass 12 Unit 1, as widened
-    in fix pass 12 Unit 2, and as widened in its tally
-    family exclusion in fix pass 13 Unit 1: a line is
+    in fix pass 12 Unit 2, as widened in its tally
+    family exclusion in fix pass 13 Unit 1, and as
+    widened in fix pass 13 Unit 2: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -814,9 +855,12 @@ def _tally_statement_head(line):
     word extraction and folded for accents, the folding
     stripping combining marks and folding the stroke
     letter ł to the letter l it stands in place of, a
-    letter the tally word itself carries, so a word
-    carrying that letter in place of one of its own
-    letters folds to the word itself, while a word whose
+    letter the tally word itself carries, and folding
+    the stroke letter ŧ to the letter t it stands in
+    place of, the first letter of the tally word, so a
+    word carrying either stroke letter in place of one
+    of its own letters folds to the word itself, while
+    a word whose
     folded form differs from the tally word in a letter,
     Board tallí folding to talli among them, stands as a
     different word under every limb, close in one
@@ -833,43 +877,68 @@ def _tally_statement_head(line):
     boundary. The closing forms are three: the last word
     of the run stands as the tally word, where a word
     stands as the tally word where, after accent
-    folding, it is tally or tallies, or it is tallied,
-    the past tense of the tally word, or it is tallying,
+    folding, it is one of the enumerated forms of the
+    tally word itself, tally or tallies, or tallied,
+    the past tense of the tally word, or tallying,
     the tally word with the ing suffix, or it ends with
-    tally behind a fused prefix and the word is not an
-    adverb of the totally family, an adverb of that
+    one of those same forms behind a fused prefix, in
+    whatever letters the prefix ends, Boardtally,
+    Gate2tally, Reviewtally and Step2tally among the
+    plain forms, Passtally, Chairtally, Greentally and
+    Alphatally among the forms whose prefix ends in a
+    letter of the totally family, and Boardtallied,
+    Boardtallies and Boardtallying among the fused
+    inflected forms, and the word is not an
+    adverb of the totally family and does not end with
+    such an adverb, an adverb of that
     family carrying the tally letters as the tal ending
-    of its stem standing before the ly suffix and known
-    in this test by the letters standing before tally
-    ending in a vowel or in n, r, s, c or p, the stem
-    endings of that family, totally, accidentally,
+    of its stem standing before the ly suffix and
+    standing excluded by its own enumerated words,
+    totally, accidentally,
     digitally, incidentally, mentally, rectally and
-    septally among them, the c and p endings standing
+    septally, the rectally and septally forms standing
     where the family letter of the word stands inside
     its stem, rec and sep standing before the tal
-    ending, while a fused prefix ends in another
-    consonant or in a digit, Boardtally, Gate2tally,
-    Reviewtally and Step2tally among them, a word
+    ending, and by no letter test on the letters
+    standing before tally, a fused prefix ending in
+    the same letters standing admitted as the forms
+    above state, a word
     beginning with tally in any other form, tallyho
     among them, standing as no tally word;
     or the last two words
     of the run are trace summary, in that order, or
     summary trace, in the reversed order, the summary
-    word standing as summary or summaries, or as
-    summarise or summarised in its British spellings, or
-    the last word of the run is the fused tracesummary
-    or the fused summarytrace, in either case standing
-    whole or fused behind a prefix, or the fused
+    word standing as one of its enumerated forms,
+    summary or summaries, or summarise, summarised or
+    summarises in its British spellings, or summarize,
+    summarizes or summarized in its American spellings,
+    or
+    the last word of the run ends with the trace word
+    fused with a summary word standing as above, or
+    with a summary word fused with the trace word, or
+    with a summary word fused with the plural trace
+    word, in each case standing
+    whole or fused behind a prefix, the fused
     tracesummaries, the closing words fused with the
-    summary word in its plural form, standing whole or
-    fused behind a prefix, or the last three words of
+    summary word in its plural form, and the fused
+    summarytraces, the closing words fused in the
+    reversed order with the trace word in its plural
+    form, standing among them, or the last three words of
     the run are trace, one further word, and a summary
-    word standing as above, in that order; or, only
+    word standing as above, in that order, or the last
+    four words of the run are trace, two further words,
+    and a summary word standing as above, in that order,
+    or the last three words of the run are a summary
+    word standing as above, one further word, and
+    trace, in the reversed order; or, only
     where the run closes on
     a colon, the last four words of the run are trace for
     step and a step number, or a tally word for step and
     a step number, the tally word standing as the tally
-    word under the tally word test stated above, a space
+    word under the tally word test stated above, or the
+    last five words of the run are trace, one further
+    word, for, step and a step number, in that same
+    form, a space
     standing before that colon making no
     difference. The general marker form stands extended
     on its dot limbs alone: beside a digits token closing
@@ -934,10 +1003,22 @@ def _tally_statement_head(line):
         if len(words) >= 3 and words[-3] == "trace" and \
                 _summary_word(words[-1]):
             return True
+        if len(words) >= 4 and words[-4] == "trace" and \
+                _summary_word(words[-1]):
+            return True
+        if len(words) >= 3 and _summary_word(words[-3]) and \
+                words[-1] == "trace":
+            return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
                 (words[-4] == "trace" or
                  _tally_word(words[-4])) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) >= 5 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-5] == "trace" or
+                 _tally_word(words[-5])) and \
                 words[-1].isdigit():
             return True
     return False
