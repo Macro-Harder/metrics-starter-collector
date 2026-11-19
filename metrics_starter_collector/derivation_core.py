@@ -824,6 +824,49 @@ def _fused_trace_summary(word):
                for form in _SUMMARY_WORD_FORMS)
 
 
+_GOVERNED_INSERTED_WORDS = ("board", "gate", "review", "annex")
+
+
+def _governed_inserted_word(word):
+    """Whether a folded word stands as a governed inserted word.
+
+    A word stands as a governed inserted word where it is
+    one of the governed inserted words, board, gate,
+    review and annex, standing in the constant
+    _GOVERNED_INSERTED_WORDS. Each of those words stands
+    as a whole head word naming a part of the record the
+    genuine inserted heads state: the board the head is
+    taken over, the gate the head stands at, the review
+    the head records, or the annex the head carries, and
+    each stands between the closing words of a genuine
+    head as a separate part of that head. An ordinary
+    prose word stands as no governed inserted word: a
+    prose run joining the trace word and the summary word
+    carries the joining words of the sentence itself, of
+    and the among them, which name no part of the record
+    and stand as no whole head word, so such a run closes
+    no inserted closing in any limb.
+    """
+    return word in _GOVERNED_INSERTED_WORDS
+
+
+def _inserted_words_governed(words):
+    """Whether every inserted word stands governed.
+
+    The inserted words of a closing stand governed only
+    where the closing carries at least one inserted word
+    and every one of them stands as a governed inserted
+    word under _governed_inserted_word. One inserted word
+    standing as no governed head word takes the whole
+    closing out of the reach, whatever the remaining
+    inserted words stand as: Summary of the board trace
+    carries board between of and the, and stands as no
+    inserted closing on that ground alone.
+    """
+    return len(words) > 0 and all(
+        _governed_inserted_word(word) for word in words)
+
+
 def _tally_statement_head(line):
     """Whether a line opens with a tally statement head.
 
@@ -881,14 +924,24 @@ def _tally_statement_head(line):
     further words standing between the trace word and
     the summary word, or one, two or three further words standing
     between the summary word and the trace word in the
-    reversed order; or, only where the run closes on a colon, the
+    reversed order, in each case only where every word
+    standing between the closing words stands as a
+    governed inserted word, board, gate, review or
+    annex, as narrowed in fix pass 15 Unit 1, so an
+    ordinary prose run whose inserted words stand as no
+    governed head words, Summary of the board trace,
+    Summary of the trace and Trace of the board summary
+    among them, closes no inserted closing; or, only where the run closes on a colon, the
     last four words of the run are trace for step and a
     step number, or a tally word for step and a step
     number, the head word read through the tally word
     test, or one further word stands between the trace
     word and the for step words in that same form, or
     two further words stand between them in that same
-    form as widened in fix pass 14 Unit 2, a space standing before that colon
+    form as widened in fix pass 14 Unit 2, in each
+    inserted case only where every word standing
+    between the trace word and the for step words stands
+    as a governed inserted word in the same terms, a space standing before that colon
     making no difference. A head behind a list marker
     counts only where a colon closes the run, so a
     numbered head whose run closes on any other
@@ -917,8 +970,9 @@ def _tally_statement_head(line):
     in fix pass 12 Unit 2, as widened in its tally
     family exclusion in fix pass 13 Unit 1, as
     widened in fix pass 13 Unit 2, as narrowed in
-    its tally word fused limb in fix pass 14 Unit 1, and
-    as widened in fix pass 14 Unit 2: a line is
+    its tally word fused limb in fix pass 14 Unit 1,
+    as widened in fix pass 14 Unit 2, and as narrowed
+    in its inserted closings in fix pass 15 Unit 1: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -1044,7 +1098,17 @@ def _tally_statement_head(line):
     or the last five words of the run are trace, three
     further words, and a summary word standing as
     above, in that order, as widened in fix pass 14
-    Unit 2,
+    Unit 2, in each inserted case only where every
+    further word standing between the trace word and
+    the summary word stands as a governed inserted
+    word, board, gate, review or annex, the governed
+    inserted words standing as whole head words naming
+    a part of the record, the board, the gate, the
+    review or the annex, while an ordinary prose word
+    standing between the closing words, of and the
+    among them, stands as no governed inserted word
+    and takes the closing out of the reach, as
+    narrowed in fix pass 15 Unit 1,
     or the last three words of the run are a summary
     word standing as above, one further word, and
     trace, in the reversed order, or the last four
@@ -1054,7 +1118,9 @@ def _tally_statement_head(line):
     are a summary word standing as above, three further
     words, and trace, in the reversed order, the two
     and three word reversed forms standing widened in
-    fix pass 14 Unit 2; or, only
+    fix pass 14 Unit 2, in each inserted case under
+    the same governed inserted word condition stated
+    above; or, only
     where the run closes on
     a colon, the last four words of the run are trace for
     step and a step number, or a tally word for step and
@@ -1064,7 +1130,11 @@ def _tally_statement_head(line):
     word, for, step and a step number, in that same
     form, or the last six words of the run are trace,
     two further words, for, step and a step number, in
-    that same form as widened in fix pass 14 Unit 2, a space
+    that same form as widened in fix pass 14 Unit 2, in
+    each inserted case only where every further word
+    standing between the trace word and the for step
+    words stands as a governed inserted word in the
+    same terms, a space
     standing before that colon making no
     difference. The general marker form stands extended
     on its dot limbs alone: beside a digits token closing
@@ -1127,22 +1197,28 @@ def _tally_statement_head(line):
                   _summary_word(words[-2]))):
             return True
         if len(words) >= 3 and words[-3] == "trace" and \
-                _summary_word(words[-1]):
+                _summary_word(words[-1]) and \
+                _inserted_words_governed(words[-2:-1]):
             return True
         if len(words) >= 4 and words[-4] == "trace" and \
-                _summary_word(words[-1]):
+                _summary_word(words[-1]) and \
+                _inserted_words_governed(words[-3:-1]):
             return True
         if len(words) >= 5 and words[-5] == "trace" and \
-                _summary_word(words[-1]):
+                _summary_word(words[-1]) and \
+                _inserted_words_governed(words[-4:-1]):
             return True
         if len(words) >= 3 and _summary_word(words[-3]) and \
-                words[-1] == "trace":
+                words[-1] == "trace" and \
+                _inserted_words_governed(words[-2:-1]):
             return True
         if len(words) >= 4 and _summary_word(words[-4]) and \
-                words[-1] == "trace":
+                words[-1] == "trace" and \
+                _inserted_words_governed(words[-3:-1]):
             return True
         if len(words) >= 5 and _summary_word(words[-5]) and \
-                words[-1] == "trace":
+                words[-1] == "trace" and \
+                _inserted_words_governed(words[-4:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -1154,12 +1230,14 @@ def _tally_statement_head(line):
                 words[-3:-1] == ["for", "step"] and \
                 (words[-5] == "trace" or
                  _tally_word(words[-5])) and \
+                _inserted_words_governed(words[-4:-3]) and \
                 words[-1].isdigit():
             return True
         if terminator == ":" and len(words) >= 6 and \
                 words[-3:-1] == ["for", "step"] and \
                 (words[-6] == "trace" or
                  _tally_word(words[-6])) and \
+                _inserted_words_governed(words[-5:-3]) and \
                 words[-1].isdigit():
             return True
     return False
