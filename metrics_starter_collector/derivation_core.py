@@ -1388,41 +1388,121 @@ _SENTENCE_FUNCTION_WORDS = frozenset((
     "might", "must", "not", "no"))
 
 
+_MAIN_VERB_WORDS = frozenset((
+    "add", "adds", "approve", "approves", "audit", "audits",
+    "build", "built", "carry", "carries", "check", "checks",
+    "cite", "cites", "claim", "claims", "confirm", "confirms",
+    "count", "counts", "cover", "covers", "draw", "drawn",
+    "enter", "enters", "file", "files", "find", "finds",
+    "follow", "follows", "gave", "give", "gives", "held",
+    "hold", "holds", "include", "includes", "inspect",
+    "inspects", "keep", "keeps", "left", "list", "lists",
+    "made", "make", "makes", "name", "names", "note", "notes",
+    "present", "presents", "put", "read", "reads", "report",
+    "reports", "said", "saw", "scan", "scans", "see", "sees",
+    "send", "sends", "sent", "set", "sets", "show", "shown",
+    "shows", "sign", "signs", "stand", "stands", "state",
+    "states", "stood", "take", "takes", "tell", "tells",
+    "told", "took", "verify", "verifies", "watch", "watches",
+    "write", "writes", "written", "wrote"))
+
+
+_NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
+    "evening", "hundred", "king", "morning", "ring",
+    "spring", "string"))
+
+
+def _word_stands_as_main_verb(word):
+    """Whether a word stands as a main verb form.
+
+    A word stands as a main verb form where it stands in
+    the constant _MAIN_VERB_WORDS, the base forms, the s
+    forms and the irregular forms of the main verbs a
+    prose sentence, a prose clause and a prose run are
+    built around, or where it carries a verb inflection,
+    an ed ending or an ing ending on a word of more than
+    three letters, the past, participle and gerund forms
+    of a main verb, a naming word carrying such an ending
+    in its own right, standing in the constant
+    _NAMING_WORDS_WITH_VERB_ENDINGS, standing as no verb
+    form in this test.
+    """
+    if word in _NAMING_WORDS_WITH_VERB_ENDINGS:
+        return False
+    if word in _MAIN_VERB_WORDS:
+        return True
+    return len(word) > 3 and (word.endswith("ed")
+                              or word.endswith("ing"))
+
+
 def _before_closing_stands_as_head(words_before, text_before):
     """Whether what stands before a closing stands as a head.
 
     The words standing before the closing words of a direct
     or fused closing stand as head words only where they
     carry the standing of a head and not the standing of a
-    sentence or a clause, as narrowed in fix pass 17 Unit 1.
-    A head is stated in naming words: nouns, names, numbers
-    and step words, the parts of the record the head names,
-    Alpha beta gamma delta epsilon trace summary and
-    Round's trace summary among them, and a head carries no
-    sentence structure of its own. A prose sentence carries
-    sentence structure standing before its closing words:
-    an article, a pronoun, a preposition, a conjunction or
-    an auxiliary standing among those words, the closed
-    classes of sentence function words standing in the
-    constant _SENTENCE_FUNCTION_WORDS, the words a sentence
-    is built from and a head never carries, We reviewed the
-    trace summary carrying we and the, She filed the summary
+    sentence, a clause or a run, as narrowed in fix pass 17
+    Unit 1 and restated in fix pass 18 Unit 1. A direct or
+    fused closing stands as a head only where what stands
+    before the closing words in the statement stands wholly
+    as head words: every word standing before the closing
+    is a naming word, a noun, a name, a number or a step
+    word, carrying no sentence structure of its own, and
+    the statement carries no clause break and no prose run
+    join before the closing words, Alpha beta gamma delta
+    epsilon trace summary and Round's trace summary among
+    the heads standing in more words in this form. Sentence
+    structure standing before the closing words takes four
+    forms. First, a sentence function word standing among
+    the words before the closing, an article, a pronoun, a
+    preposition, a conjunction or an auxiliary, the closed
+    classes standing in the constant
+    _SENTENCE_FUNCTION_WORDS, the words a sentence is built
+    from and a head never carries, We reviewed the trace
+    summary carrying we and the, She filed the summary
     trace carrying she and the, and For the trace summary
-    carrying for and the, among them. A prose clause standing
-    before a closing inside one statement is set off from
-    the closing by a clause break, a comma standing in the
-    run before the closing words, The filing, trace summary
-    among them, the comma that joins the closing words
-    themselves standing after the closing has begun and
-    standing as no clause break in this test. What stands
-    before a direct or fused closing therefore stands as a
-    head only where no sentence function word stands among
-    the words before the closing and no comma stands in the
-    run before the closing words.
+    carrying for and the, among them. Second, a main verb
+    form standing among the words before the closing, in
+    any inflection of a main verb, as _word_stands_as_main_verb
+    states, Panel reviewed trace summary carrying reviewed,
+    Minutes show trace summary carrying show, Noted filing
+    summary trace carrying noted and filing, and Filing
+    noted trace summary carrying filing and noted, among
+    them, a prose sentence in bare subject and main verb
+    form and a prose clause in verb phrase form carrying
+    their sentence structure in that verb, where no sentence
+    function word need stand. Third, a clause break standing
+    in the statement before the closing words, a comma or a
+    semicolon standing in the run before the closing words
+    or in a clause of the same statement set off by a
+    semicolon before the closing, The filing, trace summary
+    carrying its comma and Filing; trace summary carrying
+    its semicolon among them, a prose clause standing before
+    a closing inside one statement standing set off by such
+    a break in either form, the comma that joins the closing
+    words themselves standing after the closing has begun
+    and standing as no clause break in this test. Fourth, a
+    prose run join standing before the closing words, a
+    hyphen standing as its own token joining the run or a
+    parenthetical standing in the run before the closing,
+    Filing - trace summary carrying its hyphen and Filing
+    (noted) trace summary carrying its parenthetical among
+    them, a head carrying no such join in its words. What
+    stands before a direct or fused closing therefore stands
+    as a head only where no sentence function word and no
+    main verb form stands among the words before the closing,
+    no comma and no semicolon stands in the statement before
+    the closing words, and no hyphen token and no
+    parenthetical stands in the run before the closing words.
     """
-    if "," in text_before:
+    if "," in text_before or ";" in text_before:
         return False
-    return not any(word in _SENTENCE_FUNCTION_WORDS
+    if "(" in text_before or " - " in text_before:
+        return False
+    if any(word in _SENTENCE_FUNCTION_WORDS
+           for word in words_before):
+        return False
+    return not any(_word_stands_as_main_verb(word)
                    for word in words_before)
 
 
@@ -1906,15 +1986,22 @@ def _tally_statement_head(line):
     closing on the tally word itself stands as it stood.
     The direct trace summary closing and the fused
     closing stand narrowed in fix pass 17 Unit 1 in
-    standing, in their own form, stated here in full. A
-    direct or fused closing stands as a head only where
-    what stands before the closing words in the run
-    stands as head words, as _before_closing_stands_as_head
-    states in its own terms: the words before the closing
-    carry no sentence function word, no article, pronoun,
-    preposition, conjunction or auxiliary standing among
-    them, and no comma stands in the run before the
-    closing words. A head is stated in naming words, so a
+    standing and restated in fix pass 18 Unit 1, in their
+    own form, stated here in full. A direct or fused
+    closing stands as a head only where what stands
+    before the closing words in the statement stands wholly
+    as head words: every word standing before the closing
+    is a naming word, a noun, a name, a number or a step
+    word, carrying no sentence structure of its own, and
+    the statement carries no clause break and no prose run
+    join before the closing words, as
+    _before_closing_stands_as_head states in its own
+    terms: no sentence function word and no main verb form
+    stands among the words before the closing, no comma
+    and no semicolon stands in the statement before the
+    closing words, and no hyphen token and no
+    parenthetical stands in the run before the closing
+    words. A head is stated in naming words, so a
     head stated in more words in those forms, Alpha beta
     gamma delta epsilon trace summary and Round's trace
     summary among them, stands governed in the same way,
@@ -1928,11 +2015,23 @@ def _tally_statement_head(line):
     filed the summarytrace, We reviewed the
     boardtracesummary, We reviewed the
     traceboardgatesummary and She filed the
-    summaryboardgatetrace among them, and a prose clause
+    summaryboardgatetrace among them, and in bare subject
+    and main verb form, Panel reviewed trace summary,
+    Minutes show trace summary and Panel reviewed
+    tracesummary among them, its sentence structure
+    standing in its main verb where no sentence function
+    word stands, and a prose clause
     standing before a closing inside one statement is set
     off by its comma, The filing, trace summary and Noted
-    in the filing, the summary trace among them, so no
-    prose sentence and no prose clause of those shapes
+    in the filing, the summary trace among them, or by a
+    semicolon, Filing; trace summary among them, and a
+    prose clause in verb phrase form, Noted filing summary
+    trace and Filing noted trace summary, a prose run
+    joined to the closing by a hyphen, Filing - trace
+    summary, and a prose run carrying a parenthetical,
+    Filing (noted) trace summary, stand in the same
+    position, so no
+    prose sentence, prose clause or prose run of those shapes
     closes a direct or a fused closing, in any position.
     No
     count moves in either direction under this
@@ -2065,18 +2164,24 @@ def _tally_statement_head(line):
             continue
         boundaries.append((text[:match.start()], match.group(0)))
     boundaries.append((text, ""))
+    clause_words = []
+    clause_text = ""
     for run, terminator in boundaries:
         if numbered and terminator != ":":
             continue
         matches = list(re.finditer(r"[^\W_]+", run))
         words = [_fold_word(match.group(0)) for match in matches]
         if not words:
+            if terminator != ";":
+                clause_words = []
+                clause_text = ""
             continue
         if _tally_word(words[-1]):
             return True
         if _fused_trace_summary(words[-1]) and \
                 _before_closing_stands_as_head(
-                    words[:-1], run[:matches[-1].start()]):
+                    clause_words + words[:-1],
+                    clause_text + run[:matches[-1].start()]):
             return True
         if len(words) >= 2 and \
                 ((words[-2] == "trace" and
@@ -2084,7 +2189,8 @@ def _tally_statement_head(line):
                  (words[-1] == "trace" and
                   _summary_word(words[-2]))) and \
                 _before_closing_stands_as_head(
-                    words[:-2], run[:matches[-2].start()]):
+                    clause_words + words[:-2],
+                    clause_text + run[:matches[-2].start()]):
             return True
         if len(words) == 3 and words[-3] == "trace" and \
                 _summary_word(words[-1]) and \
@@ -2193,6 +2299,12 @@ def _tally_statement_head(line):
                 _inserted_words_governed_wide(words[-10:-3]) and \
                 words[-1].isdigit():
             return True
+        if terminator == ";":
+            clause_words = clause_words + words
+            clause_text = clause_text + run + "; "
+        else:
+            clause_words = []
+            clause_text = ""
     return False
 
 
