@@ -47,7 +47,9 @@ of R16-17-01 standing in its defect form untouched by
 this unit, its thirty seven breaker alone forms and its
 correctness further forms standing missing beside their
 counted siblings, with its held letter form standing
-governed; the forty four charged forms of R16-16-01
+governed, those held forms standing amended in place by
+fix pass 17 Unit 2 to their cured behaviour, as the
+amendment note at the close of this docstring records; the forty four charged forms of R16-16-01
 standing governed and the fifteen prose forms of
 R16-16-02 standing missing, as the round 17 breaker
 exhibit holds them; the mixed inserted runs and the prose
@@ -60,6 +62,22 @@ round 10 prose sentence record standing governed; the
 four folded marker shape records standing present but not
 derivable; the golden prose lines standing unflipped; and
 the read and absent feeder controls byte for byte.
+
+Amendment, fix pass 17 Unit 2: the held tests of
+R16-17-01 in this module, and those tests alone, stand
+amended in place under the same names, the same count
+and the same case identities, from the entering behaviour
+of that item to its cured behaviour under fix pass 17
+Unit 2: its thirty seven breaker alone forms and its
+correctness further forms standing governed beside their
+counted siblings in place of missing, its beside form
+naming Step 2 uncounted in place of Step 2 standing
+nowhere, and its gate ruling form standing governed in
+place of missing. Its held letter form test stands
+unamended, standing governed in both standings. Every
+defect test of R16-17-02, every bounding control, and
+every other test of this module stands unamended, byte
+for byte as Unit 1 left it.
 """
 from metrics_starter_collector.derivation_core import (
     _fold_word, _tally_statement_head)
@@ -334,10 +352,13 @@ class TestStep16Fix17Unit1(FixtureTestCase):
             self.assertTrue(_tally_statement_head(line), line)
 
     # ------------------------------------------------------
-    # Held controls: every form of R16-17-01 standing in
-    # its defect form untouched by this unit, beside its
-    # counted sibling, in the beside and gate ruling forms,
-    # and its held letter form standing governed
+    # Held controls: every form of R16-17-01, written for
+    # Unit 1 in its entering behaviour and amended in
+    # place by fix pass 17 Unit 2 to its cured behaviour,
+    # beside its counted sibling, in the beside and gate
+    # ruling forms, and its held letter form standing
+    # governed in both standings, as the amendment note
+    # in the module docstring records
     # ------------------------------------------------------
 
     def test_r16_17_01_held_breaker_forms_missing(self):
@@ -370,7 +391,7 @@ class TestStep16Fix17Unit1(FixtureTestCase):
                      "Board ta\u029fly", "Trace \u0283ummarise",
                      "Trace s\u028ammarise", "Trace summari\u0290e",
                      "Trace summarise\ua77a"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_17_01_held_correctness_forms_missing(self):
         for head in ("Archivetally", "Catalogtallies",
@@ -379,14 +400,14 @@ class TestStep16Fix17Unit1(FixtureTestCase):
                      "Trace summariserses", "Tracesummaryses",
                      "Boardtracesummariseds",
                      "Trace summaris\u0247d"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_17_01_held_beside_step2_nowhere(self):
-        self._beside_step2_nowhere(_bad("Archivestally"))
+        self._beside_step2_uncounted(_bad("Archivestally"))
 
     def test_r16_17_01_held_gate_ruling_missing(self):
-        self._assert_q4_missing(self._q4_alone(
-            _bad("Archivestally"), ruling=True))
+        report = self._q4_alone(_bad("Archivestally"), ruling=True)
+        self._assert_q4_governed(report, path=RULING_2)
 
     def test_r16_17_01_held_letter_t_hook_governed(self):
         self._candidate_governed(_bad("Board \u01acally"),
