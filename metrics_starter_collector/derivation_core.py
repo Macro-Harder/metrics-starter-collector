@@ -664,7 +664,24 @@ def _fold_word(word):
     Board taƚly folds to tally itself, and the letter đ,
     d with a stroke, to the letter d it stands in place
     of, the final letter of the summarised forms, so
-    Trace summariseđ folds to summarised itself. A word whose folded
+    Trace summariseđ folds to summarised itself. It
+    folds the further stroke letters in the same way, as
+    widened in fix pass 15 Unit 2: the letter ɏ, y with a
+    stroke, to the letter y it stands in place of, the
+    final letter of the tally word, so Board tallɏ folds
+    to tally itself; the letter ⱥ, a with a stroke, to
+    the letter a it stands in place of, a letter the
+    tally word itself carries, so Board tⱥlly folds to
+    tally itself; the letter ɍ, r with a stroke, to the
+    letter r it stands in place of, a letter the summary
+    word carries, so Trace summaɍise folds to summarise
+    itself; the letter ɨ, i with a stroke, to the letter
+    i it stands in place of, a letter the summary word
+    carries, so Trace summarɨse folds to summarise
+    itself; and the letter ð, eth, to the letter d it
+    stands in place of, the final letter of the
+    summarised forms, so Trace summariseð folds to
+    summarised itself. A word whose folded
     form differs from the tally word in a letter stands
     as a different word under every limb: Board tallí
     folds to talli, its accent standing on a final letter
@@ -674,7 +691,10 @@ def _fold_word(word):
     folded = "".join(char for char in folded
                      if unicodedata.category(char) != "Mn")
     return folded.replace("ł", "l").replace("ŧ", "t") \
-        .replace("ƚ", "l").replace("đ", "d")
+        .replace("ƚ", "l").replace("đ", "d") \
+        .replace("ɏ", "y").replace("ⱥ", "a") \
+        .replace("ɍ", "r").replace("ɨ", "i") \
+        .replace("ð", "d")
 
 
 _TALLY_WORD_FORMS = ("tally", "tallies", "tallied", "tallying")
@@ -684,9 +704,12 @@ _TOTALLY_FAMILY = ("totally", "accidentally", "digitally",
                    "septally")
 
 _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
-                            "green", "pass", "review", "step2")
+                            "green", "panel", "pass", "record",
+                            "review", "step2", "team")
 
-_TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys",)
+_TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed")
+
+_TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes")
 
 
 def _tally_word(word):
@@ -699,25 +722,48 @@ def _tally_word(word):
     where it ends with one of those same forms behind one
     of the governed fused prefixes, the prefixes the
     earlier cures govern, alpha, board, chair, gate2,
-    green, pass, review and step2, Boardtally, Gate2tally,
-    Reviewtally and Step2tally among the plain forms,
-    Passtally, Chairtally, Greentally and Alphatally
-    among the forms whose prefix ends in a letter of the
-    totally family, and Boardtallied, Boardtallies and
-    Boardtallying among the fused inflected forms. The
+    green, pass, review and step2, and, as widened in fix
+    pass 15 Unit 2, panel, record and team, the whole
+    words the genuine fused heads of that unit are fused
+    from, Boardtally, Gate2tally, Reviewtally and
+    Step2tally among the plain forms, Passtally,
+    Chairtally, Greentally and Alphatally among the forms
+    whose prefix ends in a letter of the totally family,
+    Boardtallied, Boardtallies and Boardtallying among
+    the fused inflected forms, and Paneltally,
+    Recordtally, Teamtally, Paneltallies, Recordtallied
+    and Teamtallying among the forms widened in that
+    unit; or, as widened in the same unit, where it ends
+    with one of those same forms with a governed fused
+    prefix standing immediately before the form in a
+    further position of the word, behind other letters
+    of the head, Gateboardtally, the governed prefix
+    board standing behind the word gate, Reviewboardtally
+    and Boardboardtally, the governed prefix board
+    standing behind itself, among them, and
+    Gaterecordtally among the forms widened in that unit
+    in its first subfamily, the governed prefix record
+    standing behind the word gate. The
     fused limb stands closed on those governed prefixes
-    and on no other prefix: a word ending with a tally
-    form behind any other prefix stands as no tally
-    word. The fused family is told from the adverb family
-    by the prefix itself, on the capture facts: a
+    standing immediately before the tally form, in the
+    opening position and in further positions alike, and
+    on no other block of letters in that position: a word
+    whose letters immediately before a tally form are no
+    governed prefix stands as no tally word. The fused
+    family is told from the adverb family by the prefix
+    itself, on the capture facts: a
     governed fused prefix stands as a whole word or step
     name the head is fused from, standing before the
-    tally form as a separate part of the fused word,
-    while an ordinary prose adverb of the totally family
-    shape carries the tally letters as the tal ending of
-    its stem standing before the ly suffix, its letters
-    standing before tally forming no governed prefix and
-    no whole part of the word, so such an adverb,
+    tally form as a separate part of the fused word, and
+    the letters standing before a tally form stand as a
+    governed fused head only where the block of letters
+    immediately before the form is exactly one governed
+    prefix, while an ordinary prose adverb of the
+    totally family shape carries the tally letters as the
+    tal ending of its stem standing before the ly suffix,
+    its letters standing before tally ending in no
+    governed prefix and forming no
+    whole part of the word, so such an adverb,
     brutally, capitally, vitally, fatally, prenatally,
     neonatally, mortally, frontally, dentally, distally,
     horizontally and coastally among them, stands as no
@@ -737,20 +783,37 @@ def _tally_word(word):
     the tal ending. A word
     beginning with tally in any other form, tallyho
     among them, stands as no tally word. The variant
-    plural spelling tallys, as widened in fix pass 14
-    Unit 2, stands as the tally word behind one of the
-    governed fused prefixes alone, Boardtallys among
-    them, standing in the constant
-    _TALLY_WORD_VARIANT_FUSED_FORMS and in no exact
-    form, so the spelling standing alone stands as no
-    tally word, and the widening stands inside the
-    closed governed prefix enumeration of fix pass 14
-    Unit 1 and widens that enumeration in no respect:
-    no prose adverb of the tal family takes a tally
-    statement head through this limb, because an adverb
-    of that family stands before no governed prefix.
+    spellings, as widened in fix pass 14 Unit 2 and in
+    fix pass 15 Unit 2, stand as follows. The spelling
+    tallys stands as the tally word behind one of the
+    governed fused prefixes, Boardtallys among them, and
+    the spellings tallyed and tallyes stand as the tally
+    word behind one of the governed fused prefixes in
+    the same way, Boardtallyed, Boardtallyes and
+    Chairtallyed among them, the three spellings standing
+    in the constant _TALLY_WORD_VARIANT_FUSED_FORMS. The
+    spellings tallys and tallyed stand as the tally word
+    standing alone as well, in the constant
+    _TALLY_WORD_VARIANT_FORMS, as widened in fix pass 15
+    Unit 2 on the counted pattern ground alone, against
+    the standalone exclusion the boundary stated before
+    that unit: the counted sibling of the Tallys head and
+    of the Tallyed head counts under the same head, so
+    each spelling standing alone stands as the tally word
+    in the restated boundary, while the spelling tallyes
+    standing alone stands as no tally word, no driven
+    form of that unit carrying it in the alone position.
+    The variant widenings stand inside the closed
+    governed prefix enumeration in their fused forms, as
+    widened in fix pass 15 Unit 2 in the same terms as
+    the plain forms above: no prose adverb of the tal
+    family takes a tally statement head through any of
+    these limbs, because an adverb of that family stands
+    before no governed prefix and is no variant spelling.
     """
     if word in _TALLY_WORD_FORMS:
+        return True
+    if word in _TALLY_WORD_VARIANT_FORMS:
         return True
     if word in _TOTALLY_FAMILY:
         return False
@@ -759,6 +822,9 @@ def _tally_word(word):
     return any(word == prefix + form
                for prefix in _GOVERNED_FUSED_PREFIXES
                for form in _TALLY_WORD_FORMS) or \
+        any(word.endswith(prefix + form)
+            for prefix in _GOVERNED_FUSED_PREFIXES
+            for form in _TALLY_WORD_FORMS) or \
         any(word == prefix + form
             for prefix in _GOVERNED_FUSED_PREFIXES
             for form in _TALLY_WORD_VARIANT_FUSED_FORMS)
@@ -768,7 +834,9 @@ _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summarised", "summarises", "summarize",
                        "summarizes", "summarized", "summarising",
                        "summarizing", "summarisation",
-                       "summarization")
+                       "summarization", "summarisations",
+                       "summarizations", "summariser",
+                       "summarizer")
 
 
 def _summary_word(word):
@@ -784,7 +852,11 @@ def _summary_word(word):
     and the ation form of the British family, or
     summarizing or summarization in its American
     spellings, the ing form and the ation form of the
-    American family.
+    American family; or, as widened in fix pass 15
+    Unit 2, summarisations or summarizations, the plural
+    forms of the ation nouns of the two spelling
+    families, or summariser or summarizer, the agent noun
+    forms of the two spelling families.
     """
     return word in _SUMMARY_WORD_FORMS
 
@@ -815,16 +887,38 @@ def _fused_trace_summary(word):
     limb of this test, so the fused closings built on
     the ing and ation forms, Boardtracesummarising and
     Boardtracesummarization among them, stand in the
-    reach in the same way.
+    reach in the same way, and the fused closings built
+    on the further forms widened in fix pass 15 Unit 2,
+    Boardtracesummarisations and Boardtracesummariser
+    among them, stand in the reach in the same way. The
+    word stands as the fused closing as well, as widened
+    in fix pass 15 Unit 2, where it ends with the trace
+    word fused with one governed inserted word fused in
+    turn with a summary word in any of its enumerated
+    forms, traceboardsummary and Boardtracegatesummary
+    among them, or with a summary word in any of its
+    enumerated forms fused with one governed inserted
+    word fused in turn with the trace word,
+    summaryboardtrace among them, in each case standing
+    whole or fused behind a prefix, the word fused
+    between the closing words standing as a governed
+    inserted word, board, gate, review, annex or panel,
+    in the same terms as the inserted closings of the
+    tally statement head.
     """
     return any(word.endswith("trace" + form) or
                word.endswith("traces" + form) or
                word.endswith(form + "trace") or
                word.endswith(form + "traces")
-               for form in _SUMMARY_WORD_FORMS)
+               for form in _SUMMARY_WORD_FORMS) or \
+        any(word.endswith("trace" + mid + form) or
+            word.endswith(form + mid + "trace")
+            for mid in _GOVERNED_INSERTED_WORDS
+            for form in _SUMMARY_WORD_FORMS)
 
 
-_GOVERNED_INSERTED_WORDS = ("board", "gate", "review", "annex")
+_GOVERNED_INSERTED_WORDS = ("board", "gate", "review", "annex",
+                            "panel")
 
 
 def _governed_inserted_word(word):
@@ -832,12 +926,14 @@ def _governed_inserted_word(word):
 
     A word stands as a governed inserted word where it is
     one of the governed inserted words, board, gate,
-    review and annex, standing in the constant
+    review and annex, and, as widened in fix pass 15
+    Unit 2, panel, standing in the constant
     _GOVERNED_INSERTED_WORDS. Each of those words stands
     as a whole head word naming a part of the record the
     genuine inserted heads state: the board the head is
     taken over, the gate the head stands at, the review
-    the head records, or the annex the head carries, and
+    the head records, the annex the head carries, or the
+    panel the head is laid before, and
     each stands between the closing words of a genuine
     head as a separate part of that head. An ordinary
     prose word stands as no governed inserted word: a
@@ -920,14 +1016,23 @@ def _tally_statement_head(line):
     order and in the plural reversed form, the plural
     trace word fused with a summary word in the forward
     order standing among them as widened in fix pass 14
-    Unit 2, or one, two or three
+    Unit 2, or the closing words standing fused with one
+    governed inserted word fused between them, in either
+    order, as widened in fix pass 15 Unit 2, or one, two
+    or three
     further words standing between the trace word and
-    the summary word, or one, two or three further words standing
+    the summary word, or four or five further words
+    standing between them in the same order as widened
+    in fix pass 15 Unit 2, or one, two or three further words standing
     between the summary word and the trace word in the
-    reversed order, in each case only where every word
+    reversed order, or four further words standing
+    between them in the reversed order as widened in fix
+    pass 15 Unit 2, in each case only where every word
     standing between the closing words stands as a
-    governed inserted word, board, gate, review or
-    annex, as narrowed in fix pass 15 Unit 1, so an
+    governed inserted word, board, gate, review, annex
+    or panel, as narrowed in fix pass 15 Unit 1 and as
+    widened in its governed words in fix pass 15 Unit 2,
+    so an
     ordinary prose run whose inserted words stand as no
     governed head words, Summary of the board trace,
     Summary of the trace and Trace of the board summary
@@ -938,7 +1043,9 @@ def _tally_statement_head(line):
     test, or one further word stands between the trace
     word and the for step words in that same form, or
     two further words stand between them in that same
-    form as widened in fix pass 14 Unit 2, in each
+    form as widened in fix pass 14 Unit 2, or three or
+    four further words stand between them in that same
+    form as widened in fix pass 15 Unit 2, in each
     inserted case only where every word standing
     between the trace word and the for step words stands
     as a governed inserted word in the same terms, a space standing before that colon
@@ -971,8 +1078,9 @@ def _tally_statement_head(line):
     family exclusion in fix pass 13 Unit 1, as
     widened in fix pass 13 Unit 2, as narrowed in
     its tally word fused limb in fix pass 14 Unit 1,
-    as widened in fix pass 14 Unit 2, and as narrowed
-    in its inserted closings in fix pass 15 Unit 1: a line is
+    as widened in fix pass 14 Unit 2, as narrowed
+    in its inserted closings in fix pass 15 Unit 1, and
+    as widened in fix pass 15 Unit 2: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -991,7 +1099,16 @@ def _tally_statement_head(line):
     the letter l it stands in place of, and the letter
     đ, d with a stroke, to the letter d it stands in
     place of, the final letter of the summarised forms,
-    so a
+    and folding the further stroke letters as widened in
+    fix pass 15 Unit 2, the letter ɏ, y with a stroke,
+    to the letter y it stands in place of, the final
+    letter of the tally word, the letter ⱥ, a with a
+    stroke, to the letter a it stands in place of, the
+    letter ɍ, r with a stroke, to the letter r it stands
+    in place of, the letter ɨ, i with a stroke, to the
+    letter i it stands in place of, and the letter ð,
+    eth, to the letter d it stands in place of, the
+    final letter of the summarised forms, so a
     word carrying any of those stroke letters in place of one
     of its own letters folds to the word itself, while
     a word whose
@@ -1018,34 +1135,55 @@ def _tally_statement_head(line):
     one of those same forms behind one of the governed
     fused prefixes, the prefixes the earlier cures
     govern, alpha, board, chair, gate2, green, pass,
-    review and step2, Boardtally,
+    review and step2, and panel, record and team as
+    widened in fix pass 15 Unit 2, Boardtally,
     Gate2tally, Reviewtally and Step2tally among the
     plain forms, Passtally, Chairtally, Greentally and
     Alphatally among the forms whose prefix ends in a
-    letter of the totally family, and Boardtallied,
+    letter of the totally family, Boardtallied,
     Boardtallies and Boardtallying among the fused
-    inflected forms, the fused limb standing closed on
-    those governed prefixes and on no other prefix, so
-    a word ending with a tally form behind any other
-    prefix stands as no tally word, the fused family
+    inflected forms, and Paneltally, Recordtally and
+    Teamtally among the plain forms widened in fix pass
+    15 Unit 2, or it ends with one of those same forms
+    with a governed fused prefix standing immediately
+    before the form in a further position of the word,
+    behind other letters of the head, as widened in the
+    same unit, Gateboardtally, Reviewboardtally,
+    Boardboardtally and Gaterecordtally
+    among them, the fused limb standing closed on a
+    governed prefix standing immediately before the tally
+    form, in the opening position and in further
+    positions alike, and on no other block of letters in
+    that position, so
+    a word whose letters immediately before a tally form
+    are no governed prefix stands as no tally word, the
+    fused family
     standing told from the adverb family by the prefix
     itself, a governed fused prefix standing as a whole
-    word or step name the head is fused from, while an
+    word or step name the head is fused from, and the
+    letters standing before a tally form standing as a
+    governed fused head only where the block of letters
+    immediately before the form is exactly one governed
+    prefix, while an
     ordinary prose adverb of the totally family shape
     carries the tally letters as the tal ending of its
     stem standing before the ly suffix, its letters
-    standing before tally forming no governed prefix,
+    standing before tally ending in no governed prefix,
     brutally, capitally, vitally, fatally, prenatally,
     neonatally, mortally, frontally, dentally, distally,
     horizontally and coastally among them, and stands
     as no tally word whether or not its own word stands
-    named in the family below, the variant plural
-    spelling tallys standing as the tally word behind
-    one of those governed fused prefixes alone as
-    widened in fix pass 14 Unit 2, Boardtallys among
-    them, and standing as no tally word on its own, the
-    widening standing inside the closed governed prefix
-    enumeration and widening it in no respect, and the word is not an
+    named in the family below, the variant spellings
+    tallys, tallyed and tallyes standing as the tally
+    word behind one of those governed fused prefixes as
+    widened in fix pass 14 Unit 2 and in fix pass 15
+    Unit 2, Boardtallys, Boardtallyed, Boardtallyes and
+    Chairtallyed among them, and the spellings tallys
+    and tallyed standing as the tally word on their own
+    as widened in fix pass 15 Unit 2 on the counted
+    pattern ground alone, against the standalone
+    exclusion stated before that unit, the spelling
+    tallyes standing as no tally word on its own, and the word is not an
     adverb of the totally family and does not end with
     such an adverb, an adverb of that
     family carrying the tally letters as the tal ending
@@ -1070,7 +1208,10 @@ def _tally_statement_head(line):
     spellings, or summarizing or summarization in its
     American spellings, the ing and ation forms of both
     families standing in the enumeration as widened in
-    fix pass 14 Unit 2,
+    fix pass 14 Unit 2, or summarisations or
+    summarizations, the plural forms of the ation nouns,
+    or summariser or summarizer, the agent noun forms,
+    in the enumeration as widened in fix pass 15 Unit 2,
     or
     the last word of the run ends with the trace word
     fused with a summary word standing as above, or
@@ -1090,7 +1231,17 @@ def _tally_statement_head(line):
     plural form, standing among them as widened in fix
     pass 14 Unit 2, and the fused closings built on the
     ing and ation forms standing among them in the same
-    way, or the last three words of
+    way, and the fused closings built on the plural
+    ation forms and the agent noun forms standing among
+    them in the same way as widened in fix pass 15
+    Unit 2, or the last word of the run ends with the
+    trace word fused with one governed inserted word
+    fused in turn with a summary word standing as above,
+    or with a summary word standing as above fused with
+    one governed inserted word fused in turn with the
+    trace word, traceboardsummary, Boardtracegatesummary
+    and summaryboardtrace among them, as widened in fix
+    pass 15 Unit 2, or the last three words of
     the run are trace, one further word, and a summary
     word standing as above, in that order, or the last
     four words of the run are trace, two further words,
@@ -1098,13 +1249,18 @@ def _tally_statement_head(line):
     or the last five words of the run are trace, three
     further words, and a summary word standing as
     above, in that order, as widened in fix pass 14
-    Unit 2, in each inserted case only where every
+    Unit 2, or the last six words of the run are trace,
+    four further words, and a summary word standing as
+    above, in that order, or the last seven words of the
+    run are trace, five further words, and a summary
+    word standing as above, in that order, as widened in
+    fix pass 15 Unit 2, in each inserted case only where every
     further word standing between the trace word and
     the summary word stands as a governed inserted
-    word, board, gate, review or annex, the governed
+    word, board, gate, review, annex or panel, the governed
     inserted words standing as whole head words naming
     a part of the record, the board, the gate, the
-    review or the annex, while an ordinary prose word
+    review, the annex or the panel, while an ordinary prose word
     standing between the closing words, of and the
     among them, stands as no governed inserted word
     and takes the closing out of the reach, as
@@ -1118,7 +1274,10 @@ def _tally_statement_head(line):
     are a summary word standing as above, three further
     words, and trace, in the reversed order, the two
     and three word reversed forms standing widened in
-    fix pass 14 Unit 2, in each inserted case under
+    fix pass 14 Unit 2, or the last six words of the run
+    are a summary word standing as above, four further
+    words, and trace, in the reversed order, as widened
+    in fix pass 15 Unit 2, in each inserted case under
     the same governed inserted word condition stated
     above; or, only
     where the run closes on
@@ -1130,7 +1289,13 @@ def _tally_statement_head(line):
     word, for, step and a step number, in that same
     form, or the last six words of the run are trace,
     two further words, for, step and a step number, in
-    that same form as widened in fix pass 14 Unit 2, in
+    that same form as widened in fix pass 14 Unit 2, or
+    the last seven words of the run are trace, three
+    further words, for, step and a step number, in that
+    same form, or the last eight words of the run are
+    trace, four further words, for, step and a step
+    number, in that same form, as widened in fix pass 15
+    Unit 2, in
     each inserted case only where every further word
     standing between the trace word and the for step
     words stands as a governed inserted word in the
@@ -1208,6 +1373,14 @@ def _tally_statement_head(line):
                 _summary_word(words[-1]) and \
                 _inserted_words_governed(words[-4:-1]):
             return True
+        if len(words) >= 6 and words[-6] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed(words[-5:-1]):
+            return True
+        if len(words) >= 7 and words[-7] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed(words[-6:-1]):
+            return True
         if len(words) >= 3 and _summary_word(words[-3]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-2:-1]):
@@ -1219,6 +1392,10 @@ def _tally_statement_head(line):
         if len(words) >= 5 and _summary_word(words[-5]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-4:-1]):
+            return True
+        if len(words) >= 6 and _summary_word(words[-6]) and \
+                words[-1] == "trace" and \
+                _inserted_words_governed(words[-5:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -1238,6 +1415,20 @@ def _tally_statement_head(line):
                 (words[-6] == "trace" or
                  _tally_word(words[-6])) and \
                 _inserted_words_governed(words[-5:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) >= 7 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-7] == "trace" or
+                 _tally_word(words[-7])) and \
+                _inserted_words_governed(words[-6:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) >= 8 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-8] == "trace" or
+                 _tally_word(words[-8])) and \
+                _inserted_words_governed(words[-7:-3]) and \
                 words[-1].isdigit():
             return True
     return False

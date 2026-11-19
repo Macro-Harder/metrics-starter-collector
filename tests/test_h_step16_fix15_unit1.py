@@ -40,10 +40,14 @@ standing governed at every count the boundary admits
 today, and no count widens.
 
 Held controls stand pinned beside the defect forms, in
-full: the thirty seven alone forms of R16-15-01 standing
-missing exactly as they enter, this unit curing none of
-them, the inserted counts past the widened reach and the
-for step counts past two inserted words among them;
+full: the thirty seven alone forms of R16-15-01,
+written for this unit in their entering behaviour
+standing missing, this unit curing none of them, and
+amended in place by fix pass 15 Unit 2 to their cured
+behaviour, as the amendment note at the close of this
+docstring records, the inserted counts past the widened
+reach and the for step counts past two inserted words
+among them;
 every governed inserted closing standing governed, the
 closings whose inserted words are governed head words,
 at every count the boundary admits today, forward,
@@ -52,14 +56,32 @@ R16-14-01 forms Trace board gate summary, Summary board
 trace and Trace board gate annex summary; the governed
 fused forms standing governed; the exact word sets
 standing as fix pass 14 left them, including tallys
-behind a governed fused prefix and tallys alone as no
-tally word; the seven enumerated family adverbs and
+behind a governed fused prefix, and tallys standing
+alone in the position the amendment note records; the seven enumerated family adverbs and
 tallyho standing missing; the fused family forms
 subtotally and semirectally standing missing; the Board
 tall\u00ed boundary control standing missing; the folded
 round 10 prose sentence record standing governed; and
 the four folded marker shape records standing present
 but not derivable.
+
+Amendment, fix pass 15 Unit 2: the forty tests of this
+module that held R16-15-01 in its entering behaviour
+stand amended in place under the same names, the same
+count and the same case identities, to assert the cured
+behaviour of that item: the thirty seven alone forms
+standing governed beside their counted siblings in
+place of missing, the Trace summarisations beside form
+naming Step 2 uncounted in place of Step 2 standing
+nowhere, the Paneltally gate ruling form standing
+governed in place of missing, and the code level
+variant test standing the spelling tallys as the tally
+word standing alone in place of no tally word, that
+spelling standing as the tally word alone under the
+Unit 2 cure. The five defect tests of R16-15-02, its
+bounding held control, the Board tall\u00ed boundary
+control and every other test of this module stand
+unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _fold_word, _summary_word, _tally_word)
@@ -168,171 +190,181 @@ class TestStep16Fix15Unit1(FixtureTestCase):
 
     # ------------------------------------------------------
     # Held controls: the thirty seven alone forms of
-    # R16-15-01 standing missing exactly as they enter,
-    # beside their counted siblings, this unit curing
-    # none of them
+    # R16-15-01, written for Unit 1 in their entering
+    # behaviour standing missing beside their counted
+    # siblings, and amended in place by fix pass 15
+    # Unit 2 to their cured behaviour, as the amendment
+    # note in the module docstring records
     # ------------------------------------------------------
 
     def test_r16_15_01_held_paneltally_missing(self):
-        self._candidate_missing(_bad("Paneltally"),
+        self._candidate_governed(_bad("Paneltally"),
                                 _read("Paneltally"))
 
     def test_r16_15_01_held_recordtally_missing(self):
-        self._candidate_missing(_bad("Recordtally"),
+        self._candidate_governed(_bad("Recordtally"),
                                 _read("Recordtally"))
 
     def test_r16_15_01_held_teamtally_missing(self):
-        self._candidate_missing(_bad("Teamtally"),
+        self._candidate_governed(_bad("Teamtally"),
                                 _read("Teamtally"))
 
     def test_r16_15_01_held_paneltallies_missing(self):
-        self._candidate_missing(_bad("Paneltallies"),
+        self._candidate_governed(_bad("Paneltallies"),
                                 _read("Paneltallies"))
 
     def test_r16_15_01_held_recordtallied_missing(self):
-        self._candidate_missing(_bad("Recordtallied"),
+        self._candidate_governed(_bad("Recordtallied"),
                                 _read("Recordtallied"))
 
     def test_r16_15_01_held_teamtallying_missing(self):
-        self._candidate_missing(_bad("Teamtallying"),
+        self._candidate_governed(_bad("Teamtallying"),
                                 _read("Teamtallying"))
 
     def test_r16_15_01_held_gaterecordtally_missing(self):
-        self._candidate_missing(_bad("Gaterecordtally"),
+        self._candidate_governed(_bad("Gaterecordtally"),
                                 _read("Gaterecordtally"))
 
     def test_r16_15_01_held_gateboardtally_missing(self):
-        self._candidate_missing(_bad("Gateboardtally"),
+        self._candidate_governed(_bad("Gateboardtally"),
                                 _read("Gateboardtally"))
 
     def test_r16_15_01_held_reviewboardtally_missing(self):
-        self._candidate_missing(_bad("Reviewboardtally"),
+        self._candidate_governed(_bad("Reviewboardtally"),
                                 _read("Reviewboardtally"))
 
     def test_r16_15_01_held_boardboardtally_missing(self):
-        self._candidate_missing(_bad("Boardboardtally"),
+        self._candidate_governed(_bad("Boardboardtally"),
                                 _read("Boardboardtally"))
 
     def test_r16_15_01_held_boardtallyed_missing(self):
-        self._candidate_missing(_bad("Boardtallyed"),
+        self._candidate_governed(_bad("Boardtallyed"),
                                 _read("Boardtallyed"))
 
     def test_r16_15_01_held_boardtallyes_missing(self):
-        self._candidate_missing(_bad("Boardtallyes"),
+        self._candidate_governed(_bad("Boardtallyes"),
                                 _read("Boardtallyes"))
 
     def test_r16_15_01_held_chairtallyed_missing(self):
-        self._candidate_missing(_bad("Chairtallyed"),
+        self._candidate_governed(_bad("Chairtallyed"),
                                 _read("Chairtallyed"))
 
     def test_r16_15_01_held_tallys_alone_missing(self):
-        self._candidate_missing(_bad("Tallys"), _read("Tallys"))
+        self._candidate_governed(_bad("Tallys"), _read("Tallys"))
 
     def test_r16_15_01_held_tallyed_alone_missing(self):
-        self._candidate_missing(_bad("Tallyed"), _read("Tallyed"))
+        self._candidate_governed(_bad("Tallyed"), _read("Tallyed"))
 
     def test_r16_15_01_held_summarisations_missing(self):
-        self._candidate_missing(_bad("Trace summarisations"),
+        self._candidate_governed(_bad("Trace summarisations"),
                                 _read("Trace summarisations"))
 
     def test_r16_15_01_held_summarizations_missing(self):
-        self._candidate_missing(_bad("Trace summarizations"),
+        self._candidate_governed(_bad("Trace summarizations"),
                                 _read("Trace summarizations"))
 
     def test_r16_15_01_held_summariser_missing(self):
-        self._candidate_missing(_bad("Trace summariser"),
+        self._candidate_governed(_bad("Trace summariser"),
                                 _read("Trace summariser"))
 
     def test_r16_15_01_held_summarizer_missing(self):
-        self._candidate_missing(_bad("Trace summarizer"),
+        self._candidate_governed(_bad("Trace summarizer"),
                                 _read("Trace summarizer"))
 
     def test_r16_15_01_held_fused_summarisations_missing(self):
-        self._candidate_missing(_bad("Boardtracesummarisations"),
+        self._candidate_governed(_bad("Boardtracesummarisations"),
                                 _read("Boardtracesummarisations"))
 
     def test_r16_15_01_held_fused_summariser_missing(self):
-        self._candidate_missing(_bad("Boardtracesummariser"),
+        self._candidate_governed(_bad("Boardtracesummariser"),
                                 _read("Boardtracesummariser"))
 
     def test_r16_15_01_held_traceboardsummary_missing(self):
-        self._candidate_missing(_bad("Traceboardsummary"),
+        self._candidate_governed(_bad("Traceboardsummary"),
                                 _read("Traceboardsummary"))
 
     def test_r16_15_01_held_boardtracegatesummary_missing(self):
-        self._candidate_missing(_bad("Boardtracegatesummary"),
+        self._candidate_governed(_bad("Boardtracegatesummary"),
                                 _read("Boardtracegatesummary"))
 
     def test_r16_15_01_held_summaryboardtrace_missing(self):
-        self._candidate_missing(_bad("Summaryboardtrace"),
+        self._candidate_governed(_bad("Summaryboardtrace"),
                                 _read("Summaryboardtrace"))
 
     def test_r16_15_01_held_inserted_four_forward_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review annex summary"),
             _read("Trace board gate review annex summary"))
 
     def test_r16_15_01_held_inserted_five_forward_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review annex panel summary"),
             _read("Trace board gate review annex panel summary"))
 
     def test_r16_15_01_held_inserted_four_reversed_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Summary board gate review annex trace"),
             _read("Summary board gate review annex trace"))
 
     def test_r16_15_01_held_inserted_annex_review_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate annex review summary"),
             _read("Trace board gate annex review summary"))
 
     def test_r16_15_01_held_inserted_rev_annex_review_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Summary board gate annex review trace"),
             _read("Summary board gate annex review trace"))
 
     def test_r16_15_01_held_for_step_three_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review for step 2"),
             _read("Trace board gate review for step 2"))
 
     def test_r16_15_01_held_for_step_four_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review annex for step 2"),
             _read("Trace board gate review annex for step 2"))
 
     def test_r16_15_01_held_for_step_annex_three_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate annex for step 2"),
             _read("Trace board gate annex for step 2"))
 
     def test_r16_15_01_held_stroke_y_tally_missing(self):
-        self._candidate_missing(_bad("Board tall\u024f"),
+        self._candidate_governed(_bad("Board tall\u024f"),
                                 _read("Board tall\u024f"))
 
     def test_r16_15_01_held_stroke_a_tally_missing(self):
-        self._candidate_missing(_bad("Board t\u2c65lly"),
+        self._candidate_governed(_bad("Board t\u2c65lly"),
                                 _read("Board t\u2c65lly"))
 
     def test_r16_15_01_held_stroke_r_summary_missing(self):
-        self._candidate_missing(_bad("Trace summa\u024dise"),
+        self._candidate_governed(_bad("Trace summa\u024dise"),
                                 _read("Trace summa\u024dise"))
 
     def test_r16_15_01_held_stroke_i_summary_missing(self):
-        self._candidate_missing(_bad("Trace summar\u0268se"),
+        self._candidate_governed(_bad("Trace summar\u0268se"),
                                 _read("Trace summar\u0268se"))
 
     def test_r16_15_01_held_stroke_eth_summary_missing(self):
-        self._candidate_missing(_bad("Trace summarise\u00f0"),
+        self._candidate_governed(_bad("Trace summarise\u00f0"),
                                 _read("Trace summarise\u00f0"))
 
     def test_r16_15_01_held_beside_step2_nowhere(self):
-        self._beside_step2_nowhere(_bad("Trace summarisations"))
+        files = _clean_files()
+        files[GATE_2] = gate_record(
+            2, extra=_bad("Trace summarisations"))
+        files[GATE_3] = gate_record(3, extra=TRACE_3)
+        q4 = row_block(self._run(files), "Q-4")
+        assert_verdict(self, q4, "present", "Q-4")
+        self.assertIn("totals 4 LANDED", q4)
+        self.assertIn("Step 2", q4)
+        self.assertIn("uncounted", q4)
 
     def test_r16_15_01_held_gate_ruling_missing(self):
         report = self._q4_alone(_bad("Paneltally"), ruling=True)
-        self._assert_q4_missing(report)
+        self._assert_q4_governed(report, path=RULING_2)
 
     # ------------------------------------------------------
     # Held controls: every governed inserted closing
@@ -459,7 +491,7 @@ class TestStep16Fix15Unit1(FixtureTestCase):
 
     def test_code_level_tallys_variant_governed_prefix_only(self):
         self.assertTrue(_tally_word(_fold_word("boardtallys")))
-        self.assertFalse(_tally_word(_fold_word("tallys")))
+        self.assertTrue(_tally_word(_fold_word("tallys")))
 
     def test_held_prose_totally_missing(self):
         self._assert_q4_missing(self._q4_alone(

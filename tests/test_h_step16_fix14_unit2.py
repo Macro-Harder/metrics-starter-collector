@@ -70,6 +70,16 @@ four folded marker shape records standing present but
 not derivable; the golden prose lines standing
 unflipped; the settled prose position; and the run
 closure limb.
+
+Amendment, fix pass 15 Unit 2: the code level variant
+test of this module stands amended in place under the
+same name, the same count and the same case identity,
+standing the spelling tallys as the tally word standing
+alone in place of no tally word, that spelling standing
+as the tally word alone under the fix pass 15 Unit 2
+cure of R16-15-01, against the standalone exclusion this
+module recorded. Every other test of this module stands
+unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _fold_word, _summary_word, _tally_word)
@@ -355,7 +365,7 @@ class TestStep16Fix14Unit2(FixtureTestCase):
 
     def test_r16_14_code_level_tallys_variant_governed_prefix_only(self):
         self.assertTrue(_tally_word(_fold_word("boardtallys")))
-        self.assertFalse(_tally_word(_fold_word("tallys")))
+        self.assertTrue(_tally_word(_fold_word("tallys")))
 
     # ------------------------------------------------------
     # Held controls: the enumerated family, tallyho and
