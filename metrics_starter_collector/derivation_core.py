@@ -675,6 +675,9 @@ _TOTALLY_FAMILY = ("totally", "accidentally", "digitally",
                    "incidentally", "mentally", "rectally",
                    "septally")
 
+_GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
+                            "green", "pass", "review", "step2")
+
 
 def _tally_word(word):
     """Whether a folded word stands as the tally word.
@@ -683,14 +686,35 @@ def _tally_word(word):
     the enumerated forms of the tally word itself: tally,
     tallies, tallied, the past tense of the tally word,
     or tallying, the tally word with the ing suffix; or
-    where it ends with one of those same forms behind a
-    fused prefix, in whatever letters the prefix ends,
-    Boardtally, Gate2tally, Reviewtally and Step2tally
-    among the plain forms, Passtally, Chairtally,
-    Greentally and Alphatally among the forms whose
-    prefix ends in a letter of the totally family, and
-    Boardtallied, Boardtallies and Boardtallying among
-    the fused inflected forms. A word stands as no tally
+    where it ends with one of those same forms behind one
+    of the governed fused prefixes, the prefixes the
+    earlier cures govern, alpha, board, chair, gate2,
+    green, pass, review and step2, Boardtally, Gate2tally,
+    Reviewtally and Step2tally among the plain forms,
+    Passtally, Chairtally, Greentally and Alphatally
+    among the forms whose prefix ends in a letter of the
+    totally family, and Boardtallied, Boardtallies and
+    Boardtallying among the fused inflected forms. The
+    fused limb stands closed on those governed prefixes
+    and on no other prefix: a word ending with a tally
+    form behind any other prefix stands as no tally
+    word. The fused family is told from the adverb family
+    by the prefix itself, on the capture facts: a
+    governed fused prefix stands as a whole word or step
+    name the head is fused from, standing before the
+    tally form as a separate part of the fused word,
+    while an ordinary prose adverb of the totally family
+    shape carries the tally letters as the tal ending of
+    its stem standing before the ly suffix, its letters
+    standing before tally forming no governed prefix and
+    no whole part of the word, so such an adverb,
+    brutally, capitally, vitally, fatally, prenatally,
+    neonatally, mortally, frontally, dentally, distally,
+    horizontally and coastally among them, stands as no
+    tally word in any limb, whether or not its own word
+    stands named in the family below, and the family
+    stands closed by the prefix test itself and not by a
+    longer list of its words. A word stands as no tally
     word where it is an adverb of the totally family, or
     ends with such an adverb: an adverb of that family
     carries the tally letters as the tal ending of its
@@ -700,10 +724,7 @@ def _tally_word(word):
     rectally and septally, the rectally and septally
     forms standing where the family letter of the word
     stands inside its stem, rec and sep standing before
-    the tal ending, and by no letter test on the letters
-    standing before tally, a fused prefix ending in the
-    same letters standing admitted as the forms above
-    state. A word
+    the tal ending. A word
     beginning with tally in any other form, tallyho
     among them, stands as no tally word.
     """
@@ -713,7 +734,8 @@ def _tally_word(word):
         return False
     if any(word.endswith(adverb) for adverb in _TOTALLY_FAMILY):
         return False
-    return any(word.endswith(form) and len(word) > len(form)
+    return any(word == prefix + form
+               for prefix in _GOVERNED_FUSED_PREFIXES
                for form in _TALLY_WORD_FORMS)
 
 
@@ -843,8 +865,9 @@ def _tally_statement_head(line):
     Exact boundary of the cure, as extended in fix pass
     11, as narrowed in fix pass 12 Unit 1, as widened
     in fix pass 12 Unit 2, as widened in its tally
-    family exclusion in fix pass 13 Unit 1, and as
-    widened in fix pass 13 Unit 2: a line is
+    family exclusion in fix pass 13 Unit 1, as
+    widened in fix pass 13 Unit 2, and as narrowed in
+    its tally word fused limb in fix pass 14 Unit 1: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -881,14 +904,31 @@ def _tally_statement_head(line):
     tally word itself, tally or tallies, or tallied,
     the past tense of the tally word, or tallying,
     the tally word with the ing suffix, or it ends with
-    one of those same forms behind a fused prefix, in
-    whatever letters the prefix ends, Boardtally,
+    one of those same forms behind one of the governed
+    fused prefixes, the prefixes the earlier cures
+    govern, alpha, board, chair, gate2, green, pass,
+    review and step2, Boardtally,
     Gate2tally, Reviewtally and Step2tally among the
     plain forms, Passtally, Chairtally, Greentally and
     Alphatally among the forms whose prefix ends in a
     letter of the totally family, and Boardtallied,
     Boardtallies and Boardtallying among the fused
-    inflected forms, and the word is not an
+    inflected forms, the fused limb standing closed on
+    those governed prefixes and on no other prefix, so
+    a word ending with a tally form behind any other
+    prefix stands as no tally word, the fused family
+    standing told from the adverb family by the prefix
+    itself, a governed fused prefix standing as a whole
+    word or step name the head is fused from, while an
+    ordinary prose adverb of the totally family shape
+    carries the tally letters as the tal ending of its
+    stem standing before the ly suffix, its letters
+    standing before tally forming no governed prefix,
+    brutally, capitally, vitally, fatally, prenatally,
+    neonatally, mortally, frontally, dentally, distally,
+    horizontally and coastally among them, and stands
+    as no tally word whether or not its own word stands
+    named in the family below, and the word is not an
     adverb of the totally family and does not end with
     such an adverb, an adverb of that
     family carrying the tally letters as the tal ending
@@ -899,10 +939,7 @@ def _tally_statement_head(line):
     septally, the rectally and septally forms standing
     where the family letter of the word stands inside
     its stem, rec and sep standing before the tal
-    ending, and by no letter test on the letters
-    standing before tally, a fused prefix ending in
-    the same letters standing admitted as the forms
-    above state, a word
+    ending, a word
     beginning with tally in any other form, tallyho
     among them, standing as no tally word;
     or the last two words
