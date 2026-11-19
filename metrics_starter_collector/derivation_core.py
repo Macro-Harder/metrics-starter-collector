@@ -657,7 +657,14 @@ def _fold_word(word):
     letter t it stands in place of, the first letter of
     the tally word, so a word carrying that letter in
     place of its first letter folds to the word itself
-    as well. A word whose folded
+    as well. It folds the further stroke letters in the
+    same way, as widened in fix pass 14 Unit 2: the
+    letter ƚ, l with a bar, to the letter l it stands in
+    place of, a letter the tally word itself carries, so
+    Board taƚly folds to tally itself, and the letter đ,
+    d with a stroke, to the letter d it stands in place
+    of, the final letter of the summarised forms, so
+    Trace summariseđ folds to summarised itself. A word whose folded
     form differs from the tally word in a letter stands
     as a different word under every limb: Board tallí
     folds to talli, its accent standing on a final letter
@@ -666,7 +673,8 @@ def _fold_word(word):
     folded = unicodedata.normalize("NFD", word.lower())
     folded = "".join(char for char in folded
                      if unicodedata.category(char) != "Mn")
-    return folded.replace("ł", "l").replace("ŧ", "t")
+    return folded.replace("ł", "l").replace("ŧ", "t") \
+        .replace("ƚ", "l").replace("đ", "d")
 
 
 _TALLY_WORD_FORMS = ("tally", "tallies", "tallied", "tallying")
@@ -677,6 +685,8 @@ _TOTALLY_FAMILY = ("totally", "accidentally", "digitally",
 
 _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
                             "green", "pass", "review", "step2")
+
+_TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys",)
 
 
 def _tally_word(word):
@@ -726,7 +736,19 @@ def _tally_word(word):
     stands inside its stem, rec and sep standing before
     the tal ending. A word
     beginning with tally in any other form, tallyho
-    among them, stands as no tally word.
+    among them, stands as no tally word. The variant
+    plural spelling tallys, as widened in fix pass 14
+    Unit 2, stands as the tally word behind one of the
+    governed fused prefixes alone, Boardtallys among
+    them, standing in the constant
+    _TALLY_WORD_VARIANT_FUSED_FORMS and in no exact
+    form, so the spelling standing alone stands as no
+    tally word, and the widening stands inside the
+    closed governed prefix enumeration of fix pass 14
+    Unit 1 and widens that enumeration in no respect:
+    no prose adverb of the tal family takes a tally
+    statement head through this limb, because an adverb
+    of that family stands before no governed prefix.
     """
     if word in _TALLY_WORD_FORMS:
         return True
@@ -736,12 +758,17 @@ def _tally_word(word):
         return False
     return any(word == prefix + form
                for prefix in _GOVERNED_FUSED_PREFIXES
-               for form in _TALLY_WORD_FORMS)
+               for form in _TALLY_WORD_FORMS) or \
+        any(word == prefix + form
+            for prefix in _GOVERNED_FUSED_PREFIXES
+            for form in _TALLY_WORD_VARIANT_FUSED_FORMS)
 
 
 _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summarised", "summarises", "summarize",
-                       "summarizes", "summarized")
+                       "summarizes", "summarized", "summarising",
+                       "summarizing", "summarisation",
+                       "summarization")
 
 
 def _summary_word(word):
@@ -751,7 +778,13 @@ def _summary_word(word):
     of the enumerated forms of the summary word itself:
     summary or summaries, or summarise, summarised or
     summarises in its British spellings, or summarize,
-    summarizes or summarized in its American spellings.
+    summarizes or summarized in its American spellings,
+    or, as widened in fix pass 14 Unit 2, summarising or
+    summarisation in its British spellings, the ing form
+    and the ation form of the British family, or
+    summarizing or summarization in its American
+    spellings, the ing form and the ation form of the
+    American family.
     """
     return word in _SUMMARY_WORD_FORMS
 
@@ -771,9 +804,21 @@ def _fused_trace_summary(word):
     word, summarytraces among them, the closing words
     fused in the reversed order with the trace word in
     its plural form, standing whole or fused behind a
-    prefix.
+    prefix; or, as widened in fix pass 14 Unit 2, where
+    it ends with the plural trace word fused with a
+    summary word in any of its enumerated forms,
+    tracessummary and tracessummaries among them, the
+    closing words fused in the forward order with the
+    trace word in its plural form, standing whole or
+    fused behind a prefix, Boardtracessummaries among
+    them. The widened summary forms stand inside every
+    limb of this test, so the fused closings built on
+    the ing and ation forms, Boardtracesummarising and
+    Boardtracesummarization among them, stand in the
+    reach in the same way.
     """
     return any(word.endswith("trace" + form) or
+               word.endswith("traces" + form) or
                word.endswith(form + "trace") or
                word.endswith(form + "traces")
                for form in _SUMMARY_WORD_FORMS)
@@ -829,16 +874,21 @@ def _tally_statement_head(line):
     as well, or
     the closing words standing fused, whole or behind a
     prefix, in the singular or the plural, in either
-    order and in the plural reversed form, or one or two
+    order and in the plural reversed form, the plural
+    trace word fused with a summary word in the forward
+    order standing among them as widened in fix pass 14
+    Unit 2, or one, two or three
     further words standing between the trace word and
-    the summary word, or one further word standing
+    the summary word, or one, two or three further words standing
     between the summary word and the trace word in the
     reversed order; or, only where the run closes on a colon, the
     last four words of the run are trace for step and a
     step number, or a tally word for step and a step
     number, the head word read through the tally word
     test, or one further word stands between the trace
-    word and the for step words in that same form, a space standing before that colon
+    word and the for step words in that same form, or
+    two further words stand between them in that same
+    form as widened in fix pass 14 Unit 2, a space standing before that colon
     making no difference. A head behind a list marker
     counts only where a colon closes the run, so a
     numbered head whose run closes on any other
@@ -866,8 +916,9 @@ def _tally_statement_head(line):
     11, as narrowed in fix pass 12 Unit 1, as widened
     in fix pass 12 Unit 2, as widened in its tally
     family exclusion in fix pass 13 Unit 1, as
-    widened in fix pass 13 Unit 2, and as narrowed in
-    its tally word fused limb in fix pass 14 Unit 1: a line is
+    widened in fix pass 13 Unit 2, as narrowed in
+    its tally word fused limb in fix pass 14 Unit 1, and
+    as widened in fix pass 14 Unit 2: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -880,8 +931,14 @@ def _tally_statement_head(line):
     letter ł to the letter l it stands in place of, a
     letter the tally word itself carries, and folding
     the stroke letter ŧ to the letter t it stands in
-    place of, the first letter of the tally word, so a
-    word carrying either stroke letter in place of one
+    place of, the first letter of the tally word, and
+    folding the further stroke letters as widened in
+    fix pass 14 Unit 2, the letter ƚ, l with a bar, to
+    the letter l it stands in place of, and the letter
+    đ, d with a stroke, to the letter d it stands in
+    place of, the final letter of the summarised forms,
+    so a
+    word carrying any of those stroke letters in place of one
     of its own letters folds to the word itself, while
     a word whose
     folded form differs from the tally word in a letter,
@@ -928,7 +985,13 @@ def _tally_statement_head(line):
     neonatally, mortally, frontally, dentally, distally,
     horizontally and coastally among them, and stands
     as no tally word whether or not its own word stands
-    named in the family below, and the word is not an
+    named in the family below, the variant plural
+    spelling tallys standing as the tally word behind
+    one of those governed fused prefixes alone as
+    widened in fix pass 14 Unit 2, Boardtallys among
+    them, and standing as no tally word on its own, the
+    widening standing inside the closed governed prefix
+    enumeration and widening it in no respect, and the word is not an
     adverb of the totally family and does not end with
     such an adverb, an adverb of that
     family carrying the tally letters as the tal ending
@@ -949,9 +1012,16 @@ def _tally_statement_head(line):
     summary or summaries, or summarise, summarised or
     summarises in its British spellings, or summarize,
     summarizes or summarized in its American spellings,
+    or summarising or summarisation in its British
+    spellings, or summarizing or summarization in its
+    American spellings, the ing and ation forms of both
+    families standing in the enumeration as widened in
+    fix pass 14 Unit 2,
     or
     the last word of the run ends with the trace word
     fused with a summary word standing as above, or
+    with the plural trace word fused with a summary
+    word standing as above, or
     with a summary word fused with the trace word, or
     with a summary word fused with the plural trace
     word, in each case standing
@@ -960,14 +1030,31 @@ def _tally_statement_head(line):
     summary word in its plural form, and the fused
     summarytraces, the closing words fused in the
     reversed order with the trace word in its plural
-    form, standing among them, or the last three words of
+    form, standing among them, the fused tracessummary
+    and Boardtracessummaries, the closing words fused
+    in the forward order with the trace word in its
+    plural form, standing among them as widened in fix
+    pass 14 Unit 2, and the fused closings built on the
+    ing and ation forms standing among them in the same
+    way, or the last three words of
     the run are trace, one further word, and a summary
     word standing as above, in that order, or the last
     four words of the run are trace, two further words,
     and a summary word standing as above, in that order,
+    or the last five words of the run are trace, three
+    further words, and a summary word standing as
+    above, in that order, as widened in fix pass 14
+    Unit 2,
     or the last three words of the run are a summary
     word standing as above, one further word, and
-    trace, in the reversed order; or, only
+    trace, in the reversed order, or the last four
+    words of the run are a summary word standing as
+    above, two further words, and trace, in the
+    reversed order, or the last five words of the run
+    are a summary word standing as above, three further
+    words, and trace, in the reversed order, the two
+    and three word reversed forms standing widened in
+    fix pass 14 Unit 2; or, only
     where the run closes on
     a colon, the last four words of the run are trace for
     step and a step number, or a tally word for step and
@@ -975,7 +1062,9 @@ def _tally_statement_head(line):
     word under the tally word test stated above, or the
     last five words of the run are trace, one further
     word, for, step and a step number, in that same
-    form, a space
+    form, or the last six words of the run are trace,
+    two further words, for, step and a step number, in
+    that same form as widened in fix pass 14 Unit 2, a space
     standing before that colon making no
     difference. The general marker form stands extended
     on its dot limbs alone: beside a digits token closing
@@ -1043,7 +1132,16 @@ def _tally_statement_head(line):
         if len(words) >= 4 and words[-4] == "trace" and \
                 _summary_word(words[-1]):
             return True
+        if len(words) >= 5 and words[-5] == "trace" and \
+                _summary_word(words[-1]):
+            return True
         if len(words) >= 3 and _summary_word(words[-3]) and \
+                words[-1] == "trace":
+            return True
+        if len(words) >= 4 and _summary_word(words[-4]) and \
+                words[-1] == "trace":
+            return True
+        if len(words) >= 5 and _summary_word(words[-5]) and \
                 words[-1] == "trace":
             return True
         if terminator == ":" and len(words) >= 4 and \
@@ -1056,6 +1154,12 @@ def _tally_statement_head(line):
                 words[-3:-1] == ["for", "step"] and \
                 (words[-5] == "trace" or
                  _tally_word(words[-5])) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) >= 6 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-6] == "trace" or
+                 _tally_word(words[-6])) and \
                 words[-1].isdigit():
             return True
     return False
