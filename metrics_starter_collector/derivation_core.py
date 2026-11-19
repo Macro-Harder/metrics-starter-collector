@@ -1250,6 +1250,61 @@ def _inserted_words_governed_wide(words):
                for run in runs[:-1])
 
 
+_SENTENCE_FUNCTION_WORDS = frozenset((
+    "the", "a", "an",
+    "i", "we", "you", "he", "she", "it", "they", "me", "us",
+    "him", "her", "them", "my", "our", "your", "his", "its",
+    "their", "this", "that", "these", "those",
+    "for", "of", "in", "on", "at", "by", "with", "from", "to",
+    "into", "over", "under", "after", "before", "between",
+    "through", "during", "about", "against", "without",
+    "within", "upon", "per", "via", "as",
+    "and", "or", "but", "nor", "so", "yet", "if", "when",
+    "while", "because", "although",
+    "is", "are", "was", "were", "be", "been", "being", "am",
+    "has", "have", "had", "do", "does", "did", "will",
+    "would", "shall", "should", "can", "could", "may",
+    "might", "must", "not", "no"))
+
+
+def _before_closing_stands_as_head(words_before, text_before):
+    """Whether what stands before a closing stands as a head.
+
+    The words standing before the closing words of a direct
+    or fused closing stand as head words only where they
+    carry the standing of a head and not the standing of a
+    sentence or a clause, as narrowed in fix pass 17 Unit 1.
+    A head is stated in naming words: nouns, names, numbers
+    and step words, the parts of the record the head names,
+    Alpha beta gamma delta epsilon trace summary and
+    Round's trace summary among them, and a head carries no
+    sentence structure of its own. A prose sentence carries
+    sentence structure standing before its closing words:
+    an article, a pronoun, a preposition, a conjunction or
+    an auxiliary standing among those words, the closed
+    classes of sentence function words standing in the
+    constant _SENTENCE_FUNCTION_WORDS, the words a sentence
+    is built from and a head never carries, We reviewed the
+    trace summary carrying we and the, She filed the summary
+    trace carrying she and the, and For the trace summary
+    carrying for and the, among them. A prose clause standing
+    before a closing inside one statement is set off from
+    the closing by a clause break, a comma standing in the
+    run before the closing words, The filing, trace summary
+    among them, the comma that joins the closing words
+    themselves standing after the closing has begun and
+    standing as no clause break in this test. What stands
+    before a direct or fused closing therefore stands as a
+    head only where no sentence function word stands among
+    the words before the closing and no comma stands in the
+    run before the closing words.
+    """
+    if "," in text_before:
+        return False
+    return not any(word in _SENTENCE_FUNCTION_WORDS
+                   for word in words_before)
+
+
 def _tally_statement_head(line):
     """Whether a line opens with a tally statement head.
 
@@ -1393,8 +1448,10 @@ def _tally_statement_head(line):
     as widened in fix pass 14 Unit 2, as narrowed
     in its inserted closings in fix pass 15 Unit 1,
     as widened in fix pass 15 Unit 2, as narrowed
-    in its inserted closings in fix pass 16 Unit 1, and
-    as widened in fix pass 16 Unit 2: a line is
+    in its inserted closings in fix pass 16 Unit 1,
+    as widened in fix pass 16 Unit 2, and as narrowed
+    in its direct and fused closings in fix pass 17
+    Unit 1: a line is
     in the scan reach
     where, after its
     list and heading marks and one list marker in the
@@ -1722,12 +1779,41 @@ def _tally_statement_head(line):
     summary board trace and The panel reviewed the
     trace gate summary among them, closes no inserted
     closing, whatever its inserted words stand as. The
-    standing condition stands on the inserted closings
-    alone: the tally word closing, the fused closing
-    and the direct trace summary closing carry no such
-    condition, and a head stated in more words in those
-    forms, and the folded prose sentence record closing
-    on the tally word itself, stand as they stood. No
+    whole run standing condition stands on the inserted
+    closings alone: the tally word closing carries no
+    such condition, and the folded prose sentence record
+    closing on the tally word itself stands as it stood.
+    The direct trace summary closing and the fused
+    closing stand narrowed in fix pass 17 Unit 1 in
+    standing, in their own form, stated here in full. A
+    direct or fused closing stands as a head only where
+    what stands before the closing words in the run
+    stands as head words, as _before_closing_stands_as_head
+    states in its own terms: the words before the closing
+    carry no sentence function word, no article, pronoun,
+    preposition, conjunction or auxiliary standing among
+    them, and no comma stands in the run before the
+    closing words. A head is stated in naming words, so a
+    head stated in more words in those forms, Alpha beta
+    gamma delta epsilon trace summary and Round's trace
+    summary among them, stands governed in the same way,
+    its earlier words carrying no sentence structure. A
+    prose sentence carries sentence structure before its
+    closing words, a subject and a verb built from
+    sentence function words, or a preposition and an
+    article, We reviewed the trace summary, She filed the
+    summary trace, The panel noted the trace summary, For
+    the trace summary, We reviewed the tracesummary, She
+    filed the summarytrace, We reviewed the
+    boardtracesummary, We reviewed the
+    traceboardgatesummary and She filed the
+    summaryboardgatetrace among them, and a prose clause
+    standing before a closing inside one statement is set
+    off by its comma, The filing, trace summary and Noted
+    in the filing, the summary trace among them, so no
+    prose sentence and no prose clause of those shapes
+    closes a direct or a fused closing, in any position.
+    No
     count moves in either direction under this
     narrowing: the inserted closings stand at one to
     five words forward, one to four words reversed and
@@ -1788,7 +1874,8 @@ def _tally_statement_head(line):
     stated here, not the joins of its closing words, not
     the case of its words, and not the number of its
     words, beyond the whole run standing of the inserted
-    closings stated above. A line whose runs at every boundary close on
+    closings stated above and the standing of the direct
+    and fused closings stated above. A line whose runs at every boundary close on
     other words, a numbered line whose run closes on
     punctuation other than a colon, and a line carrying
     no such run stand outside the reach, in prose
@@ -1815,19 +1902,23 @@ def _tally_statement_head(line):
     for run, terminator in boundaries:
         if numbered and terminator != ":":
             continue
-        words = [_fold_word(word) for word in
-                 re.findall(r"[^\W_]+", run)]
+        matches = list(re.finditer(r"[^\W_]+", run))
+        words = [_fold_word(match.group(0)) for match in matches]
         if not words:
             continue
         if _tally_word(words[-1]):
             return True
-        if _fused_trace_summary(words[-1]):
+        if _fused_trace_summary(words[-1]) and \
+                _before_closing_stands_as_head(
+                    words[:-1], run[:matches[-1].start()]):
             return True
         if len(words) >= 2 and \
                 ((words[-2] == "trace" and
                   _summary_word(words[-1])) or
                  (words[-1] == "trace" and
-                  _summary_word(words[-2]))):
+                  _summary_word(words[-2]))) and \
+                _before_closing_stands_as_head(
+                    words[:-2], run[:matches[-2].start()]):
             return True
         if len(words) == 3 and words[-3] == "trace" and \
                 _summary_word(words[-1]) and \
