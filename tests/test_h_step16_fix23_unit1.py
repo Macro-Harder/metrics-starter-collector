@@ -102,7 +102,10 @@ unit, its seventy two distinct alone forms in ten
 subfamilies standing missing beside their counted
 siblings, with its beside and gate ruling forms in the
 same entering form, so the widening of Unit 2 finds them
-exactly as they stand, and the held forms Logbooktally,
+exactly as they stand, those held forms standing amended
+by Unit 2 of this pass to their cured behaviour, as the
+amendment note at the close of this docstring records,
+and the held forms Logbooktally,
 Clipboardtally, Worksheettally, Handbooktally,
 Drawertallies, Boardtallyuo and Trace summarieseses of
 that item standing governed in their exact forms; the
@@ -122,6 +125,17 @@ record standing governed; the four folded marker shape
 records standing present but not derivable; the golden
 prose lines standing unflipped; and the read and absent
 feeder controls byte for byte.
+
+Amendment, fix pass 23 Unit 2: the held tests of
+R16-23-01 in this module, the ten subfamily tests and
+the beside and gate ruling test, stand amended in place
+to the cured behaviour of that item, under the same
+test names, the same count of 98 tests and the same
+case identities, the amendment standing confined to
+those eleven tests and to the docstring and heading
+passages that record it. Every defect test of
+R16-23-02, its bounding controls, and every other test
+of this module stand unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _tally_statement_head)
@@ -857,12 +871,12 @@ class TestStep16Fix23Unit1(FixtureTestCase):
             self.assertTrue(_tally_statement_head(line), line)
 
     # ------------------------------------------------------
-    # Held controls: every form of R16-23-01 standing in
-    # its entering behaviour untouched by this unit, its
-    # seventy two distinct alone forms in ten subfamilies
-    # standing missing beside their counted siblings, with
-    # its beside and gate ruling forms in the same entering
-    # form, and the held forms Logbooktally, Clipboardtally,
+    # Held controls: every form of R16-23-01, written for
+    # Unit 1 in its entering behaviour and amended in place
+    # by fix pass 23 Unit 2 to its cured behaviour,
+    # governed beside its counted sibling, in ten
+    # subfamilies, as the amendment note records, and the
+    # held forms Logbooktally, Clipboardtally,
     # Worksheettally, Handbooktally, Drawertallies,
     # Boardtallyuo and Trace summarieseses standing
     # governed in their exact forms
@@ -878,7 +892,7 @@ class TestStep16Fix23Unit1(FixtureTestCase):
                      "Docketstallies", "Catalogstallies",
                      "Manifeststallies", "Foliostallies",
                      "Scrollstallies", "Volumestallies"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_b_missing(self):
         for head in ("Boardchesttally", "Gateshelftally",
@@ -887,17 +901,17 @@ class TestStep16Fix23Unit1(FixtureTestCase):
                      "Gatealmanactally", "Reviewcompendiumtallies",
                      "Boarddocketstally", "Gatecatalogstally",
                      "Reviewfoliostallies", "Boardscrollstally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_c_missing(self):
         for head in ("Boardchesttallyed", "Gateshelftallyes",
                      "Boardportfoliotalye", "Gatedocketstalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_d_missing(self):
         for head in ("Tallyou", "Tallyuo", "Talleou",
                      "Boardtallyou", "Boardtallyue"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_e_missing(self):
         for head in ("Trace summarisereseseseses",
@@ -907,20 +921,20 @@ class TestStep16Fix23Unit1(FixtureTestCase):
                      "Trace summariseeseseseseses",
                      "Trace summaryeseseseseses",
                      "Trace summarisationeseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_f_missing(self):
         for head in ("Boardtracesummarisereseseseses",
                      "Tracessummarieseseseseses",
                      "Boardtracesummarisedeseseseses",
                      "Tracessummaryeseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_g_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatereviewannexpanelsummary",
                      "Summaryboardgatereviewannexpanelboardgatereviewannexpaneltrace",
                      "Tracesboardgatereviewannexpanelboardgatereviewannexpanelsummary"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_h_missing(self):
         for head in ("Trace board gate review annex panel board "
@@ -931,10 +945,10 @@ class TestStep16Fix23Unit1(FixtureTestCase):
                      "gate review annex panel board gate trace",
                      "Summary board gate annex review panel board "
                      "gate annex review panel board gate trace"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_subfamily_i_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review annex panel board "
                  "gate review annex panel board gate review "
                  "for step 2"),
@@ -956,15 +970,17 @@ class TestStep16Fix23Unit1(FixtureTestCase):
                      "Trace suɲmarise",
                      "Trace summaɻise",
                      "Trace summarisʜ"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_23_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Chesttally"))
-        self._beside_step2_nowhere(_bad("Portfoliotaly"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Chesttally"), ruling=True))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Portfoliotaly"), ruling=True))
+        self._beside_step2_uncounted(_bad("Chesttally"))
+        self._beside_step2_uncounted(_bad("Portfoliotaly"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Chesttally"), ruling=True),
+            path=RULING_2)
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Portfoliotaly"), ruling=True),
+            path=RULING_2)
 
     def test_r16_23_01_held_standing_forms_governed(self):
         for head in ("Logbooktally", "Clipboardtally",
