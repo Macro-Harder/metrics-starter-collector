@@ -1509,22 +1509,32 @@ _SENTENCE_FUNCTION_WORDS = frozenset((
 
 
 _MAIN_VERB_WORDS = frozenset((
-    "add", "adds", "approve", "approves", "audit", "audits",
-    "build", "built", "carry", "carries", "check", "checks",
-    "cite", "cites", "claim", "claims", "confirm", "confirms",
-    "count", "counts", "cover", "covers", "draw", "drawn",
-    "enter", "enters", "file", "files", "find", "finds",
-    "follow", "follows", "gave", "give", "gives", "held",
+    "accept", "accepts", "add", "adds", "answer", "answers",
+    "approve", "approves", "ask", "asks", "audit", "audits",
+    "bring", "brings", "build", "built", "call", "calls",
+    "carry", "carries", "check", "checks", "cite", "cites",
+    "claim", "claims", "close", "closes", "come", "comes",
+    "confirm", "confirms", "contain", "contains", "count",
+    "counts", "cover", "covers", "cut", "cuts", "draw",
+    "drawn", "end", "ends", "enter", "enters", "file",
+    "files", "find", "finds", "follow", "follows", "gave",
+    "get", "gets", "give", "gives", "go", "goes", "held",
     "hold", "holds", "include", "includes", "inspect",
     "inspects", "keep", "keeps", "left", "list", "lists",
-    "made", "make", "makes", "name", "names", "note", "notes",
-    "present", "presents", "put", "read", "reads", "report",
-    "reports", "said", "saw", "scan", "scans", "see", "sees",
-    "send", "sends", "sent", "set", "sets", "show", "shown",
-    "shows", "sign", "signs", "stand", "stands", "state",
-    "states", "stood", "take", "takes", "tell", "tells",
-    "told", "took", "verify", "verifies", "watch", "watches",
-    "write", "writes", "written", "wrote"))
+    "log", "logs", "made", "make", "makes", "mark", "marks",
+    "move", "moves", "name", "names", "note", "notes",
+    "open", "opens", "post", "posts", "present", "presents",
+    "put", "reach", "reaches", "read", "reads", "receive",
+    "receives", "record", "records", "report", "reports",
+    "review", "reviews", "run", "runs", "said", "saw",
+    "say", "says", "scan", "scans", "seal", "seals", "see",
+    "sees", "send", "sends", "sent", "serve", "serves",
+    "set", "sets", "show", "shown", "shows", "sign", "signs",
+    "stand", "stands", "state", "states", "stood", "take",
+    "takes", "tell", "tells", "told", "took", "track",
+    "tracks", "verify", "verifies", "want", "wants",
+    "watch", "watches", "went", "write", "writes",
+    "written", "wrote"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -1539,12 +1549,17 @@ def _word_stands_as_main_verb(word):
     the constant _MAIN_VERB_WORDS, the base forms, the s
     forms and the irregular forms of the main verbs a
     prose sentence, a prose clause and a prose run are
-    built around, or where it carries a verb inflection,
-    an ed ending or an ing ending on a word of more than
-    three letters, the past, participle and gerund forms
-    of a main verb, a naming word carrying such an ending
-    in its own right, standing in the constant
-    _NAMING_WORDS_WITH_VERB_ENDINGS, standing as no verb
+    built around, or where it carries a verb inflection
+    on a word of more than three letters: an ed ending or
+    an ing ending, the past, participle and gerund forms
+    of a main verb, or an s ending, the s form of a main
+    verb, in which a prose sentence in bare subject and
+    main verb form and a prose clause in verb first form
+    alike carry their verb, whatever verb stands there,
+    named in the constant or not, as restated in fix pass
+    19 Unit 1. A naming word carrying such an ending in
+    its own right, standing in the constant
+    _NAMING_WORDS_WITH_VERB_ENDINGS, stands as no verb
     form in this test.
     """
     if word in _NAMING_WORDS_WITH_VERB_ENDINGS:
@@ -1552,7 +1567,8 @@ def _word_stands_as_main_verb(word):
     if word in _MAIN_VERB_WORDS:
         return True
     return len(word) > 3 and (word.endswith("ed")
-                              or word.endswith("ing"))
+                              or word.endswith("ing")
+                              or word.endswith("s"))
 
 
 def _before_closing_stands_as_head(words_before, text_before):
@@ -1562,7 +1578,8 @@ def _before_closing_stands_as_head(words_before, text_before):
     or fused closing stand as head words only where they
     carry the standing of a head and not the standing of a
     sentence, a clause or a run, as narrowed in fix pass 17
-    Unit 1 and restated in fix pass 18 Unit 1. A direct or
+    Unit 1 and restated in fix pass 18 Unit 1 and in fix
+    pass 19 Unit 1. A direct or
     fused closing stands as a head only where what stands
     before the closing words in the statement stands wholly
     as head words: every word standing before the closing
@@ -1591,7 +1608,14 @@ def _before_closing_stands_as_head(words_before, text_before):
     them, a prose sentence in bare subject and main verb
     form and a prose clause in verb phrase form carrying
     their sentence structure in that verb, where no sentence
-    function word need stand. Third, a clause break standing
+    function word need stand. The main verb reading stands
+    restated in fix pass 19 Unit 1: the verb of such a
+    sentence or clause stands in its base form or its s
+    form in general, Panel reviews trace summary carrying
+    reviews, Minutes contain trace summary carrying contain
+    and Logs panel summary trace carrying logs in verb first
+    form among them, and no such form closes a head in any
+    position. Third, a clause break standing
     in the statement before the closing words, a comma or a
     semicolon standing in the run before the closing words
     or in a clause of the same statement set off by a
@@ -1607,17 +1631,32 @@ def _before_closing_stands_as_head(words_before, text_before):
     parenthetical standing in the run before the closing,
     Filing - trace summary carrying its hyphen and Filing
     (noted) trace summary carrying its parenthetical among
-    them, a head carrying no such join in its words. What
+    them, a head carrying no such join in its words. The
+    run join and aside reading stands restated in fix pass
+    19 Unit 1 in the same terms: a prose run join stands
+    in any of the shapes a run is joined in, a hyphen
+    standing as its own token, a double hyphen standing
+    as its own token and a slash standing as its own
+    token, Ledger -- trace summary carrying its double
+    hyphen and Ledger / trace summary carrying its slash
+    among them, and a prose aside stands in either aside
+    shape, a parenthetical or a bracketed aside, Ledger
+    [panel] trace summary carrying its bracketed aside
+    among them, a head carrying no such join and no such
+    aside in its run. What
     stands before a direct or fused closing therefore stands
     as a head only where no sentence function word and no
     main verb form stands among the words before the closing,
     no comma and no semicolon stands in the statement before
-    the closing words, and no hyphen token and no
-    parenthetical stands in the run before the closing words.
+    the closing words, and no hyphen token, no double hyphen
+    token, no slash token, no parenthetical and no bracketed
+    aside stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before:
         return False
-    if "(" in text_before or " - " in text_before:
+    if "(" in text_before or "[" in text_before or \
+            " - " in text_before or " -- " in text_before or \
+            " / " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
@@ -2153,6 +2192,46 @@ def _tally_statement_head(line):
     position, so no
     prose sentence, prose clause or prose run of those shapes
     closes a direct or a fused closing, in any position.
+    The direct and fused closings stand restated again in
+    fix pass 19 Unit 1, in standing, in these terms. A
+    direct or fused closing stands as a head only where
+    what stands before the closing words in the statement
+    stands wholly as head words, as
+    _before_closing_stands_as_head states in its own
+    terms as restated: no sentence function word and no
+    main verb form stands among the words before the
+    closing, a main verb form standing in any inflection
+    of a main verb, its base form and its s form in
+    general among them, the s form standing read in its
+    ending beside the ed and ing endings and the base
+    form standing read in the closed classes of the main
+    verbs ordinary prose is built around, no comma and no
+    semicolon stands in the statement before the closing
+    words, and no prose run join in any of its shapes and
+    no prose aside in either of its shapes stands in the
+    run before the closing words, the hyphen token, the
+    double hyphen token and the slash token standing as
+    joins and the parenthetical and the bracketed aside
+    standing as asides. A prose sentence in bare subject
+    and main verb form whose verb stands in a base form or
+    an s form, Panel reviews trace summary, Minutes contain
+    trace summary, Panel logs tracesummary and Panel logs
+    traceboardgatereviewannexpanelsummary among them, a
+    verb first prose clause in the same verb shape, Logs
+    panel summary trace and Marks ledger trace summary
+    among them, and a prose run joined by a slash or a
+    double hyphen or carrying a bracketed aside, Ledger
+    [panel] trace summary, Ledger / trace summary and
+    Ledger -- trace summary among them, therefore close no
+    direct and no fused closing, in any position, while
+    every governed closing keeps standing in the forms the
+    earlier passes landed and fix pass 18 widened to,
+    standing alone as whole runs and standing alone,
+    beside, and in gate rulings. No count moves in either
+    direction under this restating, and no limb widens in
+    it: the inserted closings stand at their counts and
+    under their record order and whole run conditions
+    exactly as fix pass 18 left them.
     No
     count moves in either direction under this
     narrowing: the inserted closings stand at one to
