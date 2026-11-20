@@ -2446,7 +2446,13 @@ _MAIN_VERB_WORDS = frozenset((
     "mend", "mends", "sing", "sings", "sang",
     "steal", "steals", "stole", "swim", "swims", "swam",
     "talk", "talks", "throw", "throws", "threw",
-    "wait", "waits", "walk", "walks"))
+    "wait", "waits", "walk", "walks",
+    "dance", "dances", "jump", "jumps", "climb", "climbs",
+    "help", "helps", "fall", "falls", "fell", "eat",
+    "eats", "ate", "ride", "rides", "rode", "bear",
+    "bears", "bore", "win", "wins", "won", "dig", "digs",
+    "dug", "meet", "meets", "met", "swing", "swings",
+    "swung"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -2523,7 +2529,17 @@ def _word_stands_as_main_verb(word):
     swam and stole among them, so the verb of a prose
     sentence in bare subject and main verb form and the
     verb of a prose clause in verb first form stand read
-    in those shapes in the same way. A naming word
+    in those shapes in the same way. The closed classes
+    stand widened again in fix pass 25 Unit 1 to the main
+    verbs of the same ordinary prose in their base forms,
+    their s forms and their irregular forms, dance, jump,
+    climb and help in their base and s forms, and fall,
+    eat, ride, bear, win, dig, meet and swing in their
+    base, s and irregular forms, fell, ate, rode, bore,
+    won, dug, met and swung among them, so the verb of a
+    prose sentence in bare subject and main verb form and
+    the verb of a prose clause in verb first form stand
+    read in those shapes in the same way. A naming word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -2754,7 +2770,37 @@ def _before_closing_stands_as_head(words_before, text_before):
     bracket aside and Ledger 〈panel〉 trace summary
     carrying its fullwidth angle aside among them, a head
     carrying no such verb, no such join and no such aside
-    in its run. A single quotation
+    in its run. The main verb, run join and aside readings
+    stand restated again in fix pass 25 Unit 1 in the same
+    terms: the main verb reading stands widened to the
+    main verbs of the same ordinary prose in their base
+    forms, their s forms and their irregular forms, as
+    _word_stands_as_main_verb states as restated, Panel
+    dance trace summary carrying dance, Panel bore trace
+    summary carrying bore and Dance panel trace summary
+    carrying dance in verb first form among them; a prose
+    run join stands in any of the shapes a run is joined
+    in, beside the shapes named above, a pilcrow sign
+    standing as its own token, a middle dot standing as
+    its own token, a trademark sign standing as its own
+    token, a rupee sign standing as its own token, a ruble
+    sign standing as its own token, a reference mark
+    standing as its own token and a lira sign standing as
+    its own token, Ledger ¶ trace summary carrying its
+    pilcrow sign, Ledger ₹ trace summary carrying its
+    rupee sign and Ledger ₺ trace summary carrying its
+    lira sign among them; and a prose aside stands in any
+    of its shapes, beside the shapes named above, an aside
+    in prime marks, an aside in double prime marks, an
+    aside in halfwidth corner bracket marks, an aside in
+    mathematical double bracket marks and an aside in
+    ornate parenthesis marks, Ledger ′panel′ trace
+    summary carrying its prime aside, Ledger ⟦panel⟧
+    trace summary carrying its mathematical double bracket
+    aside and Ledger ﴾panel﴿ trace summary carrying its
+    ornate parenthesis aside among them, a head carrying
+    no such verb, no such join and no such aside in its
+    run. A single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -2775,7 +2821,9 @@ def _before_closing_stands_as_head(words_before, text_before):
     token, no bullet token, no dagger token, no euro
     token, no degree token, no pound sign token, no yen
     token, no cent token, no copyright token, no double
-    dagger token, no
+    dagger token, no pilcrow token, no middle dot token,
+    no trademark token, no rupee token, no ruble token,
+    no reference mark token, no lira token, no
     parenthetical, no bracketed aside, no brace aside, no
     angle aside, no quoted aside, no asterisk aside, no
     underscore aside, no single quoted aside, no backtick
@@ -2783,8 +2831,11 @@ def _before_closing_stands_as_head(words_before, text_before):
     no low and high quotation aside, no corner bracket
     aside, no curly quotation aside, no curly single
     quotation aside, no single low and high quotation
-    aside, no double corner bracket aside and no
-    fullwidth angle aside
+    aside, no double corner bracket aside, no
+    fullwidth angle aside, no prime aside, no double
+    prime aside, no halfwidth corner bracket aside, no
+    mathematical double bracket aside and no ornate
+    parenthesis aside
     stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before or \
@@ -2803,6 +2854,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             "‚" in text_before or "『" in text_before or \
             "』" in text_before or "〈" in text_before or \
             "〉" in text_before or \
+            "′" in text_before or "″" in text_before or \
+            "｢" in text_before or "｣" in text_before or \
+            "⟦" in text_before or "⟧" in text_before or \
+            "﴾" in text_before or "﴿" in text_before or \
             " '" in text_before or "' " in text_before or \
             text_before.startswith("'") or \
             " - " in text_before or " -- " in text_before or \
@@ -2820,6 +2875,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             " £ " in text_before or " ¥ " in text_before or \
             " ¢ " in text_before or " © " in text_before or \
             " ‡ " in text_before or \
+            " ¶ " in text_before or " · " in text_before or \
+            " ™ " in text_before or " ₹ " in text_before or \
+            " ₽ " in text_before or " ※ " in text_before or \
+            " ₺ " in text_before or \
             " — " in text_before or " – " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
