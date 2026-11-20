@@ -2249,7 +2249,13 @@ _MAIN_VERB_WORDS = frozenset((
     "watch", "watches", "wear", "wears", "wore",
     "weep", "weeps", "wept", "went",
     "write", "writes",
-    "written", "wrote"))
+    "written", "wrote",
+    "blow", "blows", "blew", "fly", "flies", "flew",
+    "grow", "grows", "grew", "know", "knows", "knew",
+    "mend", "mends", "sing", "sings", "sang",
+    "steal", "steals", "stole", "swim", "swims", "swam",
+    "talk", "talks", "throw", "throws", "threw",
+    "wait", "waits", "walk", "walks"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -2316,7 +2322,17 @@ def _word_stands_as_main_verb(word):
     them, so the verb of a prose sentence in bare subject
     and main verb form and the verb of a prose clause in
     verb first form stand read in those shapes in the
-    same way. A naming word
+    same way. The closed classes stand widened again in
+    fix pass 24 Unit 1 to the main verbs of the same
+    ordinary prose in their base forms, their s forms and
+    their irregular forms, walk, talk, wait and mend in
+    their base and s forms, and blow, fly, grow, know,
+    throw, sing, swim and steal in their base, s and
+    irregular forms, blew, flew, grew, knew, threw, sang,
+    swam and stole among them, so the verb of a prose
+    sentence in bare subject and main verb form and the
+    verb of a prose clause in verb first form stand read
+    in those shapes in the same way. A naming word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -2516,7 +2532,38 @@ def _before_closing_stands_as_head(words_before, text_before):
     carrying its corner bracket aside and Ledger
     “panel” trace summary carrying its curly quotation
     aside among them, a head carrying no such verb, no
-    such join and no such aside in its run. A single quotation
+    such join and no such aside in its run. The main verb,
+    run join and aside readings stand restated again in
+    fix pass 24 Unit 1 in the same terms: the main verb
+    reading stands widened to the main verbs of the same
+    ordinary prose in their base forms, their s forms and
+    their irregular forms, as _word_stands_as_main_verb
+    states as restated, Panel walk trace summary carrying
+    walk, Panel blew trace summary carrying blew and Walk
+    panel trace summary carrying walk in verb first form
+    among them; a prose run join stands in any of the
+    shapes a run is joined in, beside the shapes named
+    above, a pound sign standing as its own token, a yen
+    sign standing as its own token, a cent sign standing
+    as its own token, a copyright sign standing as its
+    own token and a double dagger standing as its own
+    token, Ledger £ trace summary carrying its pound
+    sign, Ledger ¥ trace summary carrying its yen sign
+    and Ledger ‡ trace summary carrying its double dagger
+    among them; and a prose aside stands in any of its
+    shapes, beside the shapes named above, an aside in
+    curly single quotation marks, an aside opening on a
+    low single quotation mark and closing on a single
+    quotation mark, an aside in double corner bracket
+    marks and an aside in fullwidth angle bracket marks,
+    Ledger ‘panel’ trace summary carrying its curly
+    single quotation aside, Ledger ‚panel‘ trace summary
+    carrying its low single quotation aside, Ledger
+    『panel』 trace summary carrying its double corner
+    bracket aside and Ledger 〈panel〉 trace summary
+    carrying its fullwidth angle aside among them, a head
+    carrying no such verb, no such join and no such aside
+    in its run. A single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -2535,13 +2582,18 @@ def _before_closing_stands_as_head(words_before, text_before):
     percent token, no caret token, no ampersand token, no
     dollar sign token, no exclamation token, no question
     token, no bullet token, no dagger token, no euro
-    token, no degree token, no
+    token, no degree token, no pound sign token, no yen
+    token, no cent token, no copyright token, no double
+    dagger token, no
     parenthetical, no bracketed aside, no brace aside, no
     angle aside, no quoted aside, no asterisk aside, no
     underscore aside, no single quoted aside, no backtick
     aside, no guillemet aside, no single guillemet aside,
     no low and high quotation aside, no corner bracket
-    aside and no curly quotation aside
+    aside, no curly quotation aside, no curly single
+    quotation aside, no single low and high quotation
+    aside, no double corner bracket aside and no
+    fullwidth angle aside
     stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before or \
@@ -2556,6 +2608,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             "„" in text_before or "“" in text_before or \
             "”" in text_before or "「" in text_before or \
             "」" in text_before or \
+            "‘" in text_before or "’" in text_before or \
+            "‚" in text_before or "『" in text_before or \
+            "』" in text_before or "〈" in text_before or \
+            "〉" in text_before or \
             " '" in text_before or "' " in text_before or \
             text_before.startswith("'") or \
             " - " in text_before or " -- " in text_before or \
@@ -2570,6 +2626,9 @@ def _before_closing_stands_as_head(words_before, text_before):
             " ? " in text_before or " • " in text_before or \
             " † " in text_before or " € " in text_before or \
             " ° " in text_before or \
+            " £ " in text_before or " ¥ " in text_before or \
+            " ¢ " in text_before or " © " in text_before or \
+            " ‡ " in text_before or \
             " — " in text_before or " – " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
