@@ -58,7 +58,10 @@ of R16-18-01 standing in its entering behaviour untouched
 by this unit, its sixty distinct alone forms in ten
 subfamilies standing missing beside their counted
 siblings, the widening of Unit 2 to find them exactly as
-they stand; the bounding controls of this item standing
+they stand, those held forms standing amended by Unit 2
+to their cured behaviour, as the amendment note at the
+close of this docstring records; the bounding controls
+of this item standing
 missing, as stated above; the eleven prose forms of
 R16-17-02 standing missing; the mixed inserted runs and
 the prose order runs past the widened reach standing
@@ -71,6 +74,17 @@ record standing governed; the four folded marker shape
 records standing present but not derivable; the golden
 prose lines standing unflipped; and the read and absent
 feeder controls byte for byte.
+
+Amendment, fix pass 18 Unit 2: the held tests of
+R16-18-01 in this module, the ten subfamily tests and
+the beside and gate ruling test, stand amended in place
+to the cured behaviour of that item, under the same
+test names, the same count of 63 tests and the same
+case identities, the amendment standing confined to
+those eleven tests and to the docstring and heading
+passages that record it. Every defect test of
+R16-18-02, its bounding controls, and every other test
+of this module stand unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _tally_statement_head)
@@ -423,10 +437,11 @@ class TestStep16Fix18Unit1(FixtureTestCase):
             self.assertTrue(_tally_statement_head(line), line)
 
     # ------------------------------------------------------
-    # Held controls: every form of R16-18-01 standing in its
-    # entering behaviour, missing beside its counted
-    # sibling, in ten subfamilies, so the widening of Unit 2
-    # finds them exactly as they stand
+    # Held controls: every form of R16-18-01, written for
+    # Unit 1 in its entering behaviour and amended in place
+    # by fix pass 18 Unit 2 to its cured behaviour,
+    # governed beside its counted sibling, in ten
+    # subfamilies, as the amendment note records
     # ------------------------------------------------------
 
     def test_r16_18_01_held_subfamily_a_missing(self):
@@ -434,44 +449,44 @@ class TestStep16Fix18Unit1(FixtureTestCase):
                      "Booktallies", "Cardtallying", "Boardstallies",
                      "Foliotally", "Scrolltallies", "Volumetally",
                      "Notebooktallied"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_b_missing(self):
         for head in ("Boardfiletally", "Gatenotestally",
                      "Reviewbooktally", "Boardfoliotally",
                      "Gatescrolltally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_c_missing(self):
         for head in ("Gatefiletallyed", "Boardnotestalleys",
                      "Reviewbooktallyes", "Gatefoliotalleys"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_d_missing(self):
         for head in ("Talliez", "Tallieing", "Boardtalliez",
                      "Boardtallieing", "Tallye", "Talleied",
                      "Tallyings", "Boardtallye", "Boardtallyings"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_e_missing(self):
         for head in ("Trace summarisinges", "Trace summarieses",
                      "Trace summarisees", "Trace summariseses",
                      "Trace summarizingses", "Trace summaryings",
                      "Trace summarisationes", "Trace summariseres"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_f_missing(self):
         for head in ("Boardtracesummarisinges", "Tracesummarieses",
                      "Boardtracessummarisees",
                      "Boardtracesummarisationes",
                      "Tracessummaryings"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_g_missing(self):
         for head in ("Traceboardgatereviewannexpanelsummary",
                      "Summaryboardgatereviewannexpaneltrace",
                      "Tracesboardgatereviewannexpanelsummary"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_h_missing(self):
         for head in ("Trace board gate review annex panel board "
@@ -482,14 +497,14 @@ class TestStep16Fix18Unit1(FixtureTestCase):
                      "gate trace",
                      "Summary board gate annex review panel board "
                      "gate trace"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_i_missing(self):
         for head in ("Trace board gate review annex panel board "
                      "gate review for step 2",
                      "Trace board gate annex review panel board "
                      "gate annex for step 2"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_subfamily_j_missing(self):
         for head in ("Board ta\u026cly", "Board \u0288ally",
@@ -498,12 +513,12 @@ class TestStep16Fix18Unit1(FixtureTestCase):
                      "Trace summarise\u018c",
                      "Trace summarise\u0256", "Trace s\u028bmmarise",
                      "Trace summar\u026ase", "Board t\u0251lly"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_18_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Filestally"))
+        self._beside_step2_uncounted(_bad("Filestally"))
         report = self._q4_alone(_bad("Filestally"), ruling=True)
-        self._assert_q4_missing(report)
+        self._assert_q4_governed(report, path=RULING_2)
 
     # ------------------------------------------------------
     # Held controls: the mixed inserted runs, the prose
