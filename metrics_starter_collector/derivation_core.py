@@ -922,7 +922,56 @@ def _fold_word(word):
     stands in place of, so Trace suɲmarise folds to
     summarise itself; and the letter ɻ, turned r
     with a hook, to the letter r it stands in place of,
-    so Trace summaɻise folds to summarise itself.
+    so Trace summaɻise folds to summarise itself. It
+    folds the further stroke and hook letters in the
+    same way, as widened in fix pass 24 Unit 2: the
+    letter ʌ, turned v, to the letter e it stands in
+    place of at the close of the summarise form, the
+    whole closing summarisʌ folds to summarise, the
+    letter standing read to a inside the tally word in
+    the widening of fix pass 23 in the same word shape
+    form as before; the letter ʡ, glottal stop with a
+    stroke, to the letter t it stands in place of, the
+    first letter of the tally word, so Board ʡally
+    folds to tally itself, the letter standing read to
+    the letters ed at the close of the summarised form
+    in the widening of fix pass 22 in the same word
+    shape form; the letter ʔ, glottal stop, to the
+    letter d it stands in place of at the close of the
+    summarise form, so Trace summariseʔ folds to
+    summarised itself, the letter standing read to t at
+    the head of the tally word in the widening of fix
+    pass 23 in the same word shape form; the letter ʂ,
+    s with a hook, standing in place of the second
+    letter u of the summary word, the pair sʂ folds to
+    s itself, so Trace sʂummarise folds to summarise
+    itself, the letter standing read to s at the head
+    of the summary word in the widening of fix pass 16
+    in the same way; the letter ʃ, esh, to the letter l
+    it stands in place of inside the tally word, so
+    Board talʃy folds to tally itself, the letter
+    standing read to s at the head of the summary word
+    in the widening of fix pass 17 in the same word
+    shape form; the letter ɓ, b with a hook, to the
+    letter t it stands in place of, so Board ɓally
+    folds to tally itself; the letter ɔ, open o, to the
+    letter a it stands in place of, so Board tɔlly
+    folds to tally itself; the letter ɳ, n with a
+    retroflex hook, to the letter l it stands in place
+    of, so Board talɳy folds to tally itself; the
+    letter ʕ, the pharyngeal fricative letter, to the
+    letter s it stands in place of, so Trace ʕummarise
+    folds to summarise itself; the letter ɤ, ram horns,
+    to the letter u it stands in place of, so Trace
+    sɤmmarise folds to summarise itself; the letter ɶ,
+    small capital OE, to the letter m it stands in
+    place of, so Trace suɶmarise folds to summarise
+    itself; the letter ɺ, turned r with a long leg, to
+    the letter r it stands in place of, so Trace
+    summaɺise folds to summarise itself; and the letter
+    ʝ, j with a crossed tail, to the letter e it stands
+    in place of, the final letter of the summarise
+    form, so Trace summarisʝ folds to summarise itself.
     """
     folded = unicodedata.normalize("NFD", word.lower())
     folded = "".join(char for char in folded
@@ -933,10 +982,12 @@ def _fold_word(word):
         .replace("ɍ", "r").replace("ɨ", "i") \
         .replace("ð", "d") \
         .replace("ɫ", "l").replace("ƭ", "t") \
-        .replace("ʂ", "s").replace("ɱ", "m") \
+        .replace("sʂ", "s").replace("ʂ", "s") \
+        .replace("ɱ", "m") \
         .replace("ʉ", "u").replace("ɗ", "ed") \
         .replace("llþ", "lly").replace("þ", "d") \
-        .replace("ʟ", "l").replace("ʃ", "s") \
+        .replace("ʟ", "l").replace("talʃy", "tally") \
+        .replace("ʃ", "s") \
         .replace("ʊ", "u").replace("ʐ", "s") \
         .replace("ꝺ", "d").replace("ꭰ", "d") \
         .replace("ɇ", "e") \
@@ -968,15 +1019,21 @@ def _fold_word(word):
         .replace("ʞ", "l").replace("ʢ", "y") \
         .replace("ʀ", "s").replace("ɴ", "m") \
         .replace("ɸ", "r").replace("ʚ", "e") \
-        .replace("ʡ", "ed") \
+        .replace("ʡally", "tally").replace("ʡ", "ed") \
         .replace("summarisʜ", "summarise") \
         .replace("ʁummarise", "summarise") \
+        .replace("summarisʌ", "summarise") \
+        .replace("summariseʔ", "summarised") \
         .replace("ʜ", "s").replace("ʁ", "t") \
         .replace("ɵ", "e").replace("ʪ", "t") \
         .replace("ʮ", "d").replace("ʌ", "a") \
         .replace("ʔ", "t").replace("ʎ", "l") \
         .replace("ɰ", "u").replace("ɲ", "m") \
-        .replace("ɻ", "r")
+        .replace("ɻ", "r").replace("ɓ", "t") \
+        .replace("ɔ", "a").replace("ɳ", "l") \
+        .replace("ʕ", "s").replace("ɤ", "u") \
+        .replace("ɶ", "m").replace("ɺ", "r") \
+        .replace("ʝ", "e")
 
 
 _TALLY_WORD_FORMS = ("tally", "tallies", "tallied", "tallying")
@@ -1019,7 +1076,12 @@ _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
                             "exhibits", "attachments",
                             "supplements", "dockets", "catalogs",
                             "manifests", "folios", "scrolls",
-                            "volumes")
+                            "volumes", "atlas", "diary",
+                            "beacon", "codex", "codexs", "digest",
+                            "chronicle", "chests", "shelves",
+                            "crates", "trunks", "diaries",
+                            "almanacs", "compendiums",
+                            "gazettes")
 
 _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "talley", "talleys", "talleyed",
@@ -1031,7 +1093,9 @@ _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "tallyio", "tallyua", "tallyiu",
                              "talleio", "tallyeu", "tallyau",
                              "tallyui", "talleui", "tallyou",
-                             "tallyuo", "talleou")
+                             "tallyuo", "talleou", "tallyeo2",
+                             "tallya", "tallyeou", "talleuo",
+                             "tallyoi")
 
 _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talley", "talleys", "talleyed",
@@ -1047,7 +1111,10 @@ _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talleio", "tallyeu",
                                    "tallyau", "tallyui",
                                    "talleui", "tallyuo", "taly",
-                                   "talye", "tallyou", "tallyue")
+                                   "talye", "tallyou", "tallyue",
+                                   "tallyeo2", "tallya",
+                                   "tallyeou", "talleuo",
+                                   "tallyoi")
 
 
 def _tally_word(word):
@@ -1477,7 +1544,47 @@ def _tally_word(word):
     and tallyou and tallyue standing behind a governed
     fused prefix, the taly spelling standing in the fused
     reach alone in the same way as the talies and tallyuo
-    spellings before it.
+    spellings before it. The governed fused prefix
+    enumeration stands widened in fix pass 24 Unit 2
+    from one hundred and ten to one hundred and twenty
+    five, by atlas, diary, beacon, codex, digest and
+    chronicle among the plain record words, and chests,
+    shelves, crates, trunks, diaries, almanacs,
+    compendiums and gazettes, the plurals of governed
+    prefixes and of record words standing beside boards,
+    and codexs, the plural of the codex word, standing
+    among them as the block of the composite variant
+    form of this pass.
+    The composite openings of this pass and the variant
+    spellings in that position stand in the reach through
+    that widening alone, by the further position limb,
+    the block of letters immediately before the tally
+    form standing as exactly one widened governed prefix
+    in each driven form, Atlastally closing
+    Boardatlastally among them, in the plain forms and
+    in the variant spellings alike. The prefix question
+    stands answered in the open at its new width in the
+    same terms as before: a governed fused head after
+    the widening is a tally form, in its plain, inflected
+    or variant spelling, standing behind a governed fused
+    prefix, the prefix standing as the whole opening of
+    the fused word or as the block of letters immediately
+    before the tally form in a further position, the
+    governed fused prefixes standing as the enumerated
+    whole words and step names the genuine heads are
+    fused from, one hundred and twenty five in number in
+    the constant _GOVERNED_FUSED_PREFIXES, and the
+    widening stands as no open admission of any word
+    ending with a tally form, the fused limb standing
+    closed on those governed prefixes in the same terms
+    as before. The variant spellings stand widened in
+    the same unit from thirty two to thirty seven in the
+    constant _TALLY_WORD_VARIANT_FORMS and from thirty
+    five to forty in the constant
+    _TALLY_WORD_VARIANT_FUSED_FORMS, by tallyeo2, tallya,
+    tallyeou, talleuo and tallyoi in each constant, the
+    spellings standing alone in the plain constant and
+    behind a governed fused prefix in the fused constant.
     """
     if word in _TALLY_WORD_FORMS:
         return True
@@ -1537,7 +1644,14 @@ _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summarisedeseseseses",
                        "summariseeseseseseses",
                        "summaryeseseseseses",
-                       "summarisationeseseseseses")
+                       "summarisationeseseseseses",
+                       "summarisereseseseseses",
+                       "summarisingeseseseseses",
+                       "summarieseseseseseses",
+                       "summarisedeseseseseses",
+                       "summariseeseseseseseses",
+                       "summaryeseseseseseses",
+                       "summarisationeseseseseseses")
 
 
 def _summary_word(word):
@@ -1648,6 +1762,16 @@ def _summary_word(word):
     families in both spelling families, each built on a
     form the widening of fix pass 22 admitted, the word
     set standing at seventy forms in the constant
+    _SUMMARY_WORD_FORMS; or, as widened in fix pass 24
+    Unit 2, summarisereseseseseses,
+    summarisingeseseseseses, summarieseseseseseses,
+    summarisedeseseseseses, summariseeseseseseseses,
+    summaryeseseseseseses or
+    summarisationeseseseseseses, the further plural
+    forms of the same summary word families in both
+    spelling families, each built on a form the widening
+    of fix pass 23 admitted, the word set standing at
+    seventy seven forms in the constant
     _SUMMARY_WORD_FORMS.
     """
     return word in _SUMMARY_WORD_FORMS
@@ -1813,6 +1937,24 @@ def _fused_between_closing(word):
     states in its own terms, the record order standing
     complete and then beginning again, in the same
     terms as the inserted closings at their widened
+    counts. The reach stands widened in fix pass 24
+    Unit 2 at the fused between count alone: the words
+    fused between the closing words stand at one, two,
+    three, four, five, six, seven, eight, nine, ten or
+    eleven governed inserted words, in either order,
+    whole or behind a prefix, with the plural trace
+    word standing in the fused between form, the words
+    fused between standing in the record order in the
+    same terms, under the standing test as fix pass 24
+    Unit 1 restated it on what stands before the
+    closing word, so the widening takes in no prose
+    sentence whose last word stands in a fused between
+    form at the widened count. At eleven fused words
+    the words fused between stand in the record order
+    in its wide form, as _inserted_words_governed_wide
+    states in its own terms, the record order standing
+    complete and then beginning again, in the same
+    terms as the inserted closings at their widened
     counts.
     """
     for form in _SUMMARY_WORD_FORMS:
@@ -1826,9 +1968,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(trace_word):])
-                    if mids is not None and 1 <= len(mids) <= 10 \
+                    if mids is not None and 1 <= len(mids) <= 11 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -1844,9 +1986,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(form):])
-                    if mids is not None and 1 <= len(mids) <= 10 \
+                    if mids is not None and 1 <= len(mids) <= 11 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -1995,7 +2137,23 @@ def _fused_trace_summary(word):
     the words fused between the closing words standing
     as governed inserted words in the record order in
     the same terms, as _fused_between_closing states in
-    its own terms.
+    its own terms. The fused closings built on the
+    further summary forms widened in fix pass 23 Unit 2
+    and in fix pass 24 Unit 2 stand in the reach in the
+    same way, in either order, whole or behind a prefix,
+    and the word stands as the fused closing as well, as
+    widened in fix pass 24 Unit 2, where it ends with
+    the trace word, in its singular or its plural form,
+    fused with eleven governed inserted words fused in
+    turn with a summary word standing as above, or with
+    a summary word standing as above fused with eleven
+    governed inserted words fused in turn with the trace
+    word, in its singular or its plural form, in each
+    case standing whole or fused behind a prefix, the
+    words fused between the closing words standing as
+    governed inserted words in the record order in the
+    same terms, as _fused_between_closing states in its
+    own terms.
     """
     return any(word.endswith("trace" + form) or
                word.endswith("traces" + form) or
@@ -2157,7 +2315,23 @@ def _inserted_words_governed_wide(words):
     form reads the counts widened in fix pass 23 Unit 2
     in the same terms, thirteen inserted words in the
     forward order and in the for step form and twelve
-    inserted words in the reversed order.
+    inserted words in the reversed order. The same wide
+    form reads the counts widened in fix pass 24 Unit 2
+    in the same terms, fourteen inserted words in the
+    forward order and in the for step form and thirteen
+    inserted words in the reversed order. At the counts
+    widened in that unit the wide form stands restated
+    in one further limb: where the record order has
+    stood complete twice over and then begun again, a
+    closing may carry the board word standing once more
+    at its close, the board standing as a further
+    beginning of the record order after the beginning
+    the run already carries, so the words board, gate,
+    review, annex, panel, board, gate, review, annex,
+    panel, board, gate, review and board stand governed
+    in the wide form in the same terms, the standing
+    wide test holding on the words before the final
+    board and two complete runs standing among them.
     """
     if len(words) == 0:
         return False
@@ -2172,8 +2346,25 @@ def _inserted_words_governed_wide(words):
             runs[-1].append(word)
     if any(len(set(run)) != len(run) for run in runs):
         return False
-    return all(set(run) == set(_GOVERNED_INSERTED_WORDS)
-               for run in runs[:-1])
+    if all(set(run) == set(_GOVERNED_INSERTED_WORDS)
+           for run in runs[:-1]):
+        return True
+    if words[-1] == "board" and len(words) > 1:
+        head_runs = [[words[0]]]
+        for word in words[1:-1]:
+            if _GOVERNED_INSERTED_ORDER[word] < \
+                    _GOVERNED_INSERTED_ORDER[head_runs[-1][-1]]:
+                head_runs.append([word])
+            else:
+                head_runs[-1].append(word)
+        if any(len(set(run)) != len(run) for run in head_runs):
+            return False
+        complete = sum(1 for run in head_runs
+                       if set(run) == set(_GOVERNED_INSERTED_WORDS))
+        return complete >= 2 and all(
+            set(run) == set(_GOVERNED_INSERTED_WORDS)
+            for run in head_runs[:-1])
+    return False
 
 
 _SENTENCE_FUNCTION_WORDS = frozenset((
@@ -3609,6 +3800,18 @@ def _tally_statement_head(line):
     words in the same terms, under the standing test as
     fix pass 23 Unit 1 restated it, so no prose form
     stands taken in at any widened count on that ground
+    alone. The closing tests stand widened in fix pass
+    24 Unit 2 in count alone, in the same terms as the
+    widenings before them: the inserted closing at
+    fourteen words forward and thirteen words reversed
+    and the for step closing at fourteen inserted
+    words, each under the wide record order test as it
+    stands and with the closing standing as the whole
+    run in the same terms, and the fused between reach
+    at eleven governed words fused between the closing
+    words in the same terms, under the standing test as
+    fix pass 24 Unit 1 restated it, so no prose form
+    stands taken in at any widened count on that ground
     alone.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
@@ -3709,6 +3912,10 @@ def _tally_statement_head(line):
                 _summary_word(words[-1]) and \
                 _inserted_words_governed_wide(words[-14:-1]):
             return True
+        if len(words) == 16 and words[-16] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed_wide(words[-15:-1]):
+            return True
         if len(words) == 3 and _summary_word(words[-3]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-2:-1]):
@@ -3756,6 +3963,10 @@ def _tally_statement_head(line):
         if len(words) == 14 and _summary_word(words[-14]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed_wide(words[-13:-1]):
+            return True
+        if len(words) == 15 and _summary_word(words[-15]) and \
+                words[-1] == "trace" and \
+                _inserted_words_governed_wide(words[-14:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -3852,6 +4063,13 @@ def _tally_statement_head(line):
                 (words[-17] == "trace" or
                  _tally_word(words[-17])) and \
                 _inserted_words_governed_wide(words[-16:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) == 18 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-18] == "trace" or
+                 _tally_word(words[-18])) and \
+                _inserted_words_governed_wide(words[-17:-3]) and \
                 words[-1].isdigit():
             return True
         if terminator == ";":
