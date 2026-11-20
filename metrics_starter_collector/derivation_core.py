@@ -2071,10 +2071,11 @@ _SENTENCE_FUNCTION_WORDS = frozenset((
 _MAIN_VERB_WORDS = frozenset((
     "accept", "accepts", "add", "adds", "answer", "answers",
     "approve", "approves", "ask", "asks", "attest", "attests",
-    "audit", "audits", "bind", "binds", "bring", "brings",
+    "audit", "audits", "bind", "binds", "bound", "bring", "brings",
     "brought", "break", "breaks",
-    "broke", "build", "built",
-    "call", "calls", "carry", "carries", "catch", "catches",
+    "broke", "build", "built", "buy", "buys", "bought",
+    "call", "calls", "carry", "carries", "cast", "casts",
+    "catch", "catches",
     "caught", "check", "checks",
     "choose", "chooses", "chose",
     "cite", "cites", "claim", "claims", "close", "closes",
@@ -2089,7 +2090,8 @@ _MAIN_VERB_WORDS = frozenset((
     "follow", "follows", "foresee", "foresees", "foresaw",
     "found", "freeze", "freezes", "froze",
     "gather", "gathers", "gave", "get", "gets", "give", "gives", "go",
-    "goes", "held", "hold", "holds", "include", "includes",
+    "goes", "grant", "grants", "held", "hide", "hides",
+    "hold", "holds", "include", "includes",
     "inspect", "inspects", "keep", "keeps", "kept", "left", "list",
     "lists", "lodge", "lodges", "log", "logs", "made", "make", "makes",
     "mark", "marks", "merge", "merges", "move", "moves",
@@ -2097,24 +2099,30 @@ _MAIN_VERB_WORDS = frozenset((
     "overcame", "overcome", "overcomes", "parse", "parses",
     "pay", "pays", "paid", "post", "posts", "present",
     "presents", "print", "prints", "publish",
-    "publishes", "put", "reach",
+    "publishes", "put", "ran", "reach",
     "reaches", "read", "reads", "receive", "receives",
     "record", "records", "report", "reports", "review",
     "reviews", "run", "runs", "said", "saw", "say",
     "says", "scan", "scans", "seal", "seals", "see",
-    "sees", "sell", "sells", "sold", "send", "sends",
+    "sees", "seek", "seeks", "sought", "sell", "sells", "sold",
+    "send", "sends",
     "sent", "serve", "serves",
-    "set", "sets", "show", "shown", "shows", "sign",
-    "signs", "sort", "sorts", "speak", "speaks", "spoke",
+    "set", "sets", "show", "shown", "shows", "shut", "shuts",
+    "sign",
+    "signs", "sleep", "sleeps", "slept", "sort", "sorts",
+    "speak", "speaks", "spoke",
     "stamp", "stamps", "stand", "stands", "state",
     "states", "stood", "submit", "submits",
     "swear", "swears", "swore", "take", "takes",
+    "teach", "teaches", "taught",
     "tear", "tears", "tore", "tell", "tells", "told",
-    "took", "track", "tracks",
+    "thought", "took", "track", "tracks",
+    "think", "thinks",
     "type", "types", "undertake", "undertakes", "undertook",
     "verify", "verifies", "vote", "votes",
     "wake", "wakes", "woke", "want", "wants",
-    "watch", "watches", "wear", "wears", "wore", "went",
+    "watch", "watches", "wear", "wears", "wore",
+    "weep", "weeps", "wept", "went",
     "write", "writes",
     "written", "wrote"))
 
@@ -2171,7 +2179,19 @@ def _word_stands_as_main_verb(word):
     bring and brings, so the verb of a prose sentence in
     bare subject and main verb form and the verb of a
     prose clause in verb first form stand read in those
-    shapes in the same way. A naming word
+    shapes in the same way. The closed classes stand
+    widened again in fix pass 23 Unit 1 to the main verbs
+    of the same ordinary prose in their base forms, their
+    s forms and their irregular forms, grant, shut, hide
+    and cast in their base and s forms, bound beside bind
+    and binds and ran beside run and runs in their
+    irregular forms, and seek, teach, think, buy, weep
+    and sleep in their base, s and irregular forms,
+    sought, taught, thought, bought, wept and slept among
+    them, so the verb of a prose sentence in bare subject
+    and main verb form and the verb of a prose clause in
+    verb first form stand read in those shapes in the
+    same way. A naming word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -2340,7 +2360,38 @@ def _before_closing_stands_as_head(words_before, text_before):
     trace summary carrying its backtick aside and Ledger
     «panel» trace summary carrying its guillemet aside
     among them, a head carrying no such verb, no such
-    join and no such aside in its run. A single quotation
+    join and no such aside in its run. The main verb, run
+    join and aside readings stand restated again in fix
+    pass 23 Unit 1 in the same terms: the main verb
+    reading stands widened to the main verbs of the same
+    ordinary prose in their base forms, their s forms and
+    their irregular forms, as _word_stands_as_main_verb
+    states as restated, Panel grant trace summary
+    carrying grant, Panel sought trace summary carrying
+    sought and Grant panel trace summary carrying grant
+    in verb first form among them; a prose run join
+    stands in any of the shapes a run is joined in,
+    beside the shapes named above, a dollar sign standing
+    as its own token, an exclamation mark standing as its
+    own token, a question mark standing as its own token,
+    a bullet mark standing as its own token, a dagger
+    standing as its own token, a euro sign standing as
+    its own token and a degree sign standing as its own
+    token, Ledger $ trace summary carrying its dollar
+    sign, Ledger † trace summary carrying its dagger and
+    Ledger ° trace summary carrying its degree sign among
+    them; and a prose aside stands in any of its shapes,
+    beside the shapes named above, an aside in single
+    guillemet marks, an aside in low and high quotation
+    marks, an aside in corner bracket marks and an aside
+    in curly quotation marks, Ledger ‹panel› trace
+    summary carrying its single guillemet aside, Ledger
+    „panel“ trace summary carrying its low and high
+    quotation aside, Ledger 「panel」 trace summary
+    carrying its corner bracket aside and Ledger
+    “panel” trace summary carrying its curly quotation
+    aside among them, a head carrying no such verb, no
+    such join and no such aside in its run. A single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -2357,10 +2408,15 @@ def _before_closing_stands_as_head(words_before, text_before):
     double slash token, no long dash token, no section
     sign token, no at sign token, no hash token, no
     percent token, no caret token, no ampersand token, no
+    dollar sign token, no exclamation token, no question
+    token, no bullet token, no dagger token, no euro
+    token, no degree token, no
     parenthetical, no bracketed aside, no brace aside, no
     angle aside, no quoted aside, no asterisk aside, no
     underscore aside, no single quoted aside, no backtick
-    aside and no guillemet aside
+    aside, no guillemet aside, no single guillemet aside,
+    no low and high quotation aside, no corner bracket
+    aside and no curly quotation aside
     stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before or \
@@ -2371,6 +2427,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             '"' in text_before or "*" in text_before or \
             "_" in text_before or "`" in text_before or \
             "«" in text_before or "»" in text_before or \
+            "‹" in text_before or "›" in text_before or \
+            "„" in text_before or "“" in text_before or \
+            "”" in text_before or "「" in text_before or \
+            "」" in text_before or \
             " '" in text_before or "' " in text_before or \
             text_before.startswith("'") or \
             " - " in text_before or " -- " in text_before or \
@@ -2381,6 +2441,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             " § " in text_before or " @ " in text_before or \
             " # " in text_before or " % " in text_before or \
             " ^ " in text_before or " & " in text_before or \
+            " $ " in text_before or " ! " in text_before or \
+            " ? " in text_before or " • " in text_before or \
+            " † " in text_before or " € " in text_before or \
+            " ° " in text_before or \
             " — " in text_before or " – " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
