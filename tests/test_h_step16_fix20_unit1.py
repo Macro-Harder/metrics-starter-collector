@@ -86,9 +86,12 @@ in its entering behaviour untouched by this unit, its
 sixty distinct alone forms in ten subfamilies standing
 missing beside their counted siblings, with its beside
 and gate ruling forms in the same entering form, so the
-widening of Unit 2 finds them exactly as they stand, and
-the held letter form and the held candidate form of that
-item standing governed in their exact forms; the bounding
+widening of Unit 2 finds them exactly as they stand,
+those held forms standing amended by Unit 2 of this
+pass to their cured behaviour, as the amendment note
+at the close of this docstring records, and the held
+letter form and the held candidate form of that item
+standing governed in their exact forms; the bounding
 controls of this item standing missing, as stated above;
 every form of R16-19-02, R16-18-02 and R16-17-02 standing
 missing in its cured form; the governed fused prefix
@@ -104,6 +107,17 @@ record standing governed; the four folded marker shape
 records standing present but not derivable; the golden
 prose lines standing unflipped; and the read and absent
 feeder controls byte for byte.
+
+Amendment, fix pass 20 Unit 2: the held tests of
+R16-20-01 in this module, the ten subfamily tests and
+the beside and gate ruling test, stand amended in place
+to the cured behaviour of that item, under the same
+test names, the same count of 88 tests and the same
+case identities, the amendment standing confined to
+those eleven tests and to the docstring and heading
+passages that record it. Every defect test of
+R16-20-02, its bounding controls, and every other test
+of this module stand unamended.
 """
 from metrics_starter_collector.derivation_core import (
     _tally_statement_head)
@@ -646,12 +660,13 @@ class TestStep16Fix20Unit1(FixtureTestCase):
             self.assertTrue(_tally_statement_head(line), line)
 
     # ------------------------------------------------------
-    # Held controls: every form of R16-20-01 standing in its
-    # entering behaviour untouched by this unit, missing
-    # beside its counted sibling, in ten subfamilies, with
-    # its beside and gate ruling forms in the same entering
-    # form, and its held letter form and held candidate form
-    # standing governed in their exact forms
+    # Held controls: every form of R16-20-01, written for
+    # Unit 1 in its entering behaviour and amended in place
+    # by fix pass 20 Unit 2 to its cured behaviour,
+    # governed beside its counted sibling, in ten
+    # subfamilies, as the amendment note records, and its
+    # held letter form and held candidate form standing
+    # governed in their exact forms
     # ------------------------------------------------------
 
     def test_r16_20_01_held_subfamily_a_missing(self):
@@ -660,24 +675,24 @@ class TestStep16Fix20Unit1(FixtureTestCase):
                      "Chartstallies", "Sheetstallies", "Vouchertally",
                      "Tickettally", "Ledgerstally", "Rosterstallies",
                      "Journalstally", "Chairstally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_b_missing(self):
         for head in ("Boarddossiertally", "Gateannextally",
                      "Reviewappendixtally", "Boardvouchertally",
                      "Gatedossiertally", "Reviewtickettally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_c_missing(self):
         for head in ("Boarddossiertallyed", "Gateannextallyes",
                      "Boardvouchertallye", "Gatedossiertalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_d_missing(self):
         for head in ("Tallyia", "Tallyeo", "Boardtallyia",
                      "Boardtallyeo", "Tallyiz", "Talleiz",
                      "Boardtallyiz"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_e_missing(self):
         for head in ("Trace summarisedeses", "Trace summarisereses",
@@ -685,20 +700,20 @@ class TestStep16Fix20Unit1(FixtureTestCase):
                      "Trace summariseeseses",
                      "Trace summaryeseses",
                      "Trace summarisationeseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_f_missing(self):
         for head in ("Boardtracesummarisedeses",
                      "Tracessummarisereses",
                      "Boardtracesummariseeseses",
                      "Tracessummaryeseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_g_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatesummary",
                      "Summaryboardgatereviewannexpanelboardgatetrace",
                      "Tracesboardgatereviewannexpanelboardgatesummary"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_h_missing(self):
         for head in ("Trace board gate review annex panel board "
@@ -709,10 +724,10 @@ class TestStep16Fix20Unit1(FixtureTestCase):
                      "gate review annex trace",
                      "Summary board gate annex review panel board "
                      "gate annex review trace"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_subfamily_i_missing(self):
-        self._candidate_missing(
+        self._candidate_governed(
             _bad("Trace board gate review annex panel board "
                  "gate review annex panel for step 2"),
             _read("Trace board gate review annex panel board "
@@ -729,15 +744,17 @@ class TestStep16Fix20Unit1(FixtureTestCase):
                      "Trace \u01a8ummarise",
                      "Trace summaris\u0258",
                      "Board \u0236ally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_20_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Vouchertally"))
-        self._beside_step2_nowhere(_bad("Dossiertally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Vouchertally"), ruling=True))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Dossiertally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Vouchertally"))
+        self._beside_step2_uncounted(_bad("Dossiertally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Vouchertally"), ruling=True),
+            path=RULING_2)
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Dossiertally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_20_01_held_letter_form_governed(self):
         self._candidate_governed(_bad("Trace s\u0289mmarise"),
