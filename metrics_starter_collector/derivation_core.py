@@ -3235,7 +3235,21 @@ _MAIN_VERB_WORDS = frozenset((
     "cling", "clings", "clung", "forgive", "forgives",
     "forgave", "forgiven", "slide", "slides", "slid",
     "sting", "stings", "stung", "shrink", "shrinks",
-    "shrank", "shrunk"))
+    "shrank", "shrunk",
+    "clap", "claps", "tap", "taps", "sigh", "sighs",
+    "stare", "stares", "gaze", "gazes", "whisper",
+    "whispers", "scream", "screams", "yawn", "yawns",
+    "sneeze", "sneezes", "frown", "frowns", "smile",
+    "smiles", "wave", "waves", "nod", "nods", "nap",
+    "naps", "hum", "hums", "become", "becomes", "became",
+    "forbid", "forbids", "forbade", "forbidden",
+    "understand", "understands", "understood", "mistake",
+    "mistakes", "mistook", "mistaken", "withstand",
+    "withstands", "withstood", "shine", "shines", "shone",
+    "spit", "spits", "spat", "hang", "hangs", "hung",
+    "begun", "blown", "broken", "chosen", "frozen",
+    "hidden", "rung", "shaken", "stolen", "sworn", "torn",
+    "worn", "woken", "bitten", "ridden"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -3377,7 +3391,26 @@ def _word_stands_as_main_verb(word):
     so the verb of a prose sentence in bare subject and
     main verb form and the verb of a prose clause in verb
     first form stand read in those shapes in the same
-    way. A naming word
+    way. The closed classes
+    stand widened again in fix pass 30 Unit 1 to the main
+    verbs of the same ordinary prose in their base forms,
+    their s forms and their irregular forms, clap, tap,
+    sigh, stare, gaze, whisper, scream, yawn, sneeze,
+    frown, smile, wave, nod, nap and hum in their base and
+    s forms, and become, forbid, understand, mistake and
+    withstand in their base, s and irregular forms,
+    became, forbade, understood, mistook and withstood
+    among them, and shine, spit and hang in their base, s
+    and irregular forms, shone, spat and hung among them,
+    and begun, blown, broken, chosen, frozen, hidden,
+    rung, shaken, stolen, sworn, torn, worn, woken, bitten
+    and ridden in their irregular forms beside begin,
+    blow, break, choose, freeze, hide, ring, shake, steal,
+    swear, tear, wear, wake, bite and ride, so the verb of
+    a prose sentence in bare subject and main verb form
+    and the verb of a prose clause in verb first form
+    stand read in those shapes in the same way. A naming
+    word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -3788,7 +3821,85 @@ def _before_closing_stands_as_head(words_before, text_before):
     angle bracket aside and Ledger ⦋panel⦌ trace
     summary carrying its square bracket with underbar
     aside among them, a head carrying no such verb, no
-    such join and no such aside in its run. A single quotation
+    such join and no such aside in its run. The main verb,
+    run join and aside readings stand restated again in
+    fix pass 30 Unit 1 in the same terms: the main verb
+    reading stands widened to the main verbs of the same
+    ordinary prose in their base forms, their s forms and
+    their irregular forms, as _word_stands_as_main_verb
+    states as restated, Panel clap trace summary carrying
+    clap, Panel blown trace summary carrying blown and
+    Clap panel trace summary carrying clap in verb first
+    form among them; a prose run join stands in any of
+    the shapes a run is joined in, beside the shapes named
+    above, a multiplication sign standing as its own
+    token, a division sign standing as its own token, a
+    plus minus sign standing as its own token, an asterisk
+    operator standing as its own token, a star operator
+    standing as its own token, a ring operator standing as
+    its own token, a bullet operator standing as its own
+    token, a dot operator standing as its own token, a
+    circled plus standing as its own token, a circled
+    times standing as its own token, a square root sign
+    standing as its own token, an increment sign standing
+    as its own token, a nabla sign standing as its own
+    token, a not sign standing as its own token, an almost
+    equal to sign standing as its own token, a not equal
+    to sign standing as its own token, an approximately
+    equal to sign standing as its own token, a less than
+    or equal to sign standing as its own token, a greater
+    than or equal to sign standing as its own token, a
+    tilde operator standing as its own token, a therefore
+    sign standing as its own token, a because sign standing
+    as its own token, a ratio sign standing as its own
+    token, a for all sign standing as its own token, a
+    there exists sign standing as its own token, an
+    intersection sign standing as its own token, a union
+    sign standing as its own token, an element of sign
+    standing as its own token, a contains as member sign
+    standing as its own token, an empty set sign standing
+    as its own token, a subset of sign standing as its own
+    token, a superset of sign standing as its own token,
+    an infinity sign standing as its own token, a summation
+    sign standing as its own token, a product sign standing
+    as its own token, an integral sign standing as its own
+    token, a partial differential sign standing as its own
+    token, a broken bar standing as its own token, a micro
+    sign standing as its own token, a superscript two sign
+    standing as its own token, a superscript three sign
+    standing as its own token, a vulgar fraction one half
+    sign standing as its own token, a masculine ordinal
+    indicator standing as its own token, a feminine ordinal
+    indicator standing as its own token, a swung dash
+    standing as its own token, an up tack sign standing as
+    its own token and a combining sign standing as its own
+    token, Ledger × trace summary carrying its
+    multiplication sign, Ledger ∑ trace summary
+    carrying its summation sign and Ledger ⃁ trace
+    summary carrying its combining sign among them; and a
+    prose aside stands in any of its shapes, beside the
+    shapes named above, an aside in heavy angle quotation
+    ornament marks, an aside in light tortoise shell
+    bracket marks, an aside in square bracket with tick
+    marks, an aside in double arc bracket marks, an aside
+    in sideways U bracket marks, an aside in reversed
+    prime marks, an aside in double wiggly fence marks, an
+    aside in Javanese rerenggan marks, an aside in vertical
+    zigzag line marks, an aside in up tack with circle
+    above marks, an aside in dotted punctuation marks, an
+    aside in corner marks, an aside in raised omission
+    bracket marks, an aside in substitution bracket marks,
+    an aside in dotted substitution bracket marks, an aside
+    in top and bottom parenthesis marks, an aside in
+    superscript parenthesis marks and an aside in subscript
+    parenthesis marks, Ledger ❮panel❯ trace
+    summary carrying its heavy angle quotation ornament
+    aside, Ledger ❲panel❳ trace summary carrying
+    its light tortoise shell bracket aside and Ledger
+    ₍panel₎ trace summary carrying its subscript
+    parenthesis aside among them, a head carrying no such
+    verb, no such join and no such aside in its run. A
+    single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -3968,6 +4079,52 @@ def _before_closing_stands_as_head(words_before, text_before):
             " ₳ " in text_before or " ₵ " in text_before or \
             " ₶ " in text_before or " ₷ " in text_before or \
             " ₻ " in text_before or " ⃀ " in text_before:
+        return False
+    if "×" in text_before or "÷" in text_before or \
+            "±" in text_before or "∗" in text_before or \
+            "⋆" in text_before or "∘" in text_before or \
+            "∙" in text_before or "⋅" in text_before or \
+            "⊕" in text_before or "⊗" in text_before or \
+            "√" in text_before or "∆" in text_before or \
+            "∇" in text_before or "¬" in text_before or \
+            "≈" in text_before or "≠" in text_before or \
+            "≅" in text_before or "≤" in text_before or \
+            "≥" in text_before or "∼" in text_before or \
+            "∴" in text_before or "∵" in text_before or \
+            "∶" in text_before or "∀" in text_before or \
+            "∃" in text_before or "∩" in text_before or \
+            "∪" in text_before or "∈" in text_before or \
+            "∋" in text_before or "∅" in text_before or \
+            "⊂" in text_before or "⊃" in text_before or \
+            "∞" in text_before or "∑" in text_before or \
+            "∏" in text_before or "∫" in text_before or \
+            "∂" in text_before or "¦" in text_before or \
+            "µ" in text_before or "²" in text_before or \
+            "³" in text_before or "½" in text_before or \
+            "º" in text_before or "ª" in text_before or \
+            "⁓" in text_before or "⊥" in text_before or \
+            "⃁" in text_before or "⃂" in text_before or \
+            "⃐" in text_before or "⃃" in text_before or \
+            "⃄" in text_before or "⃢" in text_before or \
+            "❮" in text_before or "❯" in text_before or \
+            "❲" in text_before or "❳" in text_before or \
+            "⦍" in text_before or "⦐" in text_before or \
+            "⦏" in text_before or "⦎" in text_before or \
+            "⦕" in text_before or "⦖" in text_before or \
+            "⸦" in text_before or "⸧" in text_before or \
+            "‵" in text_before or "‶" in text_before or \
+            "⧚" in text_before or "⧛" in text_before or \
+            "꧁" in text_before or "꧂" in text_before or \
+            "⦚" in text_before or "⟟" in text_before or \
+            "⸪" in text_before or "⸫" in text_before or \
+            "⌜" in text_before or "⌝" in text_before or \
+            "⌞" in text_before or "⌟" in text_before or \
+            "⸌" in text_before or "⸍" in text_before or \
+            "⸂" in text_before or "⸃" in text_before or \
+            "⸄" in text_before or "⸅" in text_before or \
+            "⸜" in text_before or "⸝" in text_before or \
+            "⁽" in text_before or "⁾" in text_before or \
+            "₍" in text_before or "₎" in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
