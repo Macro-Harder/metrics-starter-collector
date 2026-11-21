@@ -3122,7 +3122,15 @@ _MAIN_VERB_WORDS = frozenset((
     "leaves", "bite", "bites", "bit", "beat", "beats",
     "beaten", "lose", "loses", "lost", "feed", "feeds",
     "fed", "forget", "forgets", "forgot", "forgotten",
-    "shoot", "shoots", "shot", "trim", "trims"))
+    "shoot", "shoots", "shot", "trim", "trims",
+    "twist", "twists", "wrench", "wrenches", "squeeze",
+    "squeezes", "hoist", "hoists", "grasp", "grasps",
+    "shrug", "shrugs", "blink", "blinks", "cough", "coughs",
+    "wring", "wrings", "wrung", "fling", "flings", "flung",
+    "cling", "clings", "clung", "forgive", "forgives",
+    "forgave", "forgiven", "slide", "slides", "slid",
+    "sting", "stings", "stung", "shrink", "shrinks",
+    "shrank", "shrunk"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -3251,7 +3259,20 @@ def _word_stands_as_main_verb(word):
     the earlier passes, so the verb of a prose sentence
     in bare subject and main verb form and the verb of a
     prose clause in verb first form stand read in those
-    shapes in the same way. A naming word
+    shapes in the same way. The closed classes
+    stand widened again in fix pass 29 Unit 1 to the main
+    verbs of the same ordinary prose in their base forms,
+    their s forms and their irregular forms, twist,
+    wrench, squeeze, hoist, grasp, shrug, blink and cough
+    in their base and s forms, and wring, fling and cling
+    in their base, s and irregular forms, wrung, flung
+    and clung among them, and forgive, slide, sting and
+    shrink in their base, s and irregular forms, forgave,
+    forgiven, slid, stung, shrank and shrunk among them,
+    so the verb of a prose sentence in bare subject and
+    main verb form and the verb of a prose clause in verb
+    first form stand read in those shapes in the same
+    way. A naming word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -3627,7 +3648,42 @@ def _before_closing_stands_as_head(words_before, text_before):
     Ledger \u2991panel\u2992 trace summary carrying its
     angle bracket with dot aside among them, a head
     carrying no such verb, no such join and no such aside
-    in its run. A single quotation
+    in its run. The main verb, run join and aside readings
+    stand restated again in fix pass 29 Unit 1 in the same
+    terms: the main verb reading stands widened to the
+    main verbs of the same ordinary prose in their base
+    forms, their s forms and their irregular forms, as
+    _word_stands_as_main_verb states as restated, Panel
+    twist trace summary carrying twist, Panel flung trace
+    summary carrying flung and Twist panel trace summary
+    carrying twist in verb first form among them; a prose
+    run join stands in any of the shapes a run is joined
+    in, beside the shapes named above, an austral sign
+    standing as its own token, a cedi sign standing as
+    its own token, a livre tournois sign standing as its
+    own token, a spesmilo sign standing as its own token,
+    a nordic mark sign standing as its own token and a
+    som sign standing as its own token, Ledger ₳
+    trace summary carrying its austral sign, Ledger ₵
+    trace summary carrying its cedi sign and Ledger ⃀
+    trace summary carrying its som sign among them; and
+    a prose aside stands in any of its shapes, beside the
+    shapes named above, an aside in flattened parenthesis
+    marks, an aside in angle bracket marks, an aside in
+    S shaped bag delimiter marks, an aside in small
+    parenthesis marks, an aside in fullwidth curly
+    bracket marks, an aside in Tibetan bracket marks, an
+    aside in white corner bracket marks, an aside in
+    black tortoise shell bracket marks, an aside in
+    fullwidth parenthesis marks, an aside in white
+    tortoise shell bracket marks and an aside in square
+    bracket with underbar marks, Ledger ❪panel❫
+    trace summary carrying its flattened parenthesis
+    aside, Ledger ❬panel❭ trace summary carrying its
+    angle bracket aside and Ledger ⦋panel⦌ trace
+    summary carrying its square bracket with underbar
+    aside among them, a head carrying no such verb, no
+    such join and no such aside in its run. A single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -3661,7 +3717,9 @@ def _before_closing_stands_as_head(words_before, text_before):
     token, no peseta token, no drachma token, no pfennig
     token, no cruzeiro token, no ECU token, no mill
     token, no rupee sign token, no afghani token, no taka
-    token, no riel token, no rial token, no
+    token, no riel token, no rial token, no austral
+    token, no cedi token, no livre tournois token, no
+    spesmilo token, no nordic mark token, no som token, no
     parenthetical, no bracketed aside, no brace aside, no
     angle aside, no quoted aside, no asterisk aside, no
     underscore aside, no single quoted aside, no backtick
@@ -3691,7 +3749,14 @@ def _before_closing_stands_as_head(words_before, text_before):
     aside, no small tortoise shell bracket aside, no
     mathematical white tortoise shell bracket aside, no
     heavy angle quotation aside, no small curly bracket
-    aside and no angle bracket with dot aside
+    aside, no angle bracket with dot aside, no flattened
+    parenthesis aside, no angle bracket aside, no S
+    shaped bag aside, no small parenthesis aside, no
+    fullwidth curly bracket aside, no Tibetan bracket
+    aside, no white corner bracket aside, no black
+    tortoise shell bracket aside, no fullwidth
+    parenthesis aside, no white tortoise shell bracket
+    aside and no square bracket with underbar aside
     stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before or \
@@ -3783,6 +3848,21 @@ def _before_closing_stands_as_head(words_before, text_before):
             " ؋ " in text_before or " ৳ " in text_before or \
             " ៛ " in text_before or " ﷼ " in text_before or \
             " — " in text_before or " – " in text_before:
+        return False
+    if "❪" in text_before or "❫" in text_before or \
+            "❬" in text_before or "❭" in text_before or \
+            "⟅" in text_before or "⟆" in text_before or \
+            "﹙" in text_before or "﹚" in text_before or \
+            "｛" in text_before or "｝" in text_before or \
+            "༺" in text_before or "༻" in text_before or \
+            "﹃" in text_before or "﹄" in text_before or \
+            "⦗" in text_before or "⦘" in text_before or \
+            "（" in text_before or "）" in text_before or \
+            "〘" in text_before or "〙" in text_before or \
+            "⦋" in text_before or "⦌" in text_before or \
+            " ₳ " in text_before or " ₵ " in text_before or \
+            " ₶ " in text_before or " ₷ " in text_before or \
+            " ₻ " in text_before or " ⃀ " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
