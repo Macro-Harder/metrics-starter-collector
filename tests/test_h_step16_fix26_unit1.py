@@ -105,7 +105,13 @@ governed forms of its papers, Monographtallies,
 Boardhandbooktallyed, Gateworkbooktallyes and Trace
 summaryeseseseseseses among them, standing governed in
 their exact forms, so the widening of Unit 2 finds them
-exactly as they stand; every form of R16-25-02 standing
+exactly as they stand. Amended inside fix pass 26 Unit 2
+as the completion act of this pass: the held block of
+this module now pins the cured behaviour of the forms of
+R16-26-01, standing governed beside their counted
+siblings, the beside form naming Step 2 uncounted and
+the gate ruling form standing governed, at unchanged
+test count and unchanged test identities; every form of R16-25-02 standing
 missing in its cured form, and every form of R16-25-01
 standing governed in its cured form; the bounding
 controls of this item standing missing, as stated above;
@@ -1406,7 +1412,12 @@ class TestStep16Fix26Unit1(FixtureTestCase):
     # entering behaviour, missing, as Unit 2 business. The
     # lists stand as the round 26 register disposition
     # states them, subfamily by subfamily, the exhibit forms
-    # and the correctness only forms together.
+    # and the correctness only forms together. Amended
+    # inside fix pass 26 Unit 2 as its completion act: the
+    # held block now pins the cured behaviour, the forms
+    # standing governed, the beside form naming Step 2
+    # uncounted and the gate ruling form standing governed,
+    # at unchanged test count and unchanged test identities.
     # ------------------------------------------------------
 
     def test_r16_26_01_held_subfamilies_a_to_d_missing(self):
@@ -1424,7 +1435,7 @@ class TestStep16Fix26Unit1(FixtureTestCase):
                      "Boardtallya3", "Boardtallyeo4", "Boardtallyu2",
                      "Tallyai2", "Tallyez", "Tallyaz",
                      "Boardtallyai2", "Boardtallyez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_26_01_held_subfamilies_e_to_g_missing(self):
         for head in ("Trace summarisereseseseseseseses",
@@ -1441,7 +1452,7 @@ class TestStep16Fix26Unit1(FixtureTestCase):
                      "Traceboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewsummary",
                      "Summaryboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewtrace",
                      "Tracesboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewsummary"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_26_01_held_subfamilies_h_to_j_missing(self):
         for head in ("Trace board gate review annex panel board gate review annex panel board gate review annex panel board summary",
@@ -1460,12 +1471,13 @@ class TestStep16Fix26Unit1(FixtureTestCase):
                      "Board \u02a2ally", "Trace \u02a2ummarise",
                      "Board ta\u02a0y", "Trace summ\u026dise",
                      "Board \u026dally"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_26_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Anthologytally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Anthologytally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Anthologytally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Anthologytally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_26_01_held_standing_forms_governed(self):
         for head in ("Monographtallies",
