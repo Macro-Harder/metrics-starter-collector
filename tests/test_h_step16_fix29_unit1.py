@@ -135,6 +135,14 @@ record standing governed; the four folded marker shape
 records standing present but not derivable; the golden
 prose lines standing unflipped; and the read and absent
 feeder controls byte for byte.
+
+Amendment note, recorded in the open: this module stands
+amended inside fix pass 29 Unit 2 as the completion act
+of that pass, its held block of R16-29-01 now pinning the
+cured behaviour of that item in the widened reading, at
+unchanged test count and unchanged test identities; the
+held standing forms of its papers stand governed in
+their exact forms as they stood.
 """
 
 from metrics_starter_collector.derivation_core import (
@@ -1709,29 +1717,35 @@ class TestStep16Fix29Unit1(FixtureTestCase):
     # drives them, subfamily by subfamily, in the standing
     # form. The beside form stands in the nowhere form and
     # the gate ruling form stands missing, in the entering
-    # behaviour this unit pins.
+    # behaviour this unit pins. Amended inside fix pass 29
+    # Unit 2 as its completion act: the held block now pins
+    # the cured behaviour, the forms standing governed, the
+    # beside form naming Step 2 uncounted and the gate
+    # ruling form standing governed, at unchanged test
+    # count and unchanged test identities.
     # ------------------------------------------------------
 
     def test_r16_29_01_held_subfamilies_a_to_c_missing(self):
         for head in ("Brochuretally", "Leaflettally", "Handouttally", "Bannertally", "Postertally", "Brochurestallies", "Leafletstallies", "Handoutstallies", "Bannertallies", "Posterstallies", "Noticestallies", "Sliptally", "Boardbrochuretally", "Gateleaflettally", "Reviewhandouttally", "Boardpostertally", "Boardbrochuretallye", "Gateleaflettalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_29_01_held_subfamilies_d_to_f_missing(self):
         for head in ("Tallya6", "Tallyeo7", "Tallyu5", "Tallyo5", "Tallyai5", "Boardtallya6", "Boardtallyeo7", "Boardtallyu5", "Trace summarisereseseseseseseseseseses", "Trace summarisingeseseseseseseseseseses", "Trace summarieseseseseseseseseseseses", "Trace summarisedeseseseseseseseseseses", "Trace summariseeseseseseseseseseseseses", "Trace summaryeseseseseseseseseseseses", "Boardtracesummarisedeseseseseseseseseseses", "Tracessummaryeseseseseseseseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_29_01_held_subfamilies_g_to_i_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardsummary", "Summaryboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardtrace", "Tracesboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardsummary", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review annex summary", "Trace board gate annex review panel board gate annex review panel board gate annex review panel board gate annex review summary", "Summary board gate review annex panel board gate review annex panel board gate review annex panel board gate review trace", "Summary board gate annex review panel board gate annex review panel board gate annex review panel board gate annex review trace", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review annex for step 2"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_29_01_held_letters_missing(self):
         for head in ("Board \u0278ally", "Board ta\u0278y", "Board \u03b8ally", "Board ta\u03b8y", "Board ta\u019ay", "Trace summa\u027dise", "Trace s\u0283mmarise", "Trace summa\u0283ise"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_29_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Brochuretally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Brochuretally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Brochuretally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Brochuretally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_29_01_held_standing_forms_governed(self):
         for head in ("Daybooktally", "Logbooktally", "Placardtally", "Placardstallies", "Trace summarisationeseseseseseseseseses"):
