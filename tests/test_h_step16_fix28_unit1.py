@@ -107,8 +107,15 @@ governed forms of its papers, Handbooktally,
 Workbooktally, Gazetteerstallies and Trace
 summarisationeseseseseseseseseses among them, standing
 governed in their exact forms, so the widening of Unit 2
-finds them exactly as they stand; every form of
-R16-27-02 standing missing in its cured form, and every
+finds them exactly as they stand.
+Amended inside fix pass 28 Unit 2 as the completion act
+of this pass: the held block of this module now pins
+the cured behaviour of the forms of R16-28-01, standing
+governed beside their counted siblings, the beside form
+naming Step 2 uncounted and the gate ruling form
+standing governed, at unchanged test count and
+unchanged test identities; every form of R16-27-02
+standing missing in its cured form, and every
 form of R16-27-01 standing governed in its cured form;
 every form of R16-26-02 standing missing in its cured
 form, and every form of R16-26-01 standing governed in
@@ -1576,32 +1583,38 @@ class TestStep16Fix28Unit1(FixtureTestCase):
     # drives them, subfamily by subfamily, in the standing
     # form. The beside form stands in the nowhere form and
     # the gate ruling form stands missing, in the entering
-    # behaviour this unit pins.
+    # behaviour this unit pins. Amended inside fix pass 28
+    # Unit 2 as its completion act: the held block now pins
+    # the cured behaviour, the forms standing governed, the
+    # beside form naming Step 2 uncounted and the gate
+    # ruling form standing governed, at unchanged test
+    # count and unchanged test identities.
     # ------------------------------------------------------
 
     def test_r16_28_01_held_subfamilies_a_to_c_missing(self):
         for head in ("Dictionarytally", "Vocabularytally", "Inventorytally", "Calendartally", "Syllabustally", "Encyclopediastallies", "Cataloguestallies", "Dictionariestallies", "Vocabulariestallies", "Inventoriestallies", "Calendarstallies", "Syllabusestallies", "Boarddictionarytally", "Gatevocabularytally", "Reviewinventorytally", "Boardcalendartally", "Boarddictionarytallye", "Gatevocabularytalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_28_01_held_subfamilies_d_to_f_missing(self):
         for head in ("Tallya5", "Tallyeo6", "Tallyu4", "Tallyo4", "Tallyai4", "Boardtallya5", "Boardtallyeo6", "Boardtallyu4", "Trace summarisereseseseseseseseseses", "Trace summarisingeseseseseseseseseses", "Trace summarieseseseseseseseseseses", "Trace summarisedeseseseseseseseseses", "Trace summariseeseseseseseseseseseses", "Trace summaryeseseseseseseseseseses", "Boardtracesummarisedeseseseseseseseseses", "Tracessummaryeseseseseseseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_28_01_held_subfamilies_g_to_i_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelsummary", "Summaryboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpaneltrace", "Tracesboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelsummary", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review summary", "Trace board gate annex review panel board gate annex review panel board gate annex review panel board gate review summary", "Summary board gate review annex panel board gate review annex panel board gate review annex panel board gate trace", "Summary board gate annex review panel board gate annex review panel board gate annex review panel board gate trace", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review for step 2"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_28_01_held_letters_missing(self):
         for head in ("Board \u0284ally", "Board ta\u0290y",
                      "Board ta\u0291y", "Board ta\u0240y",
                      "Board ta\u0285y", "Trace \u0286ummarise",
                      "Trace summ\u028arise", "Trace summa\u028bise"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_28_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Dictionarytally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Dictionarytally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Dictionarytally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Dictionarytally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_28_01_held_standing_forms_governed(self):
         for head in ("Handbooktally", "Workbooktally",
