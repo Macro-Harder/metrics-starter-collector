@@ -2260,36 +2260,38 @@ class TestStep16Fix30Unit1(FixtureTestCase):
 
     # ------------------------------------------------------
     # Held controls: every form of R16-30-01 standing in
-    # its entering behaviour, missing, as Unit 2 business.
-    # The lists stand as the breaker exhibit of round 30
-    # drives them, subfamily by subfamily, in the standing
-    # form. The beside form stands in the nowhere form and
-    # the gate ruling form stands missing, in the entering
-    # behaviour this unit pins; the widening of Unit 2
-    # stands charged to amend this block in place if its
-    # cure changes a pinned case, in the standing form.
+    # its cured behaviour after the cure of Unit 2 of this
+    # pass, this block amended in place in that unit's
+    # completion act, its distinct alone forms as driven
+    # in the breaker paper in ten subfamilies standing
+    # governed beside their counted siblings, with its
+    # beside form standing present over Step 3 with Step 2
+    # named uncounted on the row and its gate ruling form
+    # standing governed, and the standing governed forms
+    # of its papers standing governed in their exact forms
     # ------------------------------------------------------
 
     def test_r16_30_01_held_subfamilies_a_to_c_missing(self):
         for head in ("Flyertally", "Circulartally", "Handbilltally", "Tracttally", "Guidetally", "Flyerstallies", "Circularstallies", "Handbillstallies", "Tractstallies", "Guidestallies", "Flagstallies", "Annaltally", "Boardflyertally", "Gatecirculartally", "Reviewhandbilltally", "Boardguidetally", "Boardflyertallye", "Gatecirculartalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_30_01_held_subfamilies_d_to_f_missing(self):
         for head in ("Tallya7", "Tallyeo8", "Tallyu6", "Tallyo6", "Tallyai6", "Boardtallya7", "Boardtallyeo8", "Boardtallyu6", "Trace summarisereseseseseseseseseseseses", "Trace summarisingeseseseseseseseseseseses", "Trace summarieseseseseseseseseseseseses", "Trace summarisedeseseseseseseseseseseses", "Trace summariseeseseseseseseseseseseseses", "Trace summaryeseseseseseseseseseseseses", "Trace summarisationeseseseseseseseseseseseses", "Boardtracesummarisedeseseseseseseseseseseses", "Tracessummaryeseseseseseseseseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_30_01_held_subfamilies_g_to_i_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardgatesummary", "Summaryboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardgatetrace", "Tracesboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexpanelboardgatesummary", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review annex panel summary", "Trace board gate annex review panel board gate annex review panel board gate annex review panel board gate annex review panel summary", "Summary board gate review annex panel board gate review annex panel board gate review annex panel board gate review annex panel trace", "Summary board gate annex review panel board gate annex review panel board gate annex review panel board gate annex review panel trace", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate review annex panel for step 2"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_30_01_held_letters_missing(self):
         for head in ("Board \u0188ally", "Board ta\u0188y", "Board \u027cally", "Trace su\u027cmarise", "Board \u029aally", "Trace summa\uab53ise", "Board \u0197ally", "Trace su\u0247marise"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_30_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Flyertally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Flyertally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Flyertally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Flyertally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_30_01_held_standing_forms_governed(self):
         for head in ("Handbooktally", "Textbooktally", "Workbooktally", "Songbooktally", "Yearbooktally", "Magazinetallies", "Broadsheettally", "Portfoliostallies", "Gazetteerstallies", "Billboardstallies", "Trace summarisationeseseseseseseseseseses"):
