@@ -107,8 +107,14 @@ governed forms of its papers, Gazetteerstallies,
 Monographtallies, Boardhandbooktallyed,
 Gateworkbooktallyes and Trace summaryeseseseseseses
 among them, standing governed in their exact forms, so
-the widening of Unit 2 finds them exactly as they stand;
-every form of R16-26-02 standing missing in its cured
+the widening of Unit 2 finds them exactly as they stand.
+Amended inside fix pass 27 Unit 2 as the completion act
+of this pass: the held block of this module now pins
+the cured behaviour of the forms of R16-27-01, standing
+governed beside their counted siblings, the beside form
+naming Step 2 uncounted and the gate ruling form
+standing governed, at unchanged test count and
+unchanged test identities; every form of R16-26-02 standing missing in its cured
 form, and every form of R16-26-01 standing governed in
 its cured form; every form of R16-25-02 standing missing
 in its cured form, and every form of R16-25-01 standing
@@ -1471,31 +1477,38 @@ class TestStep16Fix27Unit1(FixtureTestCase):
     # entering behaviour, missing, as Unit 2 business. The
     # lists stand as the breaker exhibit of round 27 drives
     # them, subfamily by subfamily, in the standing form.
+    # Amended inside fix pass 27 Unit 2 as its completion
+    # act: the held block now pins the cured behaviour, the
+    # forms standing governed, the beside form naming Step
+    # 2 uncounted and the gate ruling form standing
+    # governed, at unchanged test count and unchanged test
+    # identities.
     # ------------------------------------------------------
 
     def test_r16_27_01_held_subfamilies_a_to_c_missing(self):
         for head in ("Lexicontally", "Glossarytally", "Directorytally", "Encyclopediatally", "Cataloguetally", "Anthologiestallies", "Prospectusestallies", "Thesaurusestallies", "Compendiatallies", "Lexiconstallies", "Glossariestallies", "Directoriestallies", "Boardlexicontally", "Gateglossarytally", "Reviewdirectorytally", "Boardencyclopediatally", "Boardlexicontallye", "Gateglossarytalliez"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_27_01_held_subfamilies_d_to_f_missing(self):
         for head in ("Tallya4", "Tallyeo5", "Tallyu3", "Tallyo3", "Tallyai3", "Boardtallya4", "Boardtallyeo5", "Boardtallyu3", "Trace summarisereseseseseseseseses", "Trace summarisingeseseseseseseseses", "Trace summarieseseseseseseseseses", "Trace summarisedeseseseseseseseses", "Trace summariseeseseseseseseseseses", "Trace summaryeseseseseseseseseses", "Boardtracesummarisedeseseseseseseseses", "Tracessummaryeseseseseseseseseses"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_27_01_held_subfamilies_g_to_i_missing(self):
         for head in ("Traceboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexsummary", "Summaryboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannextrace", "Tracesboardgatereviewannexpanelboardgatereviewannexpanelboardgatereviewannexsummary", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate summary", "Trace board gate review annex panel board gate review annex panel board gate review annex panel board gate for step 2"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_27_01_held_letters_missing(self):
         for head in ("Board \u0282ally", "Board \u028dally",
                      "Board ta\u026cy", "Board \u0267ally",
                      "Trace summa\u0281ise", "Board ta\u026ey",
                      "Trace summaris\u028f", "Trace summa\u0255ise"):
-            self._candidate_missing(_bad(head), _read(head))
+            self._candidate_governed(_bad(head), _read(head))
 
     def test_r16_27_01_held_beside_and_gate_ruling_missing(self):
-        self._beside_step2_nowhere(_bad("Lexicontally"))
-        self._assert_q4_missing(
-            self._q4_alone(_bad("Lexicontally"), ruling=True))
+        self._beside_step2_uncounted(_bad("Lexicontally"))
+        self._assert_q4_governed(
+            self._q4_alone(_bad("Lexicontally"), ruling=True),
+            path=RULING_2)
 
     def test_r16_27_01_held_standing_forms_governed(self):
         for head in ("Gazetteerstallies", "Monographtallies",
