@@ -2670,7 +2670,16 @@ _MAIN_VERB_WORDS = frozenset((
     "eats", "ate", "ride", "rides", "rode", "bear",
     "bears", "bore", "win", "wins", "won", "dig", "digs",
     "dug", "meet", "meets", "met", "swing", "swings",
-    "swung"))
+    "swung", "lift", "lifts", "push", "pushes", "pull",
+    "pulls", "shout", "shouts", "lend", "lends", "lent",
+    "spend", "spends", "spent", "bend", "bends", "bent",
+    "hid", "shake", "shakes", "shook", "kneel", "kneels",
+    "knelt", "leap", "leaps", "leapt", "dream", "dreams",
+    "dreamt", "came", "sink", "sinks", "sank", "lead",
+    "leads", "led", "hear", "hears", "heard", "burn",
+    "burns", "burnt", "learn", "learns", "learnt",
+    "smell", "smells", "smelt", "spell", "spells",
+    "spelt", "spill", "spills", "spilt"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -2757,7 +2766,21 @@ def _word_stands_as_main_verb(word):
     won, dug, met and swung among them, so the verb of a
     prose sentence in bare subject and main verb form and
     the verb of a prose clause in verb first form stand
-    read in those shapes in the same way. A naming word
+    read in those shapes in the same way. The closed classes
+    stand widened again in fix pass 26 Unit 1 to the main
+    verbs of the same ordinary prose in their base forms,
+    their s forms and their irregular forms, lift, push,
+    pull and shout in their base and s forms, and lend,
+    spend, bend, hide, shake, kneel, leap and dream in
+    their base, s and irregular forms, lent, spent, bent,
+    hid, shook, knelt, leapt and dreamt among them, and
+    come, sink, lead and hear in their irregular forms,
+    came, sank, led and heard, beside burn, learn, smell,
+    spell and spill in their base, s and irregular forms,
+    burnt, learnt, smelt, spelt and spilt among them, so
+    the verb of a prose sentence in bare subject and main
+    verb form and the verb of a prose clause in verb first
+    form stand read in those shapes in the same way. A naming word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
     as no verb form in this test.
@@ -3018,7 +3041,43 @@ def _before_closing_stands_as_head(words_before, text_before):
     aside and Ledger ﴾panel﴿ trace summary carrying its
     ornate parenthesis aside among them, a head carrying
     no such verb, no such join and no such aside in its
-    run. A single quotation
+    run. The main verb, run join and aside readings stand
+    restated again in fix pass 26 Unit 1 in the same
+    terms: the main verb reading stands widened to the
+    main verbs of the same ordinary prose in their base
+    forms, their s forms and their irregular forms, as
+    _word_stands_as_main_verb states as restated, Panel
+    lift trace summary carrying lift, Panel spent trace
+    summary carrying spent and Lift panel trace summary
+    carrying lift in verb first form among them; a prose
+    run join stands in any of the shapes a run is joined
+    in, beside the shapes named above, a won sign
+    standing as its own token, a hryvnia sign standing as
+    its own token, a tenge sign standing as its own
+    token, a registered sign standing as its own token, a
+    per mille sign standing as its own token, an asterism
+    standing as its own token, a naira sign standing as
+    its own token and a bitcoin sign standing as its own
+    token, Ledger \u20a9 trace summary carrying its won
+    sign, Ledger \u00ae trace summary carrying its
+    registered sign and Ledger \u20bf trace summary
+    carrying its bitcoin sign among them; and a prose
+    aside stands in any of its shapes, beside the shapes
+    named above, an aside in fullwidth white parenthesis
+    marks, an aside in double parenthesis marks, an aside
+    in mathematical double angle marks, an aside in
+    medium parenthesis ornament marks, an aside in square
+    bracket with quill marks, an aside in ceiling marks,
+    an aside in Z notation image bracket marks, an aside
+    in black lenticular bracket marks, an aside in white
+    double bracket marks and an aside in triple prime
+    marks, Ledger \uff5fpanel\uff60 trace summary
+    carrying its fullwidth white parenthesis aside, Ledger
+    \u2308panel\u2309 trace summary carrying its ceiling
+    aside and Ledger \u2034panel\u2034 trace summary
+    carrying its triple prime aside among them, a head
+    carrying no such verb, no such join and no such aside
+    in its run. A single quotation
     mark stands as an aside in this test only where it
     stands as a quoting mark, opening or closing an
     aside, and not where it stands inside a word, so
@@ -3041,7 +3100,10 @@ def _before_closing_stands_as_head(words_before, text_before):
     token, no cent token, no copyright token, no double
     dagger token, no pilcrow token, no middle dot token,
     no trademark token, no rupee token, no ruble token,
-    no reference mark token, no lira token, no
+    no reference mark token, no lira token, no won token,
+    no hryvnia token, no tenge token, no registered
+    token, no per mille token, no asterism token, no
+    naira token, no bitcoin token, no
     parenthetical, no bracketed aside, no brace aside, no
     angle aside, no quoted aside, no asterisk aside, no
     underscore aside, no single quoted aside, no backtick
@@ -3053,7 +3115,13 @@ def _before_closing_stands_as_head(words_before, text_before):
     fullwidth angle aside, no prime aside, no double
     prime aside, no halfwidth corner bracket aside, no
     mathematical double bracket aside and no ornate
-    parenthesis aside
+    parenthesis aside, no fullwidth white parenthesis
+    aside, no double parenthesis aside, no mathematical
+    double angle aside, no medium parenthesis ornament
+    aside, no square bracket with quill aside, no ceiling
+    aside, no Z notation image bracket aside, no black
+    lenticular bracket aside, no white double bracket
+    aside and no triple prime aside
     stands in the run before the closing words.
     """
     if "," in text_before or ";" in text_before or \
@@ -3073,6 +3141,16 @@ def _before_closing_stands_as_head(words_before, text_before):
             "』" in text_before or "〈" in text_before or \
             "〉" in text_before or \
             "′" in text_before or "″" in text_before or \
+            "｟" in text_before or "｠" in text_before or \
+            "⸨" in text_before or "⸩" in text_before or \
+            "⟪" in text_before or "⟫" in text_before or \
+            "❨" in text_before or "❩" in text_before or \
+            "⁅" in text_before or "⁆" in text_before or \
+            "⌈" in text_before or "⌉" in text_before or \
+            "⦈" in text_before or "⦉" in text_before or \
+            "【" in text_before or "】" in text_before or \
+            "〚" in text_before or "〛" in text_before or \
+            "‴" in text_before or \
             "｢" in text_before or "｣" in text_before or \
             "⟦" in text_before or "⟧" in text_before or \
             "﴾" in text_before or "﴿" in text_before or \
@@ -3097,6 +3175,10 @@ def _before_closing_stands_as_head(words_before, text_before):
             " ™ " in text_before or " ₹ " in text_before or \
             " ₽ " in text_before or " ※ " in text_before or \
             " ₺ " in text_before or \
+            " ₩ " in text_before or " ₴ " in text_before or \
+            " ₸ " in text_before or " ® " in text_before or \
+            " ‰ " in text_before or " ⁂ " in text_before or \
+            " ₦ " in text_before or " ₿ " in text_before or \
             " — " in text_before or " – " in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
