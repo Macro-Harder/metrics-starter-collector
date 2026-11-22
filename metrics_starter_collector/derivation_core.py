@@ -5294,7 +5294,20 @@ _MAIN_VERB_WORDS = frozenset((
     "race", "races", "chase", "chases", "listen", "listens",
     "taste", "tastes", "touch", "touches", "grip", "grips",
     "hit", "hits", "keel", "keels", "reel", "reels",
-    "stagger", "staggers", "totter", "totters"))
+    "stagger", "staggers", "totter", "totters",
+    "glance", "glances", "amble", "ambles", "vault", "vaults",
+    "nudge", "nudges", "poke", "pokes", "flinch", "flinches",
+    "rock", "rocks", "snap", "snaps", "chant", "chants",
+    "recite", "recites", "declare", "declares", "announce", "announces",
+    "proclaim", "proclaims", "inscribe", "inscribes", "dodge", "dodges",
+    "plunge", "plunges", "lunge", "lunges", "surge", "surges",
+    "drift", "drifts", "float", "floats", "glide", "glides",
+    "slither", "slithers", "wriggle", "wriggles", "squirm", "squirms",
+    "fidget", "fidgets", "twitch", "twitches", "jerk", "jerks",
+    "jolt", "jolts", "bump", "bumps", "trip", "trips",
+    "glower", "glowers", "peep", "peeps", "ogle", "ogles",
+    "gawk", "gawks", "gape", "gapes", "slumber", "slumbers",
+    "snooze", "snoozes", "cringe", "cringes", "recoil", "recoils"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -5528,6 +5541,19 @@ def _word_stands_as_main_verb(word):
     bare subject and main verb form and the verb of a
     prose clause in verb first form stand read in those
     shapes in the same way.
+     The closed classes stand widened again in
+    fix pass 37 Unit 1 to the main verbs of the same
+    ordinary prose in their base and s forms, glance,
+    amble, vault, nudge, poke, flinch, rock, snap,
+    chant, recite, declare, announce, proclaim,
+    inscribe, dodge, plunge, lunge, surge, drift,
+    float, glide, slither, wriggle, squirm, fidget,
+    twitch, jerk, jolt, bump, trip, glower, peep,
+    ogle, gawk, gape, slumber, snooze, cringe and
+    recoil in their base and s forms, so the verb of
+    a prose sentence in bare subject and main verb
+    form and the verb of a prose clause in verb first
+    form stand read in those shapes in the same way.
     """
     if word in _NAMING_WORDS_WITH_VERB_ENDINGS:
         return False
@@ -6249,6 +6275,33 @@ def _before_closing_stands_as_head(words_before, text_before):
     Ledger ⸰panel⸱ trace summary carrying its
     supplement marks aside among them, a head carrying no
     such verb, no such join and no such aside in its run.
+     The main verb, run join and aside readings stand
+    restated again in fix pass 37 Unit 1 in the same
+    terms: the main verb reading stands widened to
+    the main verbs of the same ordinary prose in
+    their base forms and their s forms, as
+    _word_stands_as_main_verb states as restated,
+    Panel glance trace summary carrying glance, Panel
+    flinch trace summary carrying flinch and Glance
+    panel trace summary carrying glance in verb first
+    form among them; a prose run join stands in any
+    of the shapes a run is joined in, beside the
+    shapes named above, a miscellaneous symbols and
+    arrows sign, a combining diacritical extended
+    sign and a combining enclosing sign standing as
+    its own token or standing on its host letter, and
+    a presentation form sign standing as its own
+    token, Ledger \u2b00 trace summary carrying its
+    sign token, Ledger \u1ab0 trace summary carrying
+    its combining sign and Ledger x\u1ab0 trace
+    summary carrying its combining sign on its host
+    letter among them; and a prose aside stands in
+    any of its shapes, beside the shapes named above,
+    an aside in further supplement punctuation marks,
+    Ledger \u2e60panel\u2e61 trace summary carrying
+    its supplement marks aside among them, a head
+    carrying no such verb, no such join and no such
+    aside in its run.
     """
     if "," in text_before or ";" in text_before or \
             ":" in text_before:
@@ -6960,6 +7013,151 @@ def _before_closing_stands_as_head(words_before, text_before):
             "⹌" in text_before or \
             "⹍" in text_before or \
             "⹎" in text_before:
+        return False
+    if "⬀" in text_before or \
+            "⬁" in text_before or \
+            "⬂" in text_before or \
+            "⬃" in text_before or \
+            "⬄" in text_before or \
+            "⬅" in text_before or \
+            "⬆" in text_before or \
+            "⬇" in text_before or \
+            "⬈" in text_before or \
+            "⬉" in text_before or \
+            "⬊" in text_before or \
+            "⬋" in text_before or \
+            "⬌" in text_before or \
+            "⬍" in text_before or \
+            "⬎" in text_before or \
+            "⬏" in text_before or \
+            "⬐" in text_before or \
+            "⬑" in text_before or \
+            "⬒" in text_before or \
+            "⬓" in text_before or \
+            "⬔" in text_before or \
+            "⬕" in text_before or \
+            "⬖" in text_before or \
+            "⬗" in text_before or \
+            "⬘" in text_before or \
+            "⬙" in text_before or \
+            "⬚" in text_before or \
+            "⬛" in text_before or \
+            "⬜" in text_before or \
+            "⬝" in text_before or \
+            "⬞" in text_before or \
+            "⬟" in text_before or \
+            "⬠" in text_before or \
+            "⬡" in text_before or \
+            "⬢" in text_before or \
+            "⬣" in text_before or \
+            "⬤" in text_before or \
+            "⬥" in text_before or \
+            "⬦" in text_before or \
+            "⬧" in text_before or \
+            "⬨" in text_before or \
+            "⬩" in text_before or \
+            "⬪" in text_before or \
+            "⬫" in text_before or \
+            "⬬" in text_before or \
+            "⬭" in text_before or \
+            "⬮" in text_before or \
+            "⬯" in text_before or \
+            "⬳" in text_before or \
+            "⬴" in text_before or \
+            "⬵" in text_before or \
+            "⬶" in text_before or \
+            "⬷" in text_before or \
+            "⬸" in text_before or \
+            "⬹" in text_before or \
+            "⬺" in text_before or \
+            "⬻" in text_before or \
+            "⬼" in text_before or \
+            "⬽" in text_before or \
+            "⬾" in text_before or \
+            "⬿" in text_before or \
+            "⭀" in text_before or \
+            "⭁" in text_before or \
+            "⭂" in text_before or \
+            "⭃" in text_before or \
+            "⭄" in text_before or \
+            "⭅" in text_before or \
+            "⭆" in text_before or \
+            "⭇" in text_before or \
+            "⭈" in text_before or \
+            "⭉" in text_before or \
+            "⭊" in text_before or \
+            "⭋" in text_before or \
+            "⭌" in text_before or \
+            "⭍" in text_before or \
+            "⭎" in text_before or \
+            "⭏" in text_before or \
+            "⭐" in text_before or \
+            "⭑" in text_before or \
+            "⭒" in text_before or \
+            "⭓" in text_before or \
+            "⭔" in text_before or \
+            "⭕" in text_before or \
+            "⭖" in text_before or \
+            "⭗" in text_before or \
+            "⭘" in text_before or \
+            "⭙" in text_before or \
+            "⭚" in text_before or \
+            "⭛" in text_before or \
+            "⭜" in text_before or \
+            "⭝" in text_before or \
+            "⭞" in text_before or \
+            "⭟" in text_before or \
+            "᪰" in text_before or \
+            "᪱" in text_before or \
+            "᪲" in text_before or \
+            "᪳" in text_before or \
+            "᪴" in text_before or \
+            "᪵" in text_before or \
+            "᪶" in text_before or \
+            "᪷" in text_before or \
+            "᪸" in text_before or \
+            "᪹" in text_before or \
+            "᪺" in text_before or \
+            "᪻" in text_before or \
+            "᪼" in text_before or \
+            "᪽" in text_before or \
+            "᪾" in text_before or \
+            "ᪿ" in text_before or \
+            "⃳" in text_before or \
+            "⃴" in text_before or \
+            "︰" in text_before or \
+            "⹠" in text_before or \
+            "⹡" in text_before or \
+            "⹢" in text_before or \
+            "⹣" in text_before or \
+            "⹤" in text_before or \
+            "⹥" in text_before or \
+            "⹦" in text_before or \
+            "⹧" in text_before or \
+            "⹨" in text_before or \
+            "⹩" in text_before or \
+            "⹪" in text_before or \
+            "⹫" in text_before or \
+            "⹬" in text_before or \
+            "⹭" in text_before or \
+            "⹮" in text_before or \
+            "⹯" in text_before or \
+            "⹰" in text_before or \
+            "⹱" in text_before or \
+            "⹲" in text_before or \
+            "⹳" in text_before or \
+            "⹴" in text_before or \
+            "⹵" in text_before or \
+            "⹶" in text_before or \
+            "⹷" in text_before or \
+            "⹸" in text_before or \
+            "⹹" in text_before or \
+            "⹺" in text_before or \
+            "⹻" in text_before or \
+            "⹼" in text_before or \
+            "⹽" in text_before or \
+            "⹾" in text_before or \
+            "⹿" in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
