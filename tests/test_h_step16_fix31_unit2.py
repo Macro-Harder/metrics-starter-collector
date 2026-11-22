@@ -2135,19 +2135,24 @@ class TestStep16Fix31Unit2(FixtureTestCase):
     def test_control_underheld_29_governed(self):
         self._candidate(_bad('Songbooktally'), _read('Songbooktally'))
 
-    # Correction in place, recorded in the standing form.
-    # The coordinator ruling on the stop of this unit, as
-    # carried in design/steps/step-16r-fix31-unit2-report.md,
-    # holds that the code level standing governs what a
-    # control may assert, because a control pins behaviour
-    # the entering code actually holds, and that the form
-    # Songbookstallies stands missing at code level. This
-    # test keeps its identity and its place; its expectation
-    # stands corrected in place to that true standing,
-    # missing, and the form stands neither cured, dropped
-    # nor renamed in this pass.
+    # Amendment in place, recorded in the standing form.
+    # This test stood corrected in fix pass 31, under the
+    # coordinator ruling carried in
+    # design/steps/step-16r-fix31-unit2-report.md, to the
+    # standing of the form Songbookstallies as missing at
+    # code level, on the register31 held listing for that
+    # form. That standing now stands reversed: register32
+    # superseded the register31 held listing for this one
+    # form, and the cure of R16-32-03 in fix pass 32 Unit 2
+    # makes the form derive in the plain drive. Under the
+    # charge carried to fix pass 32 Unit 3 Act 0 by the
+    # coordinator on the Unit 2 report carriage, this test
+    # keeps its identity and its place and its expectation
+    # stands amended in place to the form present standing:
+    # the form derives in the plain drive, governed beside
+    # its counted sibling.
     def test_control_underheld_30_governed(self):
-        self._candidate_missing(_bad('Songbookstallies'), _read('Songbookstallies'))
+        self._candidate(_bad('Songbookstallies'), _read('Songbookstallies'))
 
     def test_control_underheld_31_governed(self):
         self._candidate(_bad('Trace summarisationeseseseseseseseseseseseses'), _read('Trace summarisationeseseseseseseseseseseseses'))
