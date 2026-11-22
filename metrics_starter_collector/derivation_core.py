@@ -1178,6 +1178,110 @@ def _fold_word(word):
     folded = "".join(char for char in folded
                      if unicodedata.category(char) != "Mn")
     return folded \
+        .replace("ɢally", "tally") \
+        .replace("ʕally", "tally") \
+        .replace("ɀally", "tally") \
+        .replace("ʊally", "tally") \
+        .replace("ɕally", "tally") \
+        .replace("ɣally", "tally") \
+        .replace("ɇally", "tally") \
+        .replace("ðally", "tally") \
+        .replace("ʃally", "tally") \
+        .replace("taɸly", "tally") \
+        .replace("taθly", "tally") \
+        .replace("taʁly", "tally") \
+        .replace("taɢly", "tally") \
+        .replace("taʕly", "tally") \
+        .replace("taɀly", "tally") \
+        .replace("taʈly", "tally") \
+        .replace("taʄly", "tally") \
+        .replace("taʊly", "tally") \
+        .replace("taʘly", "tally") \
+        .replace("taɕly", "tally") \
+        .replace("taɣly", "tally") \
+        .replace("taƈly", "tally") \
+        .replace("taɼly", "tally") \
+        .replace("taɨly", "tally") \
+        .replace("taɇly", "tally") \
+        .replace("taðly", "tally") \
+        .replace("taʃly", "tally") \
+        .replace("taʧly", "tally") \
+        .replace("sɸmmarise", "summarise") \
+        .replace("sθmmarise", "summarise") \
+        .replace("sʁmmarise", "summarise") \
+        .replace("sɢmmarise", "summarise") \
+        .replace("sʕmmarise", "summarise") \
+        .replace("sɀmmarise", "summarise") \
+        .replace("sʈmmarise", "summarise") \
+        .replace("sʄmmarise", "summarise") \
+        .replace("sʘmmarise", "summarise") \
+        .replace("sɕmmarise", "summarise") \
+        .replace("sƈmmarise", "summarise") \
+        .replace("sɼmmarise", "summarise") \
+        .replace("sɨmmarise", "summarise") \
+        .replace("sɇmmarise", "summarise") \
+        .replace("sðmmarise", "summarise") \
+        .replace("sŋmmarise", "summarise") \
+        .replace("sʧmmarise", "summarise") \
+        .replace("sumʁarise", "summarise") \
+        .replace("sumɢarise", "summarise") \
+        .replace("sumʕarise", "summarise") \
+        .replace("sumɀarise", "summarise") \
+        .replace("sumʈarise", "summarise") \
+        .replace("sumʄarise", "summarise") \
+        .replace("sumʊarise", "summarise") \
+        .replace("sumʘarise", "summarise") \
+        .replace("sumɕarise", "summarise") \
+        .replace("sumɣarise", "summarise") \
+        .replace("sumƈarise", "summarise") \
+        .replace("sumɼarise", "summarise") \
+        .replace("sumɨarise", "summarise") \
+        .replace("sumɇarise", "summarise") \
+        .replace("sumʃarise", "summarise") \
+        .replace("sumʧarise", "summarise") \
+        .replace("summariɸe", "summarise") \
+        .replace("summariθe", "summarise") \
+        .replace("summariʁe", "summarise") \
+        .replace("summariɢe", "summarise") \
+        .replace("summariɀe", "summarise") \
+        .replace("summariʈe", "summarise") \
+        .replace("summariʄe", "summarise") \
+        .replace("summariʊe", "summarise") \
+        .replace("summariʘe", "summarise") \
+        .replace("summariɣe", "summarise") \
+        .replace("summariɼe", "summarise") \
+        .replace("summariɨe", "summarise") \
+        .replace("summariɇe", "summarise") \
+        .replace("summariðe", "summarise") \
+        .replace("summariŋe", "summarise") \
+        .replace("summariʧe", "summarise") \
+        .replace("summarisɸ", "summarise") \
+        .replace("summarisθ", "summarise") \
+        .replace("summarisʁ", "summarise") \
+        .replace("summarisɢ", "summarise") \
+        .replace("summarisʕ", "summarise") \
+        .replace("summarisɀ", "summarise") \
+        .replace("summarisʈ", "summarise") \
+        .replace("summarisʄ", "summarise") \
+        .replace("summarisʊ", "summarise") \
+        .replace("summarisʘ", "summarise") \
+        .replace("summarisɕ", "summarise") \
+        .replace("summarisɣ", "summarise") \
+        .replace("summarisƈ", "summarise") \
+        .replace("summarisɼ", "summarise") \
+        .replace("summarisɨ", "summarise") \
+        .replace("summarisð", "summarise") \
+        .replace("summarisŋ", "summarise") \
+        .replace("summarisʃ", "summarise") \
+        .replace("summarisʧ", "summarise") \
+        .replace("ƃally", "tally") \
+        .replace("taƃy", "tally") \
+        .replace("ƅally", "tally") \
+        .replace("suƅmarise", "summarise") \
+        .replace("ƍally", "tally") \
+        .replace("summaƍise", "summarise") \
+        .replace("ǝally", "tally") \
+        .replace("suǝmarise", "summarise") \
         .replace("tallɸ", "tally") \
         .replace("tallθ", "tally") \
         .replace("tallð", "tally") \
@@ -1555,7 +1659,23 @@ _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
                             "reader", "flyer", "circular",
                             "handbill", "tract", "guide",
                             "flyers", "circulars", "handbills",
-                            "tracts", "guides", "flags", "annal")
+                            "tracts", "guides", "flags", "annal",
+                            "tabloid", "tabloids", "whitepaper",
+                            "whitepapers", "playbill", "playbills",
+                            "essay", "essays", "thesis",
+                            "screenplay", "hymnal", "missal",
+                            "psalter", "breviary", "preprint",
+                            "reprint", "offprint", "sermon",
+                            "lecture", "bookmark", "opus",
+                            "libretto", "memoranda", "phenomenon",
+                            "phenomena", "criterion", "criteria",
+                            "erratum", "errata", "datum",
+                            "data", "forum", "fora",
+                            "medium", "media", "epistle",
+                            "missive", "tablet", "plaque",
+                            "quire", "epistles", "missives",
+                            "tablets", "plaques", "quires",
+                            "fascicles", "flag")
 
 _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "talley", "talleys", "talleyed",
@@ -1584,7 +1704,10 @@ _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "tallyaz4", "tallya6", "tallyeo7",
                              "tallya7", "tallyeo8", "tallyu6",
                              "tallyo6", "tallyai6", "tallyez5",
-                             "tallyaz5", "talliese")
+                             "tallyaz5", "talliese",
+                             "tallyo7", "tallyu7", "tallyai7",
+                             "tallyez6", "tallyaz6", "tallya8",
+                             "tallyeo9")
 
 _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talley", "talleys", "talleyed",
@@ -1622,7 +1745,10 @@ _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "tallyeo8", "tallyu6",
                                    "tallyo6", "tallyai6",
                                    "tallyez5", "tallyaz5",
-                                   "talliese")
+                                   "talliese",
+                                   "tallyo7", "tallyu7", "tallyai7",
+                                   "tallyez6", "tallyaz6", "tallya8",
+                                   "tallyeo9")
 
 
 def _tally_word(word):
@@ -2222,13 +2348,9 @@ def _tally_word(word):
         return True
     if word in _TALLY_WORD_VARIANT_FORMS:
         return True
-    if word in _TOTALLY_FAMILY:
-        return False
-    if any(word.endswith(adverb) for adverb in _TOTALLY_FAMILY):
-        return False
-    return any(word == prefix + form
-               for prefix in _GOVERNED_FUSED_PREFIXES
-               for form in _TALLY_WORD_FORMS) or \
+    if any(word == prefix + form
+           for prefix in _GOVERNED_FUSED_PREFIXES
+           for form in _TALLY_WORD_FORMS) or \
         any(word.endswith(prefix + form)
             for prefix in _GOVERNED_FUSED_PREFIXES
             for form in _TALLY_WORD_FORMS) or \
@@ -2237,7 +2359,13 @@ def _tally_word(word):
             for form in _TALLY_WORD_VARIANT_FUSED_FORMS) or \
         any(word.endswith(prefix + form)
             for prefix in _GOVERNED_FUSED_PREFIXES
-            for form in _TALLY_WORD_VARIANT_FUSED_FORMS)
+            for form in _TALLY_WORD_VARIANT_FUSED_FORMS):
+        return True
+    if word in _TOTALLY_FAMILY:
+        return False
+    if any(word.endswith(adverb) for adverb in _TOTALLY_FAMILY):
+        return False
+    return False
 
 
 _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
@@ -2308,7 +2436,11 @@ _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summarisereseseseseseseseseses", "summarisingeseseseseseseseseses", "summarieseseseseseseseseseses", "summarisedeseseseseseseseseses",
                        "summariseeseseseseseseseseseses", "summaryeseseseseseseseseseses", "summarisationeseseseseseseseseseses",
                        "summarisereseseseseseseseseseses", "summarisingeseseseseseseseseseses", "summarieseseseseseseseseseseses", "summarisedeseseseseseseseseseses", "summariseeseseseseseseseseseseses", "summaryeseseseseseseseseseseses", "summarisationeseseseseseseseseseseses",
-                       "summarisationeseseseseseseseseseseseses", "summarisingeseseseseseseseseseseses", "summariseeseseseseseseseseseseseses", "summarisereseseseseseseseseseseses", "summarisedeseseseseseseseseseseses", "summarieseseseseseseseseseseseses", "summaryeseseseseseseseseseseseses")
+                       "summarisationeseseseseseseseseseseseses", "summarisingeseseseseseseseseseseses", "summariseeseseseseseseseseseseseses", "summarisereseseseseseseseseseseses", "summarisedeseseseseseseseseseseses", "summarieseseseseseseseseseseseses", "summaryeseseseseseseseseseseseses",
+                       "summarisereseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseses",
+                       "summarieseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseses",
+                       "summariseeseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseses",
+                       "summarisationeseseseseseseseseseseseseses")
 
 
 def _summary_word(word):
@@ -2743,9 +2875,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(trace_word):])
-                    if mids is not None and 1 <= len(mids) <= 17 \
+                    if mids is not None and 1 <= len(mids) <= 18 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -2761,9 +2893,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(form):])
-                    if mids is not None and 1 <= len(mids) <= 17 \
+                    if mids is not None and 1 <= len(mids) <= 18 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -5633,6 +5765,10 @@ def _tally_statement_head(line):
                 _summary_word(words[-1]) and \
                 _inserted_words_governed_wide(words[-21:-1]):
             return True
+        if len(words) == 23 and words[-23] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed_wide(words[-22:-1]):
+            return True
         if len(words) == 3 and _summary_word(words[-3]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-2:-1]):
@@ -5712,6 +5848,10 @@ def _tally_statement_head(line):
         if len(words) == 22 and _summary_word(words[-22]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed_wide(words[-21:-1]):
+            return True
+        if len(words) == 23 and _summary_word(words[-23]) and \
+                words[-1] == "trace" and \
+                _inserted_words_governed_wide(words[-22:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -5857,6 +5997,13 @@ def _tally_statement_head(line):
                 (words[-24] == "trace" or
                  _tally_word(words[-24])) and \
                 _inserted_words_governed_wide(words[-23:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) == 25 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-25] == "trace" or
+                 _tally_word(words[-25])) and \
+                _inserted_words_governed_wide(words[-24:-3]) and \
                 words[-1].isdigit():
             return True
         if terminator == ";":
