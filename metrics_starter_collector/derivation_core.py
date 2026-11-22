@@ -3516,7 +3516,12 @@ _MAIN_VERB_WORDS = frozenset((
     "awoke", "befell", "beheld", "besought", "bade", "dwelt",
     "ground", "leant", "lay", "lit", "proven", "slung",
     "sprang", "strode", "strove", "trod", "wove", "wound",
-    "forsook", "dove"))
+    "forsook", "dove",
+    "gulp", "gulps", "gasp", "gasps", "moan", "moans",
+    "groan", "groans", "whistle", "whistles", "doze",
+    "dozes", "yodel", "yodels", "grovel", "grovels",
+    "snivel", "snivels", "cower", "cowers", "drink",
+    "drinks", "mean", "means", "drank", "meant"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -3699,7 +3704,18 @@ def _word_stands_as_main_verb(word):
     word
     carrying such an ending in its own right, standing in
     the constant _NAMING_WORDS_WITH_VERB_ENDINGS, stands
-    as no verb form in this test.
+    as no verb form in this test. The closed classes
+    stand widened again in fix pass 32 Unit 1 to the
+    main verbs of the same ordinary prose in their base
+    forms, their s forms and their irregular forms,
+    gulp, gasp, moan, groan, whistle, doze, yodel,
+    grovel, snivel and cower in their base and s forms,
+    and drink and mean in their base and s forms beside
+    drank and meant in their irregular forms, so the
+    verb of a prose sentence in bare subject and main
+    verb form and the verb of a prose clause in verb
+    first form stand read in those shapes in the same
+    way.
     """
     if word in _NAMING_WORDS_WITH_VERB_ENDINGS:
         return False
@@ -4296,7 +4312,36 @@ def _before_closing_stands_as_head(words_before, text_before):
     with quill aside and Ledger ⦓panel⦔ trace
     summary carrying its arc bracket aside among them, a
     head carrying no such verb, no such join and no such
-    aside in its run.
+    aside in its run. The main verb, run join and aside
+    readings stand restated again in fix pass 32 Unit 1
+    in the same terms: the main verb reading stands
+    widened to the main verbs of the same ordinary prose
+    in their base forms, their s forms and their
+    irregular forms, as _word_stands_as_main_verb states
+    as restated, Panel gulp trace summary carrying gulp,
+    Panel drank trace summary carrying drank and Gulp
+    panel trace summary carrying gulp in verb first form
+    among them; a prose run join stands in any of the
+    shapes a run is joined in, beside the shapes named
+    above, a contour integral sign, a surface integral
+    sign, a volume integral sign, a clock integral sign,
+    a contour integral direction sign, a n-ary circled
+    sign, a n-ary square sign, a n-ary union sign, a
+    subset sign, a superset sign, a pitchfork sign, a
+    parallel equality sign, a normal subgroup sign, a
+    triangle negation sign, an ellipsis sign, a
+    letterlike sign, a minus sign, an angle sign, a
+    divides sign, a parallel sign, a logical sign, a
+    double integral sign, a triple integral sign and a
+    combining sign standing as its own token, Ledger ∮
+    trace summary carrying its contour integral sign and
+    Ledger ⃒ trace summary carrying its combining sign
+    among them; and a prose aside stands in any of its
+    shapes, beside the shapes named above, an aside in
+    left and right angle bracket marks, Ledger ⟨panel⟩
+    trace summary carrying its angle bracket aside among
+    them, a head carrying no such verb, no such join and
+    no such aside in its run.
     """
     if "," in text_before or ";" in text_before or \
             ":" in text_before:
@@ -4604,6 +4649,72 @@ def _before_closing_stands_as_head(words_before, text_before):
             "＜" in text_before or \
             "＞" in text_before or \
             "‟" in text_before:
+        return False
+    if "∮" in text_before or \
+            "∯" in text_before or \
+            "∰" in text_before or \
+            "∱" in text_before or \
+            "∲" in text_before or \
+            "∳" in text_before or \
+            "⨀" in text_before or \
+            "⨁" in text_before or \
+            "⨂" in text_before or \
+            "⨄" in text_before or \
+            "⨅" in text_before or \
+            "⨆" in text_before or \
+            "⨇" in text_before or \
+            "⨈" in text_before or \
+            "⨉" in text_before or \
+            "⨊" in text_before or \
+            "⋐" in text_before or \
+            "⋑" in text_before or \
+            "⋒" in text_before or \
+            "⋓" in text_before or \
+            "⋔" in text_before or \
+            "⋕" in text_before or \
+            "⋬" in text_before or \
+            "⋩" in text_before or \
+            "⋪" in text_before or \
+            "⋫" in text_before or \
+            "⋮" in text_before or \
+            "⋯" in text_before or \
+            "℈" in text_before or \
+            "ℇ" in text_before or \
+            "ℊ" in text_before or \
+            "ℋ" in text_before or \
+            "ℌ" in text_before or \
+            "ℍ" in text_before or \
+            "ℏ" in text_before or \
+            "ℐ" in text_before or \
+            "℘" in text_before or \
+            "ℨ" in text_before or \
+            "K" in text_before or \
+            "ℬ" in text_before or \
+            "ℹ" in text_before or \
+            "−" in text_before or \
+            "∓" in text_before or \
+            "∜" in text_before or \
+            "∝" in text_before or \
+            "∟" in text_before or \
+            "∠" in text_before or \
+            "∡" in text_before or \
+            "∢" in text_before or \
+            "∣" in text_before or \
+            "∤" in text_before or \
+            "∥" in text_before or \
+            "∦" in text_before or \
+            "∧" in text_before or \
+            "∨" in text_before or \
+            "∬" in text_before or \
+            "∭" in text_before or \
+            "⃒" in text_before or \
+            "⃘" in text_before or \
+            "⃚" in text_before or \
+            "⃠" in text_before or \
+            "⃣" in text_before or \
+            "⃧" in text_before or \
+            "⟨" in text_before or \
+            "⟩" in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
