@@ -1177,7 +1177,283 @@ def _fold_word(word):
     folded = unicodedata.normalize("NFD", word.lower())
     folded = "".join(char for char in folded
                      if unicodedata.category(char) != "Mn")
+    if folded == "oally":
+        return "tally"
+    if folded == "ually":
+        return "tally"
+    if folded == "taoly":
+        return "tally"
+    if folded == "tauly":
+        return "tally"
+    if folded == "sommarise":
+        return "summarise"
+    if folded == "sumoarise":
+        return "summarise"
+    if folded == "sumuarise":
+        return "summarise"
+    if folded == "summarioe":
+        return "summarise"
+    if folded == "summariue":
+        return "summarise"
+    if folded == "summariso":
+        return "summarise"
+    if folded == "summarisu":
+        return "summarise"
     return folded \
+        .replace("ɩally", "tally") \
+        .replace("ɫally", "tally") \
+        .replace("ɬally", "tally") \
+        .replace("ɮally", "tally") \
+        .replace("ɯally", "tally") \
+        .replace("ɰally", "tally") \
+        .replace("ɱally", "tally") \
+        .replace("ɲally", "tally") \
+        .replace("ɳally", "tally") \
+        .replace("ɴally", "tally") \
+        .replace("ɵally", "tally") \
+        .replace("ɶally", "tally") \
+        .replace("ɷally", "tally") \
+        .replace("ɔally", "tally") \
+        .replace("ƌally", "tally") \
+        .replace("əally", "tally") \
+        .replace("ɛally", "tally") \
+        .replace("ɠally", "tally") \
+        .replace("ƙally", "tally") \
+        .replace("ƞally", "tally") \
+        .replace("ƣally", "tally") \
+        .replace("ƥally", "tally") \
+        .replace("ʀally", "tally") \
+        .replace("ƨally", "tally") \
+        .replace("ƪally", "tally") \
+        .replace("ʋally", "tally") \
+        .replace("ƴally", "tally") \
+        .replace("ƶally", "tally") \
+        .replace("ʒally", "tally") \
+        .replace("ƹally", "tally") \
+        .replace("ƺally", "tally") \
+        .replace("ƻally", "tally") \
+        .replace("ƽally", "tally") \
+        .replace("ƾally", "tally") \
+        .replace("ƿally", "tally") \
+        .replace("ǀally", "tally") \
+        .replace("ǁally", "tally") \
+        .replace("ǂally", "tally") \
+        .replace("ǃally", "tally") \
+        .replace("taɩly", "tally") \
+        .replace("taɯly", "tally") \
+        .replace("taɰly", "tally") \
+        .replace("taɱly", "tally") \
+        .replace("taɲly", "tally") \
+        .replace("taɴly", "tally") \
+        .replace("taɵly", "tally") \
+        .replace("taɶly", "tally") \
+        .replace("taɷly", "tally") \
+        .replace("taƅly", "tally") \
+        .replace("taɔly", "tally") \
+        .replace("taɖly", "tally") \
+        .replace("taɗly", "tally") \
+        .replace("taƌly", "tally") \
+        .replace("taǝly", "tally") \
+        .replace("taəly", "tally") \
+        .replace("taɛly", "tally") \
+        .replace("taɠly", "tally") \
+        .replace("taƙly", "tally") \
+        .replace("taƞly", "tally") \
+        .replace("taƣly", "tally") \
+        .replace("taʀly", "tally") \
+        .replace("taƨly", "tally") \
+        .replace("taƪly", "tally") \
+        .replace("taƫly", "tally") \
+        .replace("taƭly", "tally") \
+        .replace("taʋly", "tally") \
+        .replace("taƴly", "tally") \
+        .replace("taƶly", "tally") \
+        .replace("taʒly", "tally") \
+        .replace("taƹly", "tally") \
+        .replace("taƺly", "tally") \
+        .replace("taƻly", "tally") \
+        .replace("taƽly", "tally") \
+        .replace("taƾly", "tally") \
+        .replace("taƿly", "tally") \
+        .replace("taǀly", "tally") \
+        .replace("taǁly", "tally") \
+        .replace("taǂly", "tally") \
+        .replace("taǃly", "tally") \
+        .replace("sɩmmarise", "summarise") \
+        .replace("sɫmmarise", "summarise") \
+        .replace("sɬmmarise", "summarise") \
+        .replace("sɮmmarise", "summarise") \
+        .replace("sɱmmarise", "summarise") \
+        .replace("sɲmmarise", "summarise") \
+        .replace("sɳmmarise", "summarise") \
+        .replace("sɴmmarise", "summarise") \
+        .replace("sɵmmarise", "summarise") \
+        .replace("sɶmmarise", "summarise") \
+        .replace("sɷmmarise", "summarise") \
+        .replace("sƅmmarise", "summarise") \
+        .replace("sɔmmarise", "summarise") \
+        .replace("sɖmmarise", "summarise") \
+        .replace("sɗmmarise", "summarise") \
+        .replace("sƌmmarise", "summarise") \
+        .replace("sǝmmarise", "summarise") \
+        .replace("səmmarise", "summarise") \
+        .replace("sɛmmarise", "summarise") \
+        .replace("sɠmmarise", "summarise") \
+        .replace("sƙmmarise", "summarise") \
+        .replace("sƞmmarise", "summarise") \
+        .replace("sƣmmarise", "summarise") \
+        .replace("sƥmmarise", "summarise") \
+        .replace("sʀmmarise", "summarise") \
+        .replace("sƨmmarise", "summarise") \
+        .replace("sƪmmarise", "summarise") \
+        .replace("sƫmmarise", "summarise") \
+        .replace("sƭmmarise", "summarise") \
+        .replace("sƴmmarise", "summarise") \
+        .replace("sƶmmarise", "summarise") \
+        .replace("sʒmmarise", "summarise") \
+        .replace("sƹmmarise", "summarise") \
+        .replace("sƺmmarise", "summarise") \
+        .replace("sƻmmarise", "summarise") \
+        .replace("sƽmmarise", "summarise") \
+        .replace("sƾmmarise", "summarise") \
+        .replace("sƿmmarise", "summarise") \
+        .replace("sǀmmarise", "summarise") \
+        .replace("sǁmmarise", "summarise") \
+        .replace("sǂmmarise", "summarise") \
+        .replace("sǃmmarise", "summarise") \
+        .replace("sumɩarise", "summarise") \
+        .replace("sumɫarise", "summarise") \
+        .replace("sumɬarise", "summarise") \
+        .replace("sumɭarise", "summarise") \
+        .replace("sumɮarise", "summarise") \
+        .replace("sumɯarise", "summarise") \
+        .replace("sumɰarise", "summarise") \
+        .replace("sumɳarise", "summarise") \
+        .replace("sumɵarise", "summarise") \
+        .replace("sumɷarise", "summarise") \
+        .replace("sumƅarise", "summarise") \
+        .replace("sumɔarise", "summarise") \
+        .replace("sumɖarise", "summarise") \
+        .replace("sumɗarise", "summarise") \
+        .replace("sumƌarise", "summarise") \
+        .replace("sumǝarise", "summarise") \
+        .replace("suməarise", "summarise") \
+        .replace("sumɛarise", "summarise") \
+        .replace("sumɠarise", "summarise") \
+        .replace("sumƙarise", "summarise") \
+        .replace("sumƞarise", "summarise") \
+        .replace("sumƣarise", "summarise") \
+        .replace("sumƥarise", "summarise") \
+        .replace("sumʀarise", "summarise") \
+        .replace("sumƨarise", "summarise") \
+        .replace("sumƪarise", "summarise") \
+        .replace("sumƫarise", "summarise") \
+        .replace("sumƭarise", "summarise") \
+        .replace("sumʋarise", "summarise") \
+        .replace("sumƴarise", "summarise") \
+        .replace("sumƶarise", "summarise") \
+        .replace("sumʒarise", "summarise") \
+        .replace("sumƹarise", "summarise") \
+        .replace("sumƺarise", "summarise") \
+        .replace("sumƻarise", "summarise") \
+        .replace("sumƽarise", "summarise") \
+        .replace("sumƾarise", "summarise") \
+        .replace("sumƿarise", "summarise") \
+        .replace("sumǀarise", "summarise") \
+        .replace("sumǁarise", "summarise") \
+        .replace("sumǂarise", "summarise") \
+        .replace("sumǃarise", "summarise") \
+        .replace("summariɩe", "summarise") \
+        .replace("summariɫe", "summarise") \
+        .replace("summariɬe", "summarise") \
+        .replace("summariɭe", "summarise") \
+        .replace("summariɮe", "summarise") \
+        .replace("summariɯe", "summarise") \
+        .replace("summariɰe", "summarise") \
+        .replace("summariɱe", "summarise") \
+        .replace("summariɲe", "summarise") \
+        .replace("summariɳe", "summarise") \
+        .replace("summariɴe", "summarise") \
+        .replace("summariɵe", "summarise") \
+        .replace("summariɶe", "summarise") \
+        .replace("summariɷe", "summarise") \
+        .replace("summariƅe", "summarise") \
+        .replace("summariɔe", "summarise") \
+        .replace("summariɖe", "summarise") \
+        .replace("summariɗe", "summarise") \
+        .replace("summariƌe", "summarise") \
+        .replace("summariǝe", "summarise") \
+        .replace("summariəe", "summarise") \
+        .replace("summariɛe", "summarise") \
+        .replace("summariɠe", "summarise") \
+        .replace("summariƙe", "summarise") \
+        .replace("summariƞe", "summarise") \
+        .replace("summariƣe", "summarise") \
+        .replace("summariƥe", "summarise") \
+        .replace("summariƪe", "summarise") \
+        .replace("summariƫe", "summarise") \
+        .replace("summariƭe", "summarise") \
+        .replace("summariʋe", "summarise") \
+        .replace("summariƴe", "summarise") \
+        .replace("summariƶe", "summarise") \
+        .replace("summariƹe", "summarise") \
+        .replace("summariƺe", "summarise") \
+        .replace("summariƻe", "summarise") \
+        .replace("summariƽe", "summarise") \
+        .replace("summariƾe", "summarise") \
+        .replace("summariƿe", "summarise") \
+        .replace("summariǀe", "summarise") \
+        .replace("summariǁe", "summarise") \
+        .replace("summariǂe", "summarise") \
+        .replace("summariǃe", "summarise") \
+        .replace("summarisɩ", "summarise") \
+        .replace("summarisɫ", "summarise") \
+        .replace("summarisɬ", "summarise") \
+        .replace("summarisɭ", "summarise") \
+        .replace("summarisɮ", "summarise") \
+        .replace("summarisɯ", "summarise") \
+        .replace("summarisɰ", "summarise") \
+        .replace("summarisɱ", "summarise") \
+        .replace("summarisɲ", "summarise") \
+        .replace("summarisɳ", "summarise") \
+        .replace("summarisɴ", "summarise") \
+        .replace("summarisɶ", "summarise") \
+        .replace("summarisɷ", "summarise") \
+        .replace("summarisƅ", "summarise") \
+        .replace("summarisɔ", "summarise") \
+        .replace("summarisɖ", "summarise") \
+        .replace("summarisƌ", "summarise") \
+        .replace("summarisǝ", "summarise") \
+        .replace("summarisə", "summarise") \
+        .replace("summarisɠ", "summarise") \
+        .replace("summarisƙ", "summarise") \
+        .replace("summarisƞ", "summarise") \
+        .replace("summarisƣ", "summarise") \
+        .replace("summarisƥ", "summarise") \
+        .replace("summarisʀ", "summarise") \
+        .replace("summarisƨ", "summarise") \
+        .replace("summarisƪ", "summarise") \
+        .replace("summarisƫ", "summarise") \
+        .replace("summarisƭ", "summarise") \
+        .replace("summarisʋ", "summarise") \
+        .replace("summarisƴ", "summarise") \
+        .replace("summarisƶ", "summarise") \
+        .replace("summarisʒ", "summarise") \
+        .replace("summarisƹ", "summarise") \
+        .replace("summarisƺ", "summarise") \
+        .replace("summarisƻ", "summarise") \
+        .replace("summarisƽ", "summarise") \
+        .replace("summarisƾ", "summarise") \
+        .replace("summarisƿ", "summarise") \
+        .replace("summarisǀ", "summarise") \
+        .replace("summarisǁ", "summarise") \
+        .replace("summarisǂ", "summarise") \
+        .replace("summarisǃ", "summarise") \
+        .replace("suɔmarise", "summarise") \
+        .replace("taƌy", "tally") \
+        .replace("ƒally", "tally") \
+        .replace("suƒmarise", "summarise") \
+        .replace("summaƙise", "summarise") \
         .replace("ɢally", "tally") \
         .replace("ʕally", "tally") \
         .replace("ɀally", "tally") \
@@ -1675,7 +1951,9 @@ _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
                             "missive", "tablet", "plaque",
                             "quire", "epistles", "missives",
                             "tablets", "plaques", "quires",
-                            "fascicles", "flag")
+                            "fascicles", "flag",
+                            "chapbook", "chapbooks", "daybook", "daybooks", "workbook", "workbooks", "textbook", "textbooks", "yearbook", "yearbooks", "cookbook", "cookbooks", "handbook", "handbooks", "logbook", "logbooks", "guestbook", "guestbooks", "scrapbook", "scrapbooks", "anthem", "anthems", "broadside", "broadsides", "diurnal", "diurnals", "octavo", "octavos", "quarto", "quartos", "gradual", "graduals", "vespers", "herald", "heralds", "chroniclet", "analysis", "analyses", "theses", "crisis", "crises", "oasis", "oases", "songbooks",
+                            "thesess", "analysess", "oasess", "crisess")
 
 _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "talley", "talleys", "talleyed",
@@ -1707,7 +1985,7 @@ _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "tallyaz5", "talliese",
                              "tallyo7", "tallyu7", "tallyai7",
                              "tallyez6", "tallyaz6", "tallya8",
-                             "tallyeo9")
+                             "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8")
 
 _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talley", "talleys", "talleyed",
@@ -1748,7 +2026,7 @@ _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talliese",
                                    "tallyo7", "tallyu7", "tallyai7",
                                    "tallyez6", "tallyaz6", "tallya8",
-                                   "tallyeo9")
+                                   "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8")
 
 
 def _tally_word(word):
@@ -2440,7 +2718,8 @@ _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summarisereseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseses",
                        "summarieseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseses",
                        "summariseeseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseses",
-                       "summarisationeseseseseseseseseseseseseses")
+                       "summarisationeseseseseseseseseseseseseses",
+                       "summarisereseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseses")
 
 
 def _summary_word(word):
@@ -2875,9 +3154,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(trace_word):])
-                    if mids is not None and 1 <= len(mids) <= 18 \
+                    if mids is not None and 1 <= len(mids) <= 19 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -2893,9 +3172,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(form):])
-                    if mids is not None and 1 <= len(mids) <= 18 \
+                    if mids is not None and 1 <= len(mids) <= 19 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -5880,6 +6159,10 @@ def _tally_statement_head(line):
                 _summary_word(words[-1]) and \
                 _inserted_words_governed_wide(words[-22:-1]):
             return True
+        if len(words) == 24 and words[-24] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed_wide(words[-23:-1]):
+            return True
         if len(words) == 3 and _summary_word(words[-3]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-2:-1]):
@@ -5963,6 +6246,10 @@ def _tally_statement_head(line):
         if len(words) == 23 and _summary_word(words[-23]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed_wide(words[-22:-1]):
+            return True
+        if len(words) == 24 and _summary_word(words[-24]) and \
+                words[-1] == "trace" and \
+                _inserted_words_governed_wide(words[-23:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -6115,6 +6402,13 @@ def _tally_statement_head(line):
                 (words[-25] == "trace" or
                  _tally_word(words[-25])) and \
                 _inserted_words_governed_wide(words[-24:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) == 26 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-26] == "trace" or
+                 _tally_word(words[-26])) and \
+                _inserted_words_governed_wide(words[-25:-3]) and \
                 words[-1].isdigit():
             return True
         if terminator == ";":
