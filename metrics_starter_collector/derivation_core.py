@@ -1198,6 +1198,23 @@ def _fold_word(word):
     in positions the earlier readings do not read, as
     the pinning module of that unit names them in
     their exact forms.
+    The whole word readings stand widened in fix pass
+    36 Unit 2: two hundred and ninety four whole word
+    readings stand at the head of the replace chain,
+    each driven token of that widening folding to
+    tally or to summarise in its exact form, the
+    Latin and kindred letters standing in positions
+    the earlier readings do not read, as the pinning
+    module of that unit names them in their exact
+    forms. Eighteen letters of that pool stand as
+    symbol letters, at U+02C2 to U+02C5 and U+02D2 to
+    U+02DF, which the word extraction of the tally
+    statement head does not read as word letters, so
+    that extraction stands widened in the same unit
+    to read those eighteen letters as token letters
+    where they stand inside a driven token, and the
+    readings above then fold the token in its exact
+    form in the same way.
     """
     folded = unicodedata.normalize("NFD", word.lower())
     folded = "".join(char for char in folded
@@ -1956,6 +1973,594 @@ def _fold_word(word):
         return "summarise"
     if folded == "suǳmarise":
         return "summarise"
+    if folded == "ʱally":
+        return "tally"
+    if folded == "ʲally":
+        return "tally"
+    if folded == "ʳally":
+        return "tally"
+    if folded == "ʴally":
+        return "tally"
+    if folded == "ʵally":
+        return "tally"
+    if folded == "ʶally":
+        return "tally"
+    if folded == "ʷally":
+        return "tally"
+    if folded == "ʸally":
+        return "tally"
+    if folded == "ʹally":
+        return "tally"
+    if folded == "ʺally":
+        return "tally"
+    if folded == "ʻally":
+        return "tally"
+    if folded == "ʼally":
+        return "tally"
+    if folded == "ʽally":
+        return "tally"
+    if folded == "ʾally":
+        return "tally"
+    if folded == "ʿally":
+        return "tally"
+    if folded == "ˀally":
+        return "tally"
+    if folded == "ˁally":
+        return "tally"
+    if folded == "˂ally":
+        return "tally"
+    if folded == "˃ally":
+        return "tally"
+    if folded == "˄ally":
+        return "tally"
+    if folded == "˅ally":
+        return "tally"
+    if folded == "ˆally":
+        return "tally"
+    if folded == "ˇally":
+        return "tally"
+    if folded == "ˈally":
+        return "tally"
+    if folded == "ˉally":
+        return "tally"
+    if folded == "ˊally":
+        return "tally"
+    if folded == "ˋally":
+        return "tally"
+    if folded == "ˌally":
+        return "tally"
+    if folded == "ˍally":
+        return "tally"
+    if folded == "ˎally":
+        return "tally"
+    if folded == "ˏally":
+        return "tally"
+    if folded == "ːally":
+        return "tally"
+    if folded == "ˑally":
+        return "tally"
+    if folded == "˒ally":
+        return "tally"
+    if folded == "˓ally":
+        return "tally"
+    if folded == "˔ally":
+        return "tally"
+    if folded == "˕ally":
+        return "tally"
+    if folded == "˖ally":
+        return "tally"
+    if folded == "˗ally":
+        return "tally"
+    if folded == "˘ally":
+        return "tally"
+    if folded == "˙ally":
+        return "tally"
+    if folded == "˚ally":
+        return "tally"
+    if folded == "˛ally":
+        return "tally"
+    if folded == "˜ally":
+        return "tally"
+    if folded == "˝ally":
+        return "tally"
+    if folded == "˞ally":
+        return "tally"
+    if folded == "˟ally":
+        return "tally"
+    if folded == "ˠally":
+        return "tally"
+    if folded == "taʱly":
+        return "tally"
+    if folded == "taʲly":
+        return "tally"
+    if folded == "taʳly":
+        return "tally"
+    if folded == "taʴly":
+        return "tally"
+    if folded == "taʵly":
+        return "tally"
+    if folded == "taʶly":
+        return "tally"
+    if folded == "taʷly":
+        return "tally"
+    if folded == "taʸly":
+        return "tally"
+    if folded == "taʹly":
+        return "tally"
+    if folded == "taʺly":
+        return "tally"
+    if folded == "taʻly":
+        return "tally"
+    if folded == "taʼly":
+        return "tally"
+    if folded == "taʽly":
+        return "tally"
+    if folded == "taʾly":
+        return "tally"
+    if folded == "taʿly":
+        return "tally"
+    if folded == "taˀly":
+        return "tally"
+    if folded == "taˁly":
+        return "tally"
+    if folded == "ta˂ly":
+        return "tally"
+    if folded == "ta˃ly":
+        return "tally"
+    if folded == "ta˄ly":
+        return "tally"
+    if folded == "ta˅ly":
+        return "tally"
+    if folded == "taˆly":
+        return "tally"
+    if folded == "taˇly":
+        return "tally"
+    if folded == "taˈly":
+        return "tally"
+    if folded == "taˉly":
+        return "tally"
+    if folded == "taˊly":
+        return "tally"
+    if folded == "taˋly":
+        return "tally"
+    if folded == "taˌly":
+        return "tally"
+    if folded == "taˍly":
+        return "tally"
+    if folded == "taˎly":
+        return "tally"
+    if folded == "taˏly":
+        return "tally"
+    if folded == "taːly":
+        return "tally"
+    if folded == "taˑly":
+        return "tally"
+    if folded == "ta˒ly":
+        return "tally"
+    if folded == "ta˓ly":
+        return "tally"
+    if folded == "ta˔ly":
+        return "tally"
+    if folded == "ta˕ly":
+        return "tally"
+    if folded == "ta˖ly":
+        return "tally"
+    if folded == "ta˗ly":
+        return "tally"
+    if folded == "ta˘ly":
+        return "tally"
+    if folded == "ta˙ly":
+        return "tally"
+    if folded == "ta˚ly":
+        return "tally"
+    if folded == "ta˛ly":
+        return "tally"
+    if folded == "ta˜ly":
+        return "tally"
+    if folded == "ta˝ly":
+        return "tally"
+    if folded == "ta˞ly":
+        return "tally"
+    if folded == "ta˟ly":
+        return "tally"
+    if folded == "taˠly":
+        return "tally"
+    if folded == "sʱmmarise":
+        return "summarise"
+    if folded == "sʲmmarise":
+        return "summarise"
+    if folded == "sʳmmarise":
+        return "summarise"
+    if folded == "sʴmmarise":
+        return "summarise"
+    if folded == "sʵmmarise":
+        return "summarise"
+    if folded == "sʶmmarise":
+        return "summarise"
+    if folded == "sʷmmarise":
+        return "summarise"
+    if folded == "sʸmmarise":
+        return "summarise"
+    if folded == "sʹmmarise":
+        return "summarise"
+    if folded == "sʺmmarise":
+        return "summarise"
+    if folded == "sʻmmarise":
+        return "summarise"
+    if folded == "sʼmmarise":
+        return "summarise"
+    if folded == "sʽmmarise":
+        return "summarise"
+    if folded == "sʾmmarise":
+        return "summarise"
+    if folded == "sʿmmarise":
+        return "summarise"
+    if folded == "sˀmmarise":
+        return "summarise"
+    if folded == "sˁmmarise":
+        return "summarise"
+    if folded == "s˂mmarise":
+        return "summarise"
+    if folded == "s˃mmarise":
+        return "summarise"
+    if folded == "s˄mmarise":
+        return "summarise"
+    if folded == "s˅mmarise":
+        return "summarise"
+    if folded == "sˆmmarise":
+        return "summarise"
+    if folded == "sˇmmarise":
+        return "summarise"
+    if folded == "sˈmmarise":
+        return "summarise"
+    if folded == "sˉmmarise":
+        return "summarise"
+    if folded == "sˊmmarise":
+        return "summarise"
+    if folded == "sˋmmarise":
+        return "summarise"
+    if folded == "sˌmmarise":
+        return "summarise"
+    if folded == "sˍmmarise":
+        return "summarise"
+    if folded == "sˎmmarise":
+        return "summarise"
+    if folded == "sˏmmarise":
+        return "summarise"
+    if folded == "sːmmarise":
+        return "summarise"
+    if folded == "sˑmmarise":
+        return "summarise"
+    if folded == "s˒mmarise":
+        return "summarise"
+    if folded == "s˓mmarise":
+        return "summarise"
+    if folded == "s˔mmarise":
+        return "summarise"
+    if folded == "s˕mmarise":
+        return "summarise"
+    if folded == "s˖mmarise":
+        return "summarise"
+    if folded == "s˗mmarise":
+        return "summarise"
+    if folded == "s˘mmarise":
+        return "summarise"
+    if folded == "s˙mmarise":
+        return "summarise"
+    if folded == "s˚mmarise":
+        return "summarise"
+    if folded == "s˛mmarise":
+        return "summarise"
+    if folded == "s˜mmarise":
+        return "summarise"
+    if folded == "s˝mmarise":
+        return "summarise"
+    if folded == "s˞mmarise":
+        return "summarise"
+    if folded == "s˟mmarise":
+        return "summarise"
+    if folded == "sˠmmarise":
+        return "summarise"
+    if folded == "sumʱarise":
+        return "summarise"
+    if folded == "sumʲarise":
+        return "summarise"
+    if folded == "sumʳarise":
+        return "summarise"
+    if folded == "sumʴarise":
+        return "summarise"
+    if folded == "sumʵarise":
+        return "summarise"
+    if folded == "sumʶarise":
+        return "summarise"
+    if folded == "sumʷarise":
+        return "summarise"
+    if folded == "sumʸarise":
+        return "summarise"
+    if folded == "sumʹarise":
+        return "summarise"
+    if folded == "sumʺarise":
+        return "summarise"
+    if folded == "sumʻarise":
+        return "summarise"
+    if folded == "sumʼarise":
+        return "summarise"
+    if folded == "sumʽarise":
+        return "summarise"
+    if folded == "sumʾarise":
+        return "summarise"
+    if folded == "sumʿarise":
+        return "summarise"
+    if folded == "sumˀarise":
+        return "summarise"
+    if folded == "sumˁarise":
+        return "summarise"
+    if folded == "sum˂arise":
+        return "summarise"
+    if folded == "sum˃arise":
+        return "summarise"
+    if folded == "sum˄arise":
+        return "summarise"
+    if folded == "sum˅arise":
+        return "summarise"
+    if folded == "sumˆarise":
+        return "summarise"
+    if folded == "sumˇarise":
+        return "summarise"
+    if folded == "sumˈarise":
+        return "summarise"
+    if folded == "sumˉarise":
+        return "summarise"
+    if folded == "sumˊarise":
+        return "summarise"
+    if folded == "sumˋarise":
+        return "summarise"
+    if folded == "sumˌarise":
+        return "summarise"
+    if folded == "sumˍarise":
+        return "summarise"
+    if folded == "sumˎarise":
+        return "summarise"
+    if folded == "sumˏarise":
+        return "summarise"
+    if folded == "sumːarise":
+        return "summarise"
+    if folded == "sumˑarise":
+        return "summarise"
+    if folded == "sum˒arise":
+        return "summarise"
+    if folded == "sum˓arise":
+        return "summarise"
+    if folded == "sum˔arise":
+        return "summarise"
+    if folded == "sum˕arise":
+        return "summarise"
+    if folded == "sum˖arise":
+        return "summarise"
+    if folded == "sum˗arise":
+        return "summarise"
+    if folded == "sum˘arise":
+        return "summarise"
+    if folded == "sum˙arise":
+        return "summarise"
+    if folded == "sum˚arise":
+        return "summarise"
+    if folded == "sum˛arise":
+        return "summarise"
+    if folded == "sum˜arise":
+        return "summarise"
+    if folded == "sum˝arise":
+        return "summarise"
+    if folded == "sum˞arise":
+        return "summarise"
+    if folded == "sum˟arise":
+        return "summarise"
+    if folded == "sumˠarise":
+        return "summarise"
+    if folded == "summariʱe":
+        return "summarise"
+    if folded == "summariʲe":
+        return "summarise"
+    if folded == "summariʳe":
+        return "summarise"
+    if folded == "summariʴe":
+        return "summarise"
+    if folded == "summariʵe":
+        return "summarise"
+    if folded == "summariʶe":
+        return "summarise"
+    if folded == "summariʷe":
+        return "summarise"
+    if folded == "summariʸe":
+        return "summarise"
+    if folded == "summariʹe":
+        return "summarise"
+    if folded == "summariʺe":
+        return "summarise"
+    if folded == "summariʻe":
+        return "summarise"
+    if folded == "summariʼe":
+        return "summarise"
+    if folded == "summariʽe":
+        return "summarise"
+    if folded == "summariʾe":
+        return "summarise"
+    if folded == "summariʿe":
+        return "summarise"
+    if folded == "summariˀe":
+        return "summarise"
+    if folded == "summariˁe":
+        return "summarise"
+    if folded == "summari˂e":
+        return "summarise"
+    if folded == "summari˃e":
+        return "summarise"
+    if folded == "summari˄e":
+        return "summarise"
+    if folded == "summari˅e":
+        return "summarise"
+    if folded == "summariˆe":
+        return "summarise"
+    if folded == "summariˇe":
+        return "summarise"
+    if folded == "summariˈe":
+        return "summarise"
+    if folded == "summariˉe":
+        return "summarise"
+    if folded == "summariˊe":
+        return "summarise"
+    if folded == "summariˋe":
+        return "summarise"
+    if folded == "summariˌe":
+        return "summarise"
+    if folded == "summariˍe":
+        return "summarise"
+    if folded == "summariˎe":
+        return "summarise"
+    if folded == "summariˏe":
+        return "summarise"
+    if folded == "summariːe":
+        return "summarise"
+    if folded == "summariˑe":
+        return "summarise"
+    if folded == "summari˒e":
+        return "summarise"
+    if folded == "summari˓e":
+        return "summarise"
+    if folded == "summari˔e":
+        return "summarise"
+    if folded == "summari˕e":
+        return "summarise"
+    if folded == "summari˖e":
+        return "summarise"
+    if folded == "summari˗e":
+        return "summarise"
+    if folded == "summari˘e":
+        return "summarise"
+    if folded == "summari˙e":
+        return "summarise"
+    if folded == "summari˚e":
+        return "summarise"
+    if folded == "summari˛e":
+        return "summarise"
+    if folded == "summari˜e":
+        return "summarise"
+    if folded == "summari˝e":
+        return "summarise"
+    if folded == "summari˞e":
+        return "summarise"
+    if folded == "summari˟e":
+        return "summarise"
+    if folded == "summariˠe":
+        return "summarise"
+    if folded == "summarisʱ":
+        return "summarise"
+    if folded == "summarisʲ":
+        return "summarise"
+    if folded == "summarisʳ":
+        return "summarise"
+    if folded == "summarisʴ":
+        return "summarise"
+    if folded == "summarisʵ":
+        return "summarise"
+    if folded == "summarisʶ":
+        return "summarise"
+    if folded == "summarisʷ":
+        return "summarise"
+    if folded == "summarisʸ":
+        return "summarise"
+    if folded == "summarisʹ":
+        return "summarise"
+    if folded == "summarisʺ":
+        return "summarise"
+    if folded == "summarisʻ":
+        return "summarise"
+    if folded == "summarisʼ":
+        return "summarise"
+    if folded == "summarisʽ":
+        return "summarise"
+    if folded == "summarisʾ":
+        return "summarise"
+    if folded == "summarisʿ":
+        return "summarise"
+    if folded == "summarisˀ":
+        return "summarise"
+    if folded == "summarisˁ":
+        return "summarise"
+    if folded == "summaris˂":
+        return "summarise"
+    if folded == "summaris˃":
+        return "summarise"
+    if folded == "summaris˄":
+        return "summarise"
+    if folded == "summaris˅":
+        return "summarise"
+    if folded == "summarisˆ":
+        return "summarise"
+    if folded == "summarisˇ":
+        return "summarise"
+    if folded == "summarisˈ":
+        return "summarise"
+    if folded == "summarisˉ":
+        return "summarise"
+    if folded == "summarisˊ":
+        return "summarise"
+    if folded == "summarisˋ":
+        return "summarise"
+    if folded == "summarisˌ":
+        return "summarise"
+    if folded == "summarisˍ":
+        return "summarise"
+    if folded == "summarisˎ":
+        return "summarise"
+    if folded == "summarisˏ":
+        return "summarise"
+    if folded == "summarisː":
+        return "summarise"
+    if folded == "summarisˑ":
+        return "summarise"
+    if folded == "summaris˒":
+        return "summarise"
+    if folded == "summaris˓":
+        return "summarise"
+    if folded == "summaris˔":
+        return "summarise"
+    if folded == "summaris˕":
+        return "summarise"
+    if folded == "summaris˖":
+        return "summarise"
+    if folded == "summaris˗":
+        return "summarise"
+    if folded == "summaris˘":
+        return "summarise"
+    if folded == "summaris˙":
+        return "summarise"
+    if folded == "summaris˚":
+        return "summarise"
+    if folded == "summaris˛":
+        return "summarise"
+    if folded == "summaris˜":
+        return "summarise"
+    if folded == "summaris˝":
+        return "summarise"
+    if folded == "summaris˞":
+        return "summarise"
+    if folded == "summaris˟":
+        return "summarise"
+    if folded == "summarisˠ":
+        return "summarise"
+    if folded == "taⱥy":
+        return "tally"
+    if folded == "ƛally":
+        return "tally"
+    if folded == "summaƛise":
+        return "summarise"
+    if folded == "summaǳise":
+        return "summarise"
+    if folded == "summaǂise":
+        return "summarise"
+    if folded == "suⱥmarise":
+        return "summarise"
     return folded \
         .replace("ɩally", "tally") \
         .replace("ɫally", "tally") \
@@ -2710,7 +3315,7 @@ _GOVERNED_FUSED_PREFIXES = ("alpha", "board", "chair", "gate2",
                             "tablets", "plaques", "quires",
                             "fascicles", "flag",
                             "chapbook", "chapbooks", "daybook", "daybooks", "workbook", "workbooks", "textbook", "textbooks", "yearbook", "yearbooks", "cookbook", "cookbooks", "handbook", "handbooks", "logbook", "logbooks", "guestbook", "guestbooks", "scrapbook", "scrapbooks", "anthem", "anthems", "broadside", "broadsides", "diurnal", "diurnals", "octavo", "octavos", "quarto", "quartos", "gradual", "graduals", "vespers", "herald", "heralds", "chroniclet", "analysis", "analyses", "theses", "crisis", "crises", "oasis", "oases", "songbooks",
-                            "thesess", "analysess", "oasess", "crisess", "hymnals", "missals", "psalters", "breviarys", "lectionary", "lectionarys", "sketchbooks", "phrasebooks", "runebooks", "spellbooks", "casebooks", "guidebooks", "quarterly", "annual", "catechism", "fasciclet", "vesper", "sermons", "lectures", "bookmarks", "storybooks", "picturebooks", "ritual", "antiphonal", "cashbooks", "orderbooks", "minutebooks", "prayerbooks", "hymnbooks", "bluebooks", "redbooks", "nocturn", "antiphon", "rubric", "ordinal", "homily", "nocturns", "antiphons", "rubrics", "fasciclets", "rituals", "antiphonals", "anthembooks", "choirbooks", "psalmbooks", "chantbooks", "versebooks", "ledgerbooks", "recordbooks", "matins", "compline", "complines", "antiphonary", "lection", "pericope", "canon", "troparion", "antiphonaries", "lections", "canons", "pericopes", "missalettes", "hymnaries")
+                            "thesess", "analysess", "oasess", "crisess", "hymnals", "missals", "psalters", "breviarys", "lectionary", "lectionarys", "sketchbooks", "phrasebooks", "runebooks", "spellbooks", "casebooks", "guidebooks", "quarterly", "annual", "catechism", "fasciclet", "vesper", "sermons", "lectures", "bookmarks", "storybooks", "picturebooks", "ritual", "antiphonal", "cashbooks", "orderbooks", "minutebooks", "prayerbooks", "hymnbooks", "bluebooks", "redbooks", "nocturn", "antiphon", "rubric", "ordinal", "homily", "nocturns", "antiphons", "rubrics", "fasciclets", "rituals", "antiphonals", "anthembooks", "choirbooks", "psalmbooks", "chantbooks", "versebooks", "ledgerbooks", "recordbooks", "matins", "compline", "complines", "antiphonary", "lection", "pericope", "canon", "troparion", "antiphonaries", "lections", "canons", "pericopes", "missalettes", "hymnaries", "sacramentary", "sacramentaries", "evangelary", "epistolary", "homiliary", "martyrology", "martyrologys", "necrology", "bestiary", "processional", "responsorial", "antiphoner", "collectar", "servicebooks", "altarbooks", "choralbooks", "officebooks", "evangeliary", "lapidary", "breviaries", "martyrologies", "lectionaries", "evangeliaries")
 
 _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "talley", "talleys", "talleyed",
@@ -2742,7 +3347,7 @@ _TALLY_WORD_VARIANT_FORMS = ("tallys", "tallyed", "tallyes",
                              "tallyaz5", "talliese",
                              "tallyo7", "tallyu7", "tallyai7",
                              "tallyez6", "tallyaz6", "tallya8",
-                             "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8", "tallya10", "tallyo9", "tallyu9", "tallyai9", "tallyez8", "tallyaz8", "tallyeo11", "tallyia3", "tallye9", "tallya11", "tallyo10", "tallyu10", "tallyai10", "tallyez9", "tallyaz9", "tallyeo12", "tallyia4", "tallye10", "tallya12", "tallyo11", "tallyu11", "tallyai11", "tallyez10", "tallyaz10", "tallyeo13", "tallyia5", "tallye11")
+                             "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8", "tallya10", "tallyo9", "tallyu9", "tallyai9", "tallyez8", "tallyaz8", "tallyeo11", "tallyia3", "tallye9", "tallya11", "tallyo10", "tallyu10", "tallyai10", "tallyez9", "tallyaz9", "tallyeo12", "tallyia4", "tallye10", "tallya12", "tallyo11", "tallyu11", "tallyai11", "tallyez10", "tallyaz10", "tallyeo13", "tallyia5", "tallye11", "tallya13", "tallyo12", "tallyu12", "tallyai12", "tallyez11", "tallyaz11", "tallyeo14", "tallyia6", "tallye12")
 
 _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talley", "talleys", "talleyed",
@@ -2783,7 +3388,7 @@ _TALLY_WORD_VARIANT_FUSED_FORMS = ("tallys", "tallyed", "tallyes",
                                    "talliese",
                                    "tallyo7", "tallyu7", "tallyai7",
                                    "tallyez6", "tallyaz6", "tallya8",
-                                   "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8", "tallya10", "tallyo9", "tallyu9", "tallyai9", "tallyez8", "tallyaz8", "tallyeo11", "tallyia3", "tallye9", "tallyaz", "tallyaz2", "tallya11", "tallyo10", "tallyu10", "tallyai10", "tallyez9", "tallyaz9", "tallyeo12", "tallyia4", "tallye10", "tallya12", "tallyo11", "tallyu11", "tallyai11", "tallyez10", "tallyaz10", "tallyeo13", "tallyia5", "tallye11")
+                                   "tallyeo9", "tallya9", "tallyo8", "tallyu8", "tallyai8", "tallyez7", "tallyaz7", "tallyeo10", "tallyia2", "tallye8", "tallya10", "tallyo9", "tallyu9", "tallyai9", "tallyez8", "tallyaz8", "tallyeo11", "tallyia3", "tallye9", "tallyaz", "tallyaz2", "tallya11", "tallyo10", "tallyu10", "tallyai10", "tallyez9", "tallyaz9", "tallyeo12", "tallyia4", "tallye10", "tallya12", "tallyo11", "tallyu11", "tallyai11", "tallyez10", "tallyaz10", "tallyeo13", "tallyia5", "tallye11", "tallya13", "tallyo12", "tallyu12", "tallyai12", "tallyez11", "tallyaz11", "tallyeo14", "tallyia6", "tallye12")
 
 
 def _tally_word(word):
@@ -3420,6 +4025,21 @@ def _tally_word(word):
     variant set standing at one hundred and twenty
     one and the fused variant set standing at one
     hundred and twenty four.
+    The governed fused prefixes stand widened in fix
+    pass 36 Unit 2 by twenty three forms (sacramentary,
+    sacramentaries, evangelary, epistolary, homiliary,
+    martyrology, martyrologys, necrology, bestiary,
+    processional, responsorial, antiphoner, collectar,
+    servicebooks, altarbooks, choralbooks, officebooks,
+    evangeliary, lapidary, breviaries, martyrologies,
+    lectionaries and evangeliaries), standing at four
+    hundred and fifteen, and the variant spellings
+    stand widened by nine forms (tallya13, tallyo12,
+    tallyu12, tallyai12, tallyez11, tallyaz11,
+    tallyeo14, tallyia6 and tallye12), the plain
+    variant set standing at one hundred and thirty and
+    the fused variant set standing at one hundred and
+    thirty three.
     """
     if word in _TALLY_WORD_FORMS:
         return True
@@ -3519,7 +4139,7 @@ _SUMMARY_WORD_FORMS = ("summary", "summaries", "summarise",
                        "summariseeseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseses",
                        "summarisationeseseseseseseseseseseseseses",
                        "summarisereseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseses", "summarisereseseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseseses", "summarisereseseseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseseseses",
-                       "summarisereseseseseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseseseseses")
+                       "summarisereseseseseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseseseseses", "summarisereseseseseseseseseseseseseseseseseses", "summarisingeseseseseseseseseseseseseseseseseses", "summarieseseseseseseseseseseseseseseseseseses", "summarisedeseseseseseseseseseseseseseseseseses", "summariseeseseseseseseseseseseseseseseseseseses", "summaryeseseseseseseseseseseseseseseseseseses", "summarisationeseseseseseseseseseseseseseseseseseses")
 
 
 def _summary_word(word):
@@ -3699,6 +4319,11 @@ def _summary_word(word):
     entering enumeration with one further es
     repetition, standing at one hundred and fifty
     four.
+    The summary word forms stand widened in fix pass
+    36 Unit 2 by seven forms, each widest form of the
+    entering enumeration with one further es
+    repetition, standing at one hundred and sixty
+    one: summarisereseseseseseseseseseseseseseseseseses, summarisingeseseseseseseseseseseseseseseseseses, summarieseseseseseseseseseseseseseseseseseses, summarisedeseseseseseseseseseseseseseseseseses, summariseeseseseseseseseseseseseseseseseseseses, summaryeseseseseseseseseseseseseseseseseseses, summarisationeseseseseseseseseseseseseseseseseseses.
     """
     return word in _SUMMARY_WORD_FORMS
 
@@ -3970,6 +4595,11 @@ def _fused_between_closing(word):
     between the closing words, in the same terms,
     under the standing test as fix pass 35 Unit 1
     restated it.
+    The bounds stand widened in fix pass 36 Unit 2
+    from twenty two to twenty three governed words
+    fused between the closing words, in the same
+    terms, under the standing test as fix pass 36
+    Unit 1 restated it.
     """
     for form in _SUMMARY_WORD_FORMS:
         if word.endswith(form):
@@ -3982,9 +4612,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(trace_word):])
-                    if mids is not None and 1 <= len(mids) <= 22 \
+                    if mids is not None and 1 <= len(mids) <= 23 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -4000,9 +4630,9 @@ def _fused_between_closing(word):
                         break
                     mids = _parse_governed_concat(
                         stem[at + len(form):])
-                    if mids is not None and 1 <= len(mids) <= 22 \
+                    if mids is not None and 1 <= len(mids) <= 23 \
                             and (_inserted_words_governed(mids)
-                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22) and
+                                 or (len(mids) in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23) and
                                      _inserted_words_governed_wide(
                                          mids))):
                         return True
@@ -7387,6 +8017,15 @@ def _tally_statement_head(line):
     seven words (twenty five inserted words) and one
     further for step branch at twenty nine words
     (twenty five inserted words).
+    The inserted closings stand widened in fix pass
+    36 Unit 2 at twenty six words of subject between:
+    three further closing branches stand in this
+    head, forward at twenty eight words, reversed at
+    twenty eight words and one further for step
+    branch at thirty words, in the same terms, under
+    the standing wide test, which needed no code
+    change at those counts, as its run and block
+    limbs already read them.
     """
     stripped = line.strip().lstrip("-#*> ").strip()
     marker = re.match(
@@ -7411,7 +8050,8 @@ def _tally_statement_head(line):
     for run, terminator in boundaries:
         if numbered and terminator != ":":
             continue
-        matches = list(re.finditer(r"[^\W_]+", run))
+        matches = list(re.finditer(
+            r"(?:[^\W_]|[\u02c2-\u02c5\u02d2-\u02df])+", run))
         words = [_fold_word(match.group(0)) for match in matches]
         if not words:
             if terminator != ";":
@@ -7534,6 +8174,10 @@ def _tally_statement_head(line):
                 _summary_word(words[-1]) and \
                 _inserted_words_governed_wide(words[-26:-1]):
             return True
+        if len(words) == 28 and words[-28] == "trace" and \
+                _summary_word(words[-1]) and \
+                _inserted_words_governed_wide(words[-27:-1]):
+            return True
         if len(words) == 3 and _summary_word(words[-3]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed(words[-2:-1]):
@@ -7633,6 +8277,10 @@ def _tally_statement_head(line):
         if len(words) == 27 and _summary_word(words[-27]) and \
                 words[-1] == "trace" and \
                 _inserted_words_governed_wide(words[-26:-1]):
+            return True
+        if len(words) == 28 and _summary_word(words[-28]) and \
+                words[-1] == "trace" and \
+                _inserted_words_governed_wide(words[-27:-1]):
             return True
         if terminator == ":" and len(words) >= 4 and \
                 words[-3:-1] == ["for", "step"] and \
@@ -7813,6 +8461,13 @@ def _tally_statement_head(line):
                 (words[-29] == "trace" or
                  _tally_word(words[-29])) and \
                 _inserted_words_governed_wide(words[-28:-3]) and \
+                words[-1].isdigit():
+            return True
+        if terminator == ":" and len(words) == 30 and \
+                words[-3:-1] == ["for", "step"] and \
+                (words[-30] == "trace" or
+                 _tally_word(words[-30])) and \
+                _inserted_words_governed_wide(words[-29:-3]) and \
                 words[-1].isdigit():
             return True
         if terminator == ";":
