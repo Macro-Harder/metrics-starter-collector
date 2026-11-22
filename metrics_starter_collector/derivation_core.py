@@ -4103,7 +4103,14 @@ _MAIN_VERB_WORDS = frozenset((
     "drinks", "mean", "means", "drank", "meant", "smirk", "smirks", "laugh",
     "laughs", "stretch", "stretches", "pout", "pouts",
     "mumble", "mumbles", "stammer", "stammers", "quiver",
-    "quivers", "hobble", "hobbles", "limp", "limps"))
+    "quivers", "hobble", "hobbles", "limp", "limps",
+    "snicker", "snickers", "chortle", "chortles", "guffaw",
+    "guffaws", "wince", "winces", "grimace", "grimaces",
+    "scowl", "scowls", "whimper", "whimpers", "whine",
+    "whines", "mutter", "mutters", "stutter", "stutters",
+    "blubber", "blubbers", "cackle", "cackles", "snigger",
+    "sniggers", "titter", "titters", "falter", "falters",
+    "babble", "babbles", "waver", "wavers"))
 
 
 _NAMING_WORDS_WITH_VERB_ENDINGS = frozenset((
@@ -4305,7 +4312,16 @@ def _word_stands_as_main_verb(word):
     verb of a prose sentence in bare subject and main
     verb form and the verb of a prose clause in verb
     first form stand read in those shapes in the same
-    way.
+    way. The closed classes stand widened again in
+    fix pass 34 Unit 1 to the main verbs of the same
+    ordinary prose in their base and s forms, snicker,
+    chortle, guffaw, wince, grimace, scowl, whimper,
+    whine, mutter, stutter, blubber, cackle, snigger,
+    titter, falter, babble and waver in their base and
+    s forms, so the verb of a prose sentence in bare
+    subject and main verb form and the verb of a prose
+    clause in verb first form stand read in those shapes
+    in the same way.
     """
     if word in _NAMING_WORDS_WITH_VERB_ENDINGS:
         return False
@@ -4954,7 +4970,31 @@ def _before_closing_stands_as_head(words_before, text_before):
     marks, Ledger ⹕panel⹖ trace summary carrying
     its supplement bracket aside among them, a head
     carrying no such verb, no such join and no such aside
-    in its run.
+    in its run. The main verb, run join and aside
+    readings stand restated again in fix pass 34 Unit 1
+    in the same terms: the main verb reading stands
+    widened to the main verbs of the same ordinary prose
+    in their base forms and their s forms, as
+    _word_stands_as_main_verb states as restated, Panel
+    snicker trace summary carrying snicker, Panel
+    whimper trace summary carrying whimper and Snicker
+    panel trace summary carrying snicker in verb first
+    form among them; a prose run join stands in any of
+    the shapes a run is joined in, beside the shapes
+    named above, a n-ary sign, a circled sign, a sector
+    sign, an electrical sign and a combining sign
+    standing as its own token or standing on its host
+    letter, Ledger ⨶ trace summary carrying its
+    n-ary sign, Ledger ⃓ trace summary carrying its
+    combining sign and Ledger x⃓ trace summary
+    carrying its combining sign on its host letter among
+    them; and a prose aside stands in any of its shapes,
+    beside the shapes named above, an aside in further
+    supplement punctuation bracket marks or in square
+    bracket with double stroke marks, Ledger
+    ⹗panel⹘ trace summary carrying its double
+    stroke bracket aside among them, a head carrying no
+    such verb, no such join and no such aside in its run.
     """
     if "," in text_before or ";" in text_before or \
             ":" in text_before:
@@ -5373,6 +5413,56 @@ def _before_closing_stands_as_head(words_before, text_before):
             "⃟" in text_before or \
             "⹕" in text_before or \
             "⹖" in text_before:
+        return False
+    if "⨶" in text_before or \
+            "⨷" in text_before or \
+            "⨸" in text_before or \
+            "⨹" in text_before or \
+            "⨺" in text_before or \
+            "⨻" in text_before or \
+            "⨼" in text_before or \
+            "⨽" in text_before or \
+            "⨾" in text_before or \
+            "⨿" in text_before or \
+            "⩀" in text_before or \
+            "⩁" in text_before or \
+            "⩂" in text_before or \
+            "⩃" in text_before or \
+            "⩄" in text_before or \
+            "⩅" in text_before or \
+            "⩆" in text_before or \
+            "⩇" in text_before or \
+            "⩈" in text_before or \
+            "⩉" in text_before or \
+            "⩊" in text_before or \
+            "⩋" in text_before or \
+            "⩌" in text_before or \
+            "⩍" in text_before or \
+            "⩎" in text_before or \
+            "⩏" in text_before or \
+            "⧄" in text_before or \
+            "⧅" in text_before or \
+            "⧆" in text_before or \
+            "⧇" in text_before or \
+            "⌓" in text_before or \
+            "⏠" in text_before or \
+            "⃓" in text_before or \
+            "⃙" in text_before or \
+            "⃤" in text_before or \
+            "⃦" in text_before or \
+            "⃨" in text_before or \
+            "⃩" in text_before or \
+            "⹐" in text_before or \
+            "⹑" in text_before or \
+            "⹒" in text_before or \
+            "⹓" in text_before or \
+            "⹔" in text_before or \
+            "⹗" in text_before or \
+            "⹘" in text_before or \
+            "⹙" in text_before or \
+            "⹚" in text_before or \
+            "⹛" in text_before or \
+            "⹜" in text_before:
         return False
     if any(word in _SENTENCE_FUNCTION_WORDS
            for word in words_before):
